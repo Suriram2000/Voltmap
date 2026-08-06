@@ -22,6 +22,12 @@ void main() {
 
     expect(find.text('Find the right charger, faster.'), findsOneWidget);
 
+    await tester.enterText(find.byType(SearchBar), '500081');
+    await tester.pumpAndSettle();
+    expect(find.text('ChargeZone Hitech City'), findsOneWidget);
+    expect(find.text('Tata Power Madhapur'), findsOneWidget);
+    expect(find.text('2 results'), findsOneWidget);
+
     await tester.enterText(find.byType(SearchBar), 'Zeon');
     await tester.pumpAndSettle();
     expect(find.text('Zeon Charging Hub'), findsOneWidget);

@@ -4,7 +4,7 @@ VoltMap is a responsive Flutter web demo for discovering EV chargers, reviewing 
 
 ## Working in the browser
 
-- Search and filter the bundled charger network.
+- Search and filter the bundled charger network by station, area, connector, or PIN code.
 - Open charger details, directions, amenities, pricing, and connector data.
 - Use the interactive offline map without a Google Maps key.
 - Save favorites, trips, vehicle information, and preferences in browser storage.

@@ -71,7 +71,7 @@ class StationCard extends StatelessWidget {
                       ],
                     ),
                     Text(
-                      station.address,
+                      station.formattedAddress,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall,

@@ -110,7 +110,7 @@ class StationDetailsScreen extends ConsumerWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
-                Text(station.address),
+                Text(station.formattedAddress),
                 const SizedBox(height: 6),
                 Text(
                   '${station.distanceKm.toStringAsFixed(1)} km from your location',
