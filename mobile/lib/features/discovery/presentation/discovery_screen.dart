@@ -28,18 +28,21 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
   List<ChargingStation> get filteredStations {
     final normalized = query.trim().toLowerCase();
-    return sampleStations.where((station) {
-      final matchesQuery = normalized.isEmpty ||
-          station.name.toLowerCase().contains(normalized) ||
-          station.network.toLowerCase().contains(normalized) ||
-          station.address.toLowerCase().contains(normalized) ||
-          station.connectorTypes.any(
-            (connector) => connector.toLowerCase().contains(normalized),
-          );
-      return matchesQuery &&
-          (!availableOnly || station.available) &&
-          (!fastOnly || station.isFast);
-    }).toList(growable: false)
+    return sampleStations
+        .where((station) {
+          final matchesQuery =
+              normalized.isEmpty ||
+              station.name.toLowerCase().contains(normalized) ||
+              station.network.toLowerCase().contains(normalized) ||
+              station.address.toLowerCase().contains(normalized) ||
+              station.connectorTypes.any(
+                (connector) => connector.toLowerCase().contains(normalized),
+              );
+          return matchesQuery &&
+              (!availableOnly || station.available) &&
+              (!fastOnly || station.isFast);
+        })
+        .toList(growable: false)
       ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
   }
 
@@ -51,11 +54,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       appBar: AppBar(
         title: const Row(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.bolt),
-            SizedBox(width: 6),
-            Text('VoltMap'),
-          ],
+          children: [Icon(Icons.bolt), SizedBox(width: 6), Text('VoltMap')],
         ),
         actions: [
           Padding(
@@ -73,9 +72,9 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
         children: [
           Text(
             'Find the right charger, faster.',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 6),
           Text(
@@ -124,9 +123,9 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             children: [
               Text(
                 'Nearby chargers',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
               const Spacer(),
               Text('${stations.length} results'),
@@ -182,10 +181,15 @@ class _EmptySearch extends StatelessWidget {
           children: [
             const Icon(Icons.search_off, size: 44),
             const SizedBox(height: 12),
-            Text('No chargers match those filters',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'No chargers match those filters',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 12),
-            OutlinedButton(onPressed: onReset, child: const Text('Reset filters')),
+            OutlinedButton(
+              onPressed: onReset,
+              child: const Text('Reset filters'),
+            ),
           ],
         ),
       ),

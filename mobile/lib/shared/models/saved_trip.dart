@@ -18,22 +18,22 @@ class SavedTrip {
   final DateTime createdAt;
 
   Map<String, Object> toJson() => {
-        'id': id,
-        'origin': origin,
-        'destination': destination,
-        'distanceKm': distanceKm,
-        'estimatedMinutes': estimatedMinutes,
-        'stopStationIds': stopStationIds,
-        'createdAt': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'origin': origin,
+    'destination': destination,
+    'distanceKm': distanceKm,
+    'estimatedMinutes': estimatedMinutes,
+    'stopStationIds': stopStationIds,
+    'createdAt': createdAt.toIso8601String(),
+  };
 
   factory SavedTrip.fromJson(Map<String, dynamic> json) => SavedTrip(
-        id: json['id'] as String,
-        origin: json['origin'] as String,
-        destination: json['destination'] as String,
-        distanceKm: (json['distanceKm'] as num).toDouble(),
-        estimatedMinutes: json['estimatedMinutes'] as int,
-        stopStationIds: List<String>.from(json['stopStationIds'] as List),
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
+    id: json['id'] as String,
+    origin: json['origin'] as String,
+    destination: json['destination'] as String,
+    distanceKm: (json['distanceKm'] as num).toDouble(),
+    estimatedMinutes: json['estimatedMinutes'] as int,
+    stopStationIds: List<String>.from(json['stopStationIds'] as List),
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
 }

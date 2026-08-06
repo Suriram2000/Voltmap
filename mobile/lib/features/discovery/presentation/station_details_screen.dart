@@ -40,7 +40,11 @@ class StationDetailsScreen extends ConsumerWidget {
                   color: colors.primaryContainer,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Icon(Icons.ev_station, size: 32, color: colors.onPrimaryContainer),
+                child: Icon(
+                  Icons.ev_station,
+                  size: 32,
+                  color: colors.onPrimaryContainer,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -49,9 +53,8 @@ class StationDetailsScreen extends ConsumerWidget {
                   children: [
                     Text(
                       station.name,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 4),
                     Text(station.network),
@@ -75,7 +78,8 @@ class StationDetailsScreen extends ConsumerWidget {
                 Expanded(
                   child: _Metric(
                     label: 'Available',
-                    value: '${station.availableConnectors}/${station.totalConnectors}',
+                    value:
+                        '${station.availableConnectors}/${station.totalConnectors}',
                     icon: Icons.power,
                   ),
                 ),
@@ -101,11 +105,16 @@ class StationDetailsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Location', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Location',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 8),
                 Text(station.address),
                 const SizedBox(height: 6),
-                Text('${station.distanceKm.toStringAsFixed(1)} km from your location'),
+                Text(
+                  '${station.distanceKm.toStringAsFixed(1)} km from your location',
+                ),
               ],
             ),
           ),
@@ -114,16 +123,24 @@ class StationDetailsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Connectors', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Connectors',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: station.connectorTypes
-                      .map((connector) => Chip(
-                            avatar: const Icon(Icons.electrical_services, size: 18),
-                            label: Text(connector),
-                          ))
+                      .map(
+                        (connector) => Chip(
+                          avatar: const Icon(
+                            Icons.electrical_services,
+                            size: 18,
+                          ),
+                          label: Text(connector),
+                        ),
+                      )
                       .toList(growable: false),
                 ),
               ],
@@ -134,7 +151,10 @@ class StationDetailsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Amenities', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Amenities',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
@@ -159,9 +179,13 @@ class StationDetailsScreen extends ConsumerWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: station.available ? () => _startSession(context) : null,
+                  onPressed: station.available
+                      ? () => _startSession(context)
+                      : null,
                   icon: const Icon(Icons.bolt),
-                  label: Text(station.available ? 'Start charging' : 'Station full'),
+                  label: Text(
+                    station.available ? 'Start charging' : 'Station full',
+                  ),
                 ),
               ),
             ],

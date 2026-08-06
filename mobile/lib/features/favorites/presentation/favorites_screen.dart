@@ -34,8 +34,8 @@ class FavoritesScreen extends ConsumerWidget {
                     Text(
                       'No favorite chargers yet',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     const Text(

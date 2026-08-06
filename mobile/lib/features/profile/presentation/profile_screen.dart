@@ -34,9 +34,8 @@ class ProfileScreen extends ConsumerWidget {
                       children: [
                         Text(
                           appState.userName,
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: 4),
                         Text(appState.userEmail),
@@ -62,7 +61,9 @@ class ProfileScreen extends ConsumerWidget {
               contentPadding: const EdgeInsets.all(18),
               leading: const CircleAvatar(child: Icon(Icons.directions_car)),
               title: Text(appState.vehicleName),
-              subtitle: Text('Estimated range: ${appState.vehicleRangeKm.round()} km'),
+              subtitle: Text(
+                'Estimated range: ${appState.vehicleRangeKm.round()} km',
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _editVehicle(context, appState),
             ),
@@ -70,9 +71,9 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           Text(
             'Preferences',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
           Card(
@@ -103,11 +104,15 @@ class ProfileScreen extends ConsumerWidget {
                 ListTile(
                   leading: const Icon(Icons.apps),
                   title: const Text('Enterprise roadmap'),
-                  subtitle: const Text('Provider, fleet, payments, and roaming modules'),
+                  subtitle: const Text(
+                    'Provider, fleet, payments, and roaming modules',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute<void>(builder: (_) => const ModulesScreen()),
+                    MaterialPageRoute<void>(
+                      builder: (_) => const ModulesScreen(),
+                    ),
                   ),
                 ),
                 const Divider(height: 1),
@@ -200,21 +205,27 @@ class ProfileScreen extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('My vehicle', style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  'My vehicle',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: nameController,
                   decoration: const InputDecoration(labelText: 'Vehicle model'),
                 ),
                 const SizedBox(height: 18),
-                Text('Estimated full-charge range: ${selectedRange.round()} km'),
+                Text(
+                  'Estimated full-charge range: ${selectedRange.round()} km',
+                ),
                 Slider(
                   value: selectedRange,
                   min: 120,
                   max: 600,
                   divisions: 24,
                   label: '${selectedRange.round()} km',
-                  onChanged: (value) => setSheetState(() => selectedRange = value),
+                  onChanged: (value) =>
+                      setSheetState(() => selectedRange = value),
                 ),
                 const SizedBox(height: 12),
                 SizedBox(

@@ -13,7 +13,9 @@ class TripPlannerScreen extends ConsumerStatefulWidget {
 }
 
 class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
-  final originController = TextEditingController(text: 'Hitech City, Hyderabad');
+  final originController = TextEditingController(
+    text: 'Hitech City, Hyderabad',
+  );
   final destinationController = TextEditingController();
   double rangeKm = 325;
   _RoutePlan? route;
@@ -35,9 +37,9 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
         children: [
           Text(
             'Plan an EV-ready route',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 6),
           Text(
@@ -85,7 +87,8 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                               max: 600,
                               divisions: 24,
                               label: '${rangeKm.round()} km',
-                              onChanged: (value) => setState(() => rangeKm = value),
+                              onChanged: (value) =>
+                                  setState(() => rangeKm = value),
                             ),
                           ],
                         ),
@@ -107,19 +110,16 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
           ),
           if (route != null) ...[
             const SizedBox(height: 18),
-            _RouteResult(
-              route: route!,
-              onSave: () => _saveRoute(appState),
-            ),
+            _RouteResult(route: route!, onSave: () => _saveRoute(appState)),
           ],
           const SizedBox(height: 28),
           Row(
             children: [
               Text(
                 'Saved trips',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
               const Spacer(),
               Text('${appState.savedTrips.length}'),
@@ -134,7 +134,9 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                   children: [
                     Icon(Icons.route_outlined),
                     SizedBox(width: 12),
-                    Expanded(child: Text('Plan and save a route to see it here.')),
+                    Expanded(
+                      child: Text('Plan and save a route to see it here.'),
+                    ),
                   ],
                 ),
               ),
@@ -157,18 +159,23 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
     final destination = destinationController.text.trim();
     if (origin.isEmpty || destination.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter both a starting point and destination.')),
+        const SnackBar(
+          content: Text('Enter both a starting point and destination.'),
+        ),
       );
       return;
     }
 
-    final seed = origin.codeUnits.fold<int>(0, (sum, unit) => sum + unit) +
+    final seed =
+        origin.codeUnits.fold<int>(0, (sum, unit) => sum + unit) +
         destination.codeUnits.fold<int>(0, (sum, unit) => sum + unit);
     final distance = 70.0 + (seed % 420);
     final safeLegDistance = rangeKm * 0.72;
     final legCount = (distance / safeLegDistance).ceil();
     final stopCount = legCount > 1 ? legCount - 1 : 0;
-    final availableStations = sampleStations.where((station) => station.available).toList();
+    final availableStations = sampleStations
+        .where((station) => station.available)
+        .toList();
     final stopIds = List<String>.generate(
       stopCount,
       (index) => availableStations[index % availableStations.length].id,
@@ -199,9 +206,9 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
       createdAt: DateTime.now(),
     );
     appState.saveTrip(trip);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Trip saved on this device.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Trip saved on this device.')));
   }
 }
 
@@ -231,11 +238,12 @@ class _RouteResult extends StatelessWidget {
                     children: [
                       Text(
                         '${route.origin} → ${route.destination}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
-                      Text('${route.distanceKm.toStringAsFixed(0)} km • ${hours}h ${minutes}m'),
+                      Text(
+                        '${route.distanceKm.toStringAsFixed(0)} km • ${hours}h ${minutes}m',
+                      ),
                     ],
                   ),
                 ),
@@ -254,7 +262,9 @@ class _RouteResult extends StatelessWidget {
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(Icons.check_circle),
                 title: Text('No charging stop needed'),
-                subtitle: Text('This route fits within the selected safe range.'),
+                subtitle: Text(
+                  'This route fits within the selected safe range.',
+                ),
               )
             else ...[
               Text(
@@ -266,7 +276,10 @@ class _RouteResult extends StatelessWidget {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: CircleAvatar(child: Text('${index + 1}')),
-                  title: Text(stationById(route.stopStationIds[index])?.name ?? 'Charging stop'),
+                  title: Text(
+                    stationById(route.stopStationIds[index])?.name ??
+                        'Charging stop',
+                  ),
                   subtitle: const Text('Suggested 25 minute charging break'),
                 ),
             ],

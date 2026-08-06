@@ -53,9 +53,11 @@ class AppState extends ChangeNotifier {
         final decoded = jsonDecode(savedTripJson) as List<dynamic>;
         savedTrips
           ..clear()
-          ..addAll(decoded.map(
-            (item) => SavedTrip.fromJson(item as Map<String, dynamic>),
-          ));
+          ..addAll(
+            decoded.map(
+              (item) => SavedTrip.fromJson(item as Map<String, dynamic>),
+            ),
+          );
       }
     } catch (_) {
       // The app stays usable with in-memory state if browser storage is blocked.

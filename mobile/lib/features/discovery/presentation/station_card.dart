@@ -54,9 +54,8 @@ class StationCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             station.name,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ),
                         IconButton(
@@ -83,7 +82,10 @@ class StationCard extends StatelessWidget {
                       runSpacing: 8,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        _InfoPill(icon: Icons.bolt, label: '${station.powerKw} kW'),
+                        _InfoPill(
+                          icon: Icons.bolt,
+                          label: '${station.powerKw} kW',
+                        ),
                         _InfoPill(
                           icon: Icons.near_me,
                           label: '${station.distanceKm.toStringAsFixed(1)} km',
@@ -93,7 +95,10 @@ class StationCard extends StatelessWidget {
                           label: station.rating.toStringAsFixed(1),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: station.available
                                 ? colors.primaryContainer
@@ -104,7 +109,8 @@ class StationCard extends StatelessWidget {
                             station.available
                                 ? '${station.availableConnectors} available'
                                 : 'Currently full',
-                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
                                   color: station.available
                                       ? colors.onPrimaryContainer
                                       : colors.onErrorContainer,

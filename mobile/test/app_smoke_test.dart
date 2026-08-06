@@ -9,7 +9,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('search, favorites, navigation, and trip planning work', (tester) async {
+  testWidgets('search, favorites, navigation, and trip planning work', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1200, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);

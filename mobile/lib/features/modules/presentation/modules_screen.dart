@@ -13,7 +13,9 @@ class ModulesScreen extends StatelessWidget {
         itemBuilder: (context, index) => ListTile(
           leading: CircleAvatar(child: Text('${index + 1}')),
           title: Text(moduleCatalog[index]),
-          subtitle: const Text('Enterprise roadmap item • Requires backend or provider integration'),
+          subtitle: const Text(
+            'Enterprise roadmap item • Requires backend or provider integration',
+          ),
         ),
       ),
     );

@@ -21,7 +21,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Widget build(BuildContext context) {
     final appState = ref.watch(appStateProvider);
     final stations = availableOnly
-        ? sampleStations.where((station) => station.available).toList(growable: false)
+        ? sampleStations
+              .where((station) => station.available)
+              .toList(growable: false)
         : sampleStations;
 
     if (!stations.contains(selected)) selected = stations.first;
@@ -52,9 +54,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ),
               ),
-              ...stations.map(
-                (station) => _buildMarker(station, constraints),
-              ),
+              ...stations.map((station) => _buildMarker(station, constraints)),
               Positioned(
                 left: 16,
                 right: 16,
@@ -84,8 +84,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     const maxLng = 78.49;
     final usableWidth = constraints.maxWidth - 64;
     final usableHeight = constraints.maxHeight - 220;
-    final left = 20 + ((station.longitude - minLng) / (maxLng - minLng)) * usableWidth;
-    final top = 18 + (1 - (station.latitude - minLat) / (maxLat - minLat)) * usableHeight;
+    final left =
+        20 + ((station.longitude - minLng) / (maxLng - minLng)) * usableWidth;
+    final top =
+        18 +
+        (1 - (station.latitude - minLat) / (maxLat - minLat)) * usableHeight;
     final isSelected = station.id == selected.id;
     final colors = Theme.of(context).colorScheme;
 
@@ -94,7 +97,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       top: top,
       child: Semantics(
         button: true,
-        label: '${station.name}, ${station.availableConnectors} connectors available',
+        label:
+            '${station.name}, ${station.availableConnectors} connectors available',
         child: Tooltip(
           message: station.name,
           child: InkWell(
@@ -109,7 +113,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 shape: BoxShape.circle,
                 border: Border.all(color: colors.surface, width: 4),
                 boxShadow: const [
-                  BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3)),
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 8,
+                    offset: Offset(0, 3),
+                  ),
                 ],
               ),
               child: Icon(
@@ -145,7 +153,9 @@ class _SelectedStationCard extends StatelessWidget {
         child: Row(
           children: [
             CircleAvatar(
-              child: Icon(station.available ? Icons.ev_station : Icons.power_off),
+              child: Icon(
+                station.available ? Icons.ev_station : Icons.power_off,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -156,8 +166,8 @@ class _SelectedStationCard extends StatelessWidget {
                   Text(
                     station.name,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
