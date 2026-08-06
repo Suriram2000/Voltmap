@@ -38,6 +38,10 @@ jobs:
         working-directory: mobile
         run: flutter analyze
 
+      - name: Run Flutter tests
+        working-directory: mobile
+        run: flutter test
+
       - name: Build Flutter web app
         working-directory: mobile
         run: flutter build web --release --base-href "/Voltmap/"

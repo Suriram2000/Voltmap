@@ -1,7 +1,25 @@
-# VoltMap Integrated App
+# VoltMap
 
-This package consolidates the separate VoltMap module folders into one Flutter application structure.
+VoltMap is a responsive Flutter web demo for discovering EV chargers, reviewing station details, saving favorites, planning range-aware trips, and managing a local driver profile.
 
-Upload the contents of this ZIP to the repository root. Do not upload the outer folder as another module folder.
+## Working in the browser
 
-Important: earlier modules were mostly foundations/placeholders. Real provider APIs, payments, OCPP, Firebase, and routing still require credentials, backend services, contracts, and testing.
+- Search and filter the bundled charger network.
+- Open charger details, directions, amenities, pricing, and connector data.
+- Use the interactive offline map without a Google Maps key.
+- Save favorites, trips, vehicle information, and preferences in browser storage.
+- Switch between light and dark themes.
+
+The bundled locations and route calculations are demonstration data. Live charger availability, real road routing, authentication, charging payments, OCPP/OCPI, and provider roaming require production credentials and backend services.
+
+## Development
+
+```bash
+cd mobile
+flutter pub get
+flutter analyze
+flutter test
+flutter run -d chrome
+```
+
+GitHub Pages builds use `flutter build web --release --base-href "/Voltmap/"`.
