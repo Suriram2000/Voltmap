@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - codex/import-integrated-app
   workflow_dispatch:
 
 permissions:
