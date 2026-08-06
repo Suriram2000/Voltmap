@@ -119,7 +119,7 @@ class ProfileScreen extends ConsumerWidget {
                 const ListTile(
                   leading: Icon(Icons.info_outline),
                   title: Text('VoltMap demo'),
-                  subtitle: Text('Offline-first browser build • Version 1.1'),
+                  subtitle: Text('Offline-first browser build • Version 1.1.2'),
                 ),
               ],
             ),
