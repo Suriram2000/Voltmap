@@ -4,6 +4,7 @@ class ChargingStation {
     required this.name,
     required this.network,
     required this.address,
+    required this.postalCode,
     required this.distanceKm,
     required this.powerKw,
     required this.availableConnectors,
@@ -20,6 +21,7 @@ class ChargingStation {
   final String name;
   final String network;
   final String address;
+  final String postalCode;
   final double distanceKm;
   final int powerKw;
   final int availableConnectors;
@@ -33,4 +35,5 @@ class ChargingStation {
 
   bool get available => availableConnectors > 0;
   bool get isFast => powerKw >= 100;
+  String get formattedAddress => '$address, PIN $postalCode';
 }

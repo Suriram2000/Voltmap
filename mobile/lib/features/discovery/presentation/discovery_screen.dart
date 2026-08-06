@@ -27,22 +27,11 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   List<ChargingStation> get filteredStations {
-    final normalized = query.trim().toLowerCase();
-    return sampleStations
-        .where((station) {
-          final matchesQuery =
-              normalized.isEmpty ||
-              station.name.toLowerCase().contains(normalized) ||
-              station.network.toLowerCase().contains(normalized) ||
-              station.address.toLowerCase().contains(normalized) ||
-              station.connectorTypes.any(
-                (connector) => connector.toLowerCase().contains(normalized),
-              );
-          return matchesQuery &&
-              (!availableOnly || station.available) &&
-              (!fastOnly || station.isFast);
-        })
-        .toList(growable: false)
+    return sampleStations.where((station) {
+      return _matchesSearch(station, query) &&
+          (!availableOnly || station.available) &&
+          (!fastOnly || station.isFast);
+    }).toList(growable: false)
       ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
   }
 
@@ -84,7 +73,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           const SizedBox(height: 18),
           SearchBar(
             controller: searchController,
-            hintText: 'Station, area, network, or connector',
+            hintText: 'Station, area, connector, or PIN code',
             leading: const Icon(Icons.search),
             trailing: [
               if (query.isNotEmpty)
@@ -98,6 +87,11 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                 ),
             ],
             onChanged: (value) => setState(() => query = value),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'PIN search accepts formats like 500081, 500 081, or 500-081.',
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -165,6 +159,28 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       ),
     );
   }
+}
+
+bool _matchesSearch(ChargingStation station, String rawQuery) {
+  final terms = rawQuery
+      .trim()
+      .toLowerCase()
+      .split(RegExp(r'\s+'))
+      .map((term) => term.replaceAll(RegExp(r'[^a-z0-9]'), ''))
+      .where((term) => term.isNotEmpty)
+      .toList(growable: false);
+
+  if (terms.isEmpty) return true;
+
+  final searchableText = [
+    station.name,
+    station.network,
+    station.address,
+    station.postalCode,
+    ...station.connectorTypes,
+  ].join(' ').toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+  return terms.every(searchableText.contains);
 }
 
 class _EmptySearch extends StatelessWidget {
