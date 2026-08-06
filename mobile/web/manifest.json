@@ -1,0 +1,11 @@
+{
+  "name": "VoltMap",
+  "short_name": "VoltMap",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#16A34A",
+  "description": "VoltMap EV charger discovery and trip planning.",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false
+}
