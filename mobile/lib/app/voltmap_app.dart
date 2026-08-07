@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_theme.dart';
+import '../features/auth/presentation/auth_screen.dart';
 import '../features/shell/presentation/app_shell.dart';
 import '../shared/state/app_state.dart';
 
@@ -16,7 +17,27 @@ class VoltMapApp extends ConsumerWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: appState.darkMode ? ThemeMode.dark : ThemeMode.light,
-      home: const AppShell(),
+      home: !appState.isReady
+          ? const _AppLoadingScreen()
+          : appState.isSignedIn
+              ? const AppShell()
+              : const AuthScreen(),
+    );
+  }
+}
+
+class _AppLoadingScreen extends StatelessWidget {
+  const _AppLoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: SizedBox.square(
+          dimension: 34,
+          child: CircularProgressIndicator(),
+        ),
+      ),
     );
   }
 }

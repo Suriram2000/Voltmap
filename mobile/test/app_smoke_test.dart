@@ -4,12 +4,81 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voltmap/app/voltmap_app.dart';
 import 'package:voltmap/features/discovery/data/sample_stations.dart';
+import 'package:voltmap/features/discovery/data/national_charger_data.dart';
 import 'package:voltmap/features/discovery/presentation/station_details_screen.dart';
 import 'package:voltmap/features/payments/presentation/charging_checkout_screen.dart';
 
 void main() {
   setUp(() {
+    SharedPreferences.setMockInitialValues({
+      'voltmap_signed_in': true,
+      'voltmap_profile_name': 'Test Driver',
+      'voltmap_profile_email': 'driver@voltmap.in',
+    });
+  });
+
+  testWidgets('local signup, logout, and login persist on this browser', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
+    _useDesktopViewport(tester);
+
+    await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
+    await tester.pumpAndSettle();
+    expect(find.text('Welcome back'), findsOneWidget);
+    expect(find.text('Sign up'), findsOneWidget);
+
+    await tester.tap(find.text('Sign up'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('authNameField')),
+      'Priya Sharma',
+    );
+    await tester.enterText(
+      find.byKey(const Key('authEmailField')),
+      'priya@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('authPasswordField')),
+      'VoltMap123',
+    );
+    await tester.enterText(
+      find.byKey(const Key('authConfirmField')),
+      'VoltMap123',
+    );
+    await tester.tap(find.byKey(const Key('authSubmitButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Find the right charger, faster.'), findsOneWidget);
+
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('signOutTile')));
+    await tester.tap(find.byKey(const Key('signOutTile')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirmSignOutButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Welcome back'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('authEmailField')),
+      'priya@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('authPasswordField')),
+      'VoltMap123',
+    );
+    await tester.tap(find.byKey(const Key('authSubmitButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Find the right charger, faster.'), findsOneWidget);
+  });
+
+  test('official state totals add up to the published national count', () {
+    final total = stateChargerCoverage.fold<int>(
+      0,
+      (sum, coverage) => sum + coverage.stationCount,
+    );
+    expect(total, officialStationTotal);
+    expect(stateChargerCoverage, hasLength(36));
   });
 
   testWidgets('search, favorites, navigation, and trip planning work', (
@@ -29,12 +98,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('ChargeZone Hitech City'), findsOneWidget);
     expect(find.text('Tata Power Madhapur'), findsOneWidget);
-    expect(find.text('2 results'), findsOneWidget);
+    expect(find.text('2 demos'), findsOneWidget);
 
     await tester.enterText(find.byType(SearchBar), 'Zeon');
     await tester.pumpAndSettle();
     expect(find.text('Zeon Charging Hub'), findsOneWidget);
 
+    await tester.ensureVisible(find.byTooltip('Add to favorites').first);
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Add to favorites').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Favorites'));
@@ -67,12 +138,12 @@ void main() {
     await tester.enterText(find.byType(SearchBar), '110001');
     await tester.pumpAndSettle();
     expect(find.text('Statiq Connaught Place'), findsOneWidget);
-    expect(find.text('1 result'), findsOneWidget);
+    expect(find.text('1 demo'), findsOneWidget);
 
     await tester.enterText(find.byType(SearchBar), '400-051');
     await tester.pumpAndSettle();
     expect(find.text('Tata Power BKC'), findsOneWidget);
-    expect(find.text('1 result'), findsOneWidget);
+    expect(find.text('1 demo'), findsOneWidget);
 
     await tester.enterText(find.byType(SearchBar), 'Whitefield');
     await tester.pumpAndSettle();
@@ -81,12 +152,12 @@ void main() {
     await tester.enterText(find.byType(SearchBar), 'Bangalore');
     await tester.pumpAndSettle();
     expect(find.text('Ather Grid Whitefield'), findsOneWidget);
-    expect(find.text('3 results'), findsOneWidget);
+    expect(find.text('3 demos'), findsOneWidget);
 
     await tester.enterText(find.byType(SearchBar), 'Tamil Nadu');
     await tester.pumpAndSettle();
     expect(find.text('Zeon Peelamedu'), findsOneWidget);
-    expect(find.text('3 results'), findsOneWidget);
+    expect(find.text('3 demos'), findsOneWidget);
   });
 
   testWidgets('UPI is verified before metered charging and charged afterward', (
