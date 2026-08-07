@@ -34,8 +34,8 @@ class FavoritesScreen extends ConsumerWidget {
                     Text(
                       'No favorite chargers yet',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                            fontWeight: FontWeight.w800,
+                          ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
@@ -46,28 +46,35 @@ class FavoritesScreen extends ConsumerWidget {
                 ),
               ),
             )
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-              children: [
-                Text(
-                  '${favorites.length} saved charger${favorites.length == 1 ? '' : 's'}',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                for (final station in favorites) ...[
-                  StationCard(
-                    station: station,
-                    isFavorite: true,
-                    onFavorite: () => appState.toggleFavorite(station.id),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => StationDetailsScreen(station: station),
-                      ),
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 920),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
+                  children: [
+                    Text(
+                      '${favorites.length} saved charger${favorites.length == 1 ? '' : 's'}',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ],
+                    const SizedBox(height: 12),
+                    for (final station in favorites) ...[
+                      StationCard(
+                        station: station,
+                        isFavorite: true,
+                        onFavorite: () => appState.toggleFavorite(station.id),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => StationDetailsScreen(
+                              station: station,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ],
+                ),
+              ),
             ),
     );
   }

@@ -3,9 +3,9 @@
   "short_name": "VoltMap",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#FFFFFF",
-  "theme_color": "#16A34A",
-  "description": "VoltMap EV charger discovery and trip planning.",
-  "orientation": "portrait-primary",
+  "background_color": "#F4F7F2",
+  "theme_color": "#071D17",
+  "description": "Find EV chargers, plan smarter trips, and charge with confidence.",
+  "orientation": "any",
   "prefer_related_applications": false
 }

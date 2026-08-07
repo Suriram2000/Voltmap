@@ -29,171 +29,179 @@ class StationDetailsScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
             children: [
-              Container(
-                width: 62,
-                height: 62,
-                decoration: BoxDecoration(
-                  color: colors.primaryContainer,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(
-                  Icons.ev_station,
-                  size: 32,
-                  color: colors.onPrimaryContainer,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      station.name,
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w800),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 62,
+                    height: 62,
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer,
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    const SizedBox(height: 4),
-                    Text(station.network),
-                    const SizedBox(height: 8),
-                    Row(
+                    child: Icon(
+                      Icons.ev_station,
+                      size: 32,
+                      color: colors.onPrimaryContainer,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.star, size: 18, color: Colors.amber),
-                        const SizedBox(width: 4),
-                        Text('${station.rating.toStringAsFixed(1)} rating'),
+                        Text(
+                          station.name,
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(station.network),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.star,
+                                size: 18, color: Colors.amber),
+                            const SizedBox(width: 4),
+                            Text('${station.rating.toStringAsFixed(1)} rating'),
+                          ],
+                        ),
                       ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _SectionCard(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _Metric(
+                        label: 'Available',
+                        value:
+                            '${station.availableConnectors}/${station.totalConnectors}',
+                        icon: Icons.power,
+                      ),
+                    ),
+                    Expanded(
+                      child: _Metric(
+                        label: 'Up to',
+                        value: '${station.powerKw} kW',
+                        icon: Icons.bolt,
+                      ),
+                    ),
+                    Expanded(
+                      child: _Metric(
+                        label: 'Price',
+                        value: '₹${station.pricePerKwh.toStringAsFixed(1)}/kWh',
+                        icon: Icons.currency_rupee,
+                      ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _SectionCard(
-            child: Row(
-              children: [
-                Expanded(
-                  child: _Metric(
-                    label: 'Available',
-                    value:
-                        '${station.availableConnectors}/${station.totalConnectors}',
-                    icon: Icons.power,
-                  ),
-                ),
-                Expanded(
-                  child: _Metric(
-                    label: 'Up to',
-                    value: '${station.powerKw} kW',
-                    icon: Icons.bolt,
-                  ),
-                ),
-                Expanded(
-                  child: _Metric(
-                    label: 'Price',
-                    value: '₹${station.pricePerKwh.toStringAsFixed(1)}/kWh',
-                    icon: Icons.currency_rupee,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          _SectionCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Location',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                Text(station.formattedAddress),
-                const SizedBox(height: 6),
-                Text(
-                  '${station.distanceKm.toStringAsFixed(1)} km from your location',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          _SectionCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Connectors',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: station.connectorTypes
-                      .map(
-                        (connector) => Chip(
-                          avatar: const Icon(
-                            Icons.electrical_services,
-                            size: 18,
-                          ),
-                          label: Text(connector),
-                        ),
-                      )
-                      .toList(growable: false),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          _SectionCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Amenities',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: station.amenities
-                      .map((amenity) => Chip(label: Text(amenity)))
-                      .toList(growable: false),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _openDirections(context),
-                  icon: const Icon(Icons.navigation),
-                  label: const Text('Directions'),
+              const SizedBox(height: 16),
+              _SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Location',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(station.formattedAddress),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${station.distanceKm.toStringAsFixed(1)} km from your location',
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  key: const Key('openCheckoutButton'),
-                  onPressed: station.available
-                      ? () => _startSession(context)
-                      : null,
-                  icon: const Icon(Icons.payment),
-                  label: Text(
-                    station.available ? 'Pay & start' : 'Station full',
-                  ),
+              const SizedBox(height: 16),
+              _SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Connectors',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: station.connectorTypes
+                          .map(
+                            (connector) => Chip(
+                              avatar: const Icon(
+                                Icons.electrical_services,
+                                size: 18,
+                              ),
+                              label: Text(connector),
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                  ],
                 ),
+              ),
+              const SizedBox(height: 16),
+              _SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Amenities',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: station.amenities
+                          .map((amenity) => Chip(label: Text(amenity)))
+                          .toList(growable: false),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openDirections(context),
+                      icon: const Icon(Icons.navigation),
+                      label: const Text('Directions'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      key: const Key('openCheckoutButton'),
+                      onPressed: station.available
+                          ? () => _startSession(context)
+                          : null,
+                      icon: const Icon(Icons.payment),
+                      label: Text(
+                        station.available ? 'Pay & start' : 'Station full',
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

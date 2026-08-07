@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/state/app_state.dart';
 import '../../modules/presentation/modules_screen.dart';
 import '../../payments/presentation/payment_history_screen.dart';
@@ -13,137 +14,209 @@ class ProfileScreen extends ConsumerWidget {
     final appState = ref.watch(appStateProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Profile & settings')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 34,
-                    child: Text(
-                      _initials(appState.userName),
-                      style: Theme.of(context).textTheme.titleLarge,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 920),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
+            children: [
+              Card(
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AppTheme.brandNavy, Color(0xFF0B3829)],
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          appState.userName,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w800),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 70,
+                        height: 70,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppTheme.brandLime, AppTheme.brandGreen],
+                          ),
+                          borderRadius: BorderRadius.circular(22),
                         ),
-                        const SizedBox(height: 4),
-                        Text(appState.userEmail),
-                        if (!appState.isReady) ...[
-                          const SizedBox(height: 8),
-                          const LinearProgressIndicator(),
-                        ],
-                      ],
+                        child: Text(
+                          _initials(appState.userName),
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    color: AppTheme.brandNavy,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                        ),
+                      ),
+                      const SizedBox(width: 18),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'DRIVER PROFILE',
+                              style: TextStyle(
+                                color: AppTheme.brandLime,
+                                fontSize: 10,
+                                letterSpacing: 1.3,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              appState.userName,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(color: Colors.white),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              appState.userEmail,
+                              style: const TextStyle(color: Color(0xFFB8CEC4)),
+                            ),
+                            if (!appState.isReady) ...[
+                              const SizedBox(height: 8),
+                              const LinearProgressIndicator(),
+                            ],
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Edit profile',
+                        onPressed: () => _editProfile(context, appState),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.1),
+                          foregroundColor: Colors.white,
+                        ),
+                        icon: const Icon(Icons.edit_outlined),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
+                  leading: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    child: const Icon(Icons.directions_car_filled_outlined),
                   ),
-                  IconButton(
-                    tooltip: 'Edit profile',
-                    onPressed: () => _editProfile(context, appState),
-                    icon: const Icon(Icons.edit_outlined),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(18),
-              leading: const CircleAvatar(child: Icon(Icons.directions_car)),
-              title: Text(appState.vehicleName),
-              subtitle: Text(
-                'Estimated range: ${appState.vehicleRangeKm.round()} km',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _editVehicle(context, appState),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Preferences',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 10),
-          Card(
-            child: Column(
-              children: [
-                SwitchListTile(
-                  secondary: const Icon(Icons.notifications_outlined),
-                  title: const Text('Charging notifications'),
-                  subtitle: const Text('Session and saved-trip reminders'),
-                  value: appState.notificationsEnabled,
-                  onChanged: appState.setNotificationsEnabled,
-                ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  secondary: const Icon(Icons.dark_mode_outlined),
-                  title: const Text('Dark mode'),
-                  subtitle: const Text('Use a darker color theme'),
-                  value: appState.darkMode,
-                  onChanged: appState.setDarkMode,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  key: const Key('paymentHistoryTile'),
-                  leading: const Icon(Icons.receipt_long_outlined),
-                  title: const Text('Payments & receipts'),
+                  title: Text(appState.vehicleName),
                   subtitle: Text(
-                    appState.chargingReceipts.isEmpty
-                        ? 'No demo charging payments yet'
-                        : '${appState.chargingReceipts.length} saved demo receipt${appState.chargingReceipts.length == 1 ? '' : 's'}',
+                    'Estimated range: ${appState.vehicleRangeKm.round()} km',
                   ),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => const PaymentHistoryScreen(),
+                  onTap: () => _editVehicle(context, appState),
+                ),
+              ),
+              const SizedBox(height: 28),
+              Text('Preferences',
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 10),
+              Card(
+                child: Column(
+                  children: [
+                    SwitchListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      secondary: const Icon(Icons.notifications_outlined),
+                      title: const Text('Charging notifications'),
+                      subtitle: const Text('Session and saved-trip reminders'),
+                      value: appState.notificationsEnabled,
+                      onChanged: appState.setNotificationsEnabled,
                     ),
-                  ),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.apps),
-                  title: const Text('Enterprise roadmap'),
-                  subtitle: const Text(
-                    'Provider, fleet, payments, and roaming modules',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => const ModulesScreen(),
+                    const Divider(height: 1),
+                    SwitchListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      secondary: const Icon(Icons.dark_mode_outlined),
+                      title: const Text('Dark mode'),
+                      subtitle: const Text('Use a darker color theme'),
+                      value: appState.darkMode,
+                      onChanged: appState.setDarkMode,
                     ),
-                  ),
+                  ],
                 ),
-                const Divider(height: 1),
-                const ListTile(
-                  leading: Icon(Icons.info_outline),
-                  title: Text('VoltMap demo'),
-                  subtitle: Text('Offline-first browser build • Version 1.2.0'),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                child: Column(
+                  children: [
+                    ListTile(
+                      key: const Key('paymentHistoryTile'),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      leading: const Icon(Icons.receipt_long_outlined),
+                      title: const Text('Payments & receipts'),
+                      subtitle: Text(
+                        appState.chargingReceipts.isEmpty
+                            ? 'No demo charging payments yet'
+                            : '${appState.chargingReceipts.length} saved demo receipt${appState.chargingReceipts.length == 1 ? '' : 's'}',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const PaymentHistoryScreen(),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      leading: const Icon(Icons.apps),
+                      title: const Text('Enterprise roadmap'),
+                      subtitle: const Text(
+                        'Provider, fleet, payments, and roaming modules',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const ModulesScreen(),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    const ListTile(
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      leading: Icon(Icons.info_outline),
+                      title: Text('VoltMap demo'),
+                      subtitle: Text(
+                        'Premium browser build • Version 1.3.0',
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

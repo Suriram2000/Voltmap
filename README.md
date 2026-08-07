@@ -1,12 +1,13 @@
 # VoltMap
 
-VoltMap is a responsive Flutter web demo for discovering EV chargers, reviewing station details, saving favorites, planning range-aware trips, and managing a local driver profile.
+VoltMap is a polished, responsive Flutter web demo for discovering EV chargers, reviewing station details, saving favorites, planning range-aware trips, and managing a local driver profile.
 
 ## Working in the browser
 
 - Search and filter the bundled charger network by station, area, connector, or PIN code.
 - Open charger details, directions, amenities, pricing, and connector data.
 - Complete a sandbox charging checkout with UPI, credit/debit card, or VoltMap wallet, then review locally saved receipts.
+- Use a premium responsive interface with adaptive mobile navigation, a two-column desktop charger grid, and light or dark appearance.
 - Use the interactive offline map without a Google Maps key.
 - Save favorites, trips, vehicle information, and preferences in browser storage.
 - Switch between light and dark themes.
