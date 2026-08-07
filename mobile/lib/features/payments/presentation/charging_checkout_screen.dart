@@ -59,162 +59,177 @@ class _ChargingCheckoutScreenState
       canPop: !_processing,
       child: Scaffold(
         appBar: AppBar(title: const Text('Charging checkout')),
-        body: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 132),
-            children: [
-              _DemoNotice(),
-              const SizedBox(height: 14),
-              _CheckoutSection(
-                title: widget.station.name,
-                subtitle:
-                    '${widget.station.powerKw} kW • ₹${widget.station.pricePerKwh.toStringAsFixed(2)}/kWh',
-                icon: Icons.ev_station,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Connector'),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: widget.station.connectorTypes
-                          .map(
-                            (connector) => ChoiceChip(
-                              label: Text(connector),
-                              selected: _connectorType == connector,
-                              onSelected: _processing
-                                  ? null
-                                  : (_) => setState(
-                                        () => _connectorType = connector,
-                                      ),
-                            ),
-                          )
-                          .toList(growable: false),
-                    ),
-                    const SizedBox(height: 22),
-                    Row(
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 132),
+                children: [
+                  _DemoNotice(),
+                  const SizedBox(height: 14),
+                  _CheckoutSection(
+                    title: widget.station.name,
+                    subtitle:
+                        '${widget.station.powerKw} kW • ₹${widget.station.pricePerKwh.toStringAsFixed(2)}/kWh',
+                    icon: Icons.ev_station,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Expanded(child: Text('Charging limit')),
+                        const Text('Connector'),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: widget.station.connectorTypes
+                              .map(
+                                (connector) => ChoiceChip(
+                                  label: Text(connector),
+                                  selected: _connectorType == connector,
+                                  onSelected: _processing
+                                      ? null
+                                      : (_) => setState(
+                                            () => _connectorType = connector,
+                                          ),
+                                ),
+                              )
+                              .toList(growable: false),
+                        ),
+                        const SizedBox(height: 22),
+                        Row(
+                          children: [
+                            const Expanded(child: Text('Charging limit')),
+                            Text(
+                              '${_energyKwh.toStringAsFixed(0)} kWh',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                        Slider(
+                          key: const Key('energySlider'),
+                          value: _energyKwh,
+                          min: 5,
+                          max: 50,
+                          divisions: 9,
+                          label: '${_energyKwh.toStringAsFixed(0)} kWh',
+                          onChanged: _processing
+                              ? null
+                              : (value) => setState(() => _energyKwh = value),
+                        ),
                         Text(
-                          '${_energyKwh.toStringAsFixed(0)} kWh',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
+                          'You authorize up to this amount. The demo session stops at the selected energy limit.',
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
                     ),
-                    Slider(
-                      key: const Key('energySlider'),
-                      value: _energyKwh,
-                      min: 5,
-                      max: 50,
-                      divisions: 9,
-                      label: '${_energyKwh.toStringAsFixed(0)} kWh',
-                      onChanged: _processing
-                          ? null
-                          : (value) => setState(() => _energyKwh = value),
+                  ),
+                  const SizedBox(height: 14),
+                  _CheckoutSection(
+                    title: 'Amount summary',
+                    icon: Icons.receipt_long_outlined,
+                    child: Column(
+                      children: [
+                        _AmountRow(
+                          label:
+                              '${_energyKwh.toStringAsFixed(0)} kWh × ₹${widget.station.pricePerKwh.toStringAsFixed(2)}',
+                          value: _currency(_energyCharge),
+                        ),
+                        const SizedBox(height: 8),
+                        const _AmountRow(label: 'Platform fee', value: '₹5.00'),
+                        const Divider(height: 24),
+                        _AmountRow(
+                          label: 'Maximum payable',
+                          value: _currency(_total),
+                          emphasized: true,
+                        ),
+                      ],
                     ),
-                    Text(
-                      'You authorize up to this amount. The demo session stops at the selected energy limit.',
-                      style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 14),
+                  _CheckoutSection(
+                    title: 'Payment method',
+                    subtitle: 'Choose one secure demo method',
+                    icon: Icons.account_balance_wallet_outlined,
+                    child: Column(
+                      children: [
+                        _PaymentMethodTile(
+                          key: const Key('paymentMethod_upi'),
+                          icon: Icons.qr_code_2,
+                          title: 'UPI',
+                          subtitle: 'Pay using a test UPI ID',
+                          selected: _paymentOption == PaymentOption.upi,
+                          onTap: () => _selectPaymentOption(PaymentOption.upi),
+                        ),
+                        const SizedBox(height: 8),
+                        _PaymentMethodTile(
+                          key: const Key('paymentMethod_card'),
+                          icon: Icons.credit_card,
+                          title: 'Credit / debit card',
+                          subtitle: 'Visa, Mastercard, or RuPay test card',
+                          selected: _paymentOption == PaymentOption.card,
+                          onTap: () => _selectPaymentOption(PaymentOption.card),
+                        ),
+                        const SizedBox(height: 8),
+                        _PaymentMethodTile(
+                          key: const Key('paymentMethod_wallet'),
+                          icon: Icons.wallet_outlined,
+                          title: 'VoltMap wallet',
+                          subtitle: 'Instant sandbox wallet payment',
+                          selected: _paymentOption == PaymentOption.wallet,
+                          onTap: () =>
+                              _selectPaymentOption(PaymentOption.wallet),
+                        ),
+                        const SizedBox(height: 16),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 180),
+                          child: _paymentFields(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_processing) ...[
+                    const SizedBox(height: 18),
+                    const LinearProgressIndicator(),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Authorizing demo payment…',
+                      textAlign: TextAlign.center,
                     ),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(height: 14),
-              _CheckoutSection(
-                title: 'Amount summary',
-                icon: Icons.receipt_long_outlined,
-                child: Column(
-                  children: [
-                    _AmountRow(
-                      label:
-                          '${_energyKwh.toStringAsFixed(0)} kWh × ₹${widget.station.pricePerKwh.toStringAsFixed(2)}',
-                      value: _currency(_energyCharge),
-                    ),
-                    const SizedBox(height: 8),
-                    const _AmountRow(label: 'Platform fee', value: '₹5.00'),
-                    const Divider(height: 24),
-                    _AmountRow(
-                      label: 'Maximum payable',
-                      value: _currency(_total),
-                      emphasized: true,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              _CheckoutSection(
-                title: 'Payment method',
-                subtitle: 'Choose one secure demo method',
-                icon: Icons.account_balance_wallet_outlined,
-                child: Column(
-                  children: [
-                    _PaymentMethodTile(
-                      key: const Key('paymentMethod_upi'),
-                      icon: Icons.qr_code_2,
-                      title: 'UPI',
-                      subtitle: 'Pay using a test UPI ID',
-                      selected: _paymentOption == PaymentOption.upi,
-                      onTap: () => _selectPaymentOption(PaymentOption.upi),
-                    ),
-                    const SizedBox(height: 8),
-                    _PaymentMethodTile(
-                      key: const Key('paymentMethod_card'),
-                      icon: Icons.credit_card,
-                      title: 'Credit / debit card',
-                      subtitle: 'Visa, Mastercard, or RuPay test card',
-                      selected: _paymentOption == PaymentOption.card,
-                      onTap: () => _selectPaymentOption(PaymentOption.card),
-                    ),
-                    const SizedBox(height: 8),
-                    _PaymentMethodTile(
-                      key: const Key('paymentMethod_wallet'),
-                      icon: Icons.wallet_outlined,
-                      title: 'VoltMap wallet',
-                      subtitle: 'Instant sandbox wallet payment',
-                      selected: _paymentOption == PaymentOption.wallet,
-                      onTap: () => _selectPaymentOption(PaymentOption.wallet),
-                    ),
-                    const SizedBox(height: 16),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
-                      child: _paymentFields(),
-                    ),
-                  ],
-                ),
-              ),
-              if (_processing) ...[
-                const SizedBox(height: 18),
-                const LinearProgressIndicator(),
-                const SizedBox(height: 8),
-                const Text(
-                  'Authorizing demo payment…',
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ],
+            ),
           ),
         ),
         bottomNavigationBar: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-            child: FilledButton.icon(
-              key: const Key('payButton'),
-              onPressed: _processing ? null : _pay,
-              icon: _processing
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.lock_outline),
-              label: Text(
-                _processing
-                    ? 'Processing securely…'
-                    : 'Pay ${_currency(_total)}',
+          child: Center(
+            heightFactor: 1,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    key: const Key('payButton'),
+                    onPressed: _processing ? null : _pay,
+                    icon: _processing
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.lock_outline),
+                    label: Text(
+                      _processing
+                          ? 'Processing securely…'
+                          : 'Pay ${_currency(_total)}',
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -460,65 +475,87 @@ class ChargingReceiptScreen extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('Payment receipt')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Icon(Icons.check_circle, color: colors.primary, size: 76),
-          const SizedBox(height: 12),
-          Text(
-            'Payment successful',
-            textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _ChargingCheckoutScreenState._currency(receipt.amount),
-            textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 22),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                children: [
-                  _ReceiptRow(label: 'Station', value: receipt.stationName),
-                  _ReceiptRow(
-                    label: 'Charging limit',
-                    value: '${receipt.energyKwh.toStringAsFixed(0)} kWh',
-                  ),
-                  _ReceiptRow(label: 'Connector', value: receipt.connectorType),
-                  _ReceiptRow(label: 'Payment', value: receipt.paymentMethod),
-                  _ReceiptRow(label: 'Transaction', value: receipt.id),
-                  _ReceiptRow(
-                    label: 'Status',
-                    value: 'Paid • Demo',
-                    last: true,
-                  ),
-                ],
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
+            children: [
+              Icon(Icons.check_circle, color: colors.primary, size: 76),
+              const SizedBox(height: 12),
+              Text(
+                'Payment successful',
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                )
+                    .textTheme
+                    .headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.w800),
               ),
-            ),
+              const SizedBox(height: 6),
+              Text(
+                _ChargingCheckoutScreenState._currency(receipt.amount),
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                )
+                    .textTheme
+                    .headlineMedium
+                    ?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 22),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    children: [
+                      _ReceiptRow(label: 'Station', value: receipt.stationName),
+                      _ReceiptRow(
+                        label: 'Charging limit',
+                        value: '${receipt.energyKwh.toStringAsFixed(0)} kWh',
+                      ),
+                      _ReceiptRow(
+                          label: 'Connector', value: receipt.connectorType),
+                      _ReceiptRow(
+                          label: 'Payment', value: receipt.paymentMethod),
+                      _ReceiptRow(label: 'Transaction', value: receipt.id),
+                      _ReceiptRow(
+                        label: 'Status',
+                        value: 'Paid • Demo',
+                        last: true,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'This receipt is saved locally under Profile → Payments & receipts. No card number, CVV, or full UPI ID is stored.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
-          Text(
-            'This receipt is saved locally under Profile → Payments & receipts. No card number, CVV, or full UPI ID is stored.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
+        ),
       ),
       bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: FilledButton.icon(
-            key: const Key('startChargingButton'),
-            onPressed: () => Navigator.of(context).pop(true),
-            icon: const Icon(Icons.bolt),
-            label: const Text('Start charging'),
+        child: Center(
+          heightFactor: 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 680),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const Key('startChargingButton'),
+                  onPressed: () => Navigator.of(context).pop(true),
+                  icon: const Icon(Icons.bolt),
+                  label: const Text('Start charging'),
+                ),
+              ),
+            ),
           ),
         ),
       ),
