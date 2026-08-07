@@ -89,7 +89,7 @@ void main() {
     expect(find.text('3 results'), findsOneWidget);
   });
 
-  testWidgets('UPI checkout saves a receipt and starts charging', (
+  testWidgets('UPI is verified before metered charging and charged afterward', (
     tester,
   ) async {
     _useDesktopViewport(tester);
@@ -105,26 +105,53 @@ void main() {
 
     await tester.tap(find.byKey(const Key('openCheckoutButton')));
     await tester.pumpAndSettle();
-    expect(find.text('Charging checkout'), findsOneWidget);
+    expect(find.text('Set up charging'), findsOneWidget);
     expect(find.text('Credit / debit card'), findsOneWidget);
     expect(find.text('VoltMap wallet'), findsOneWidget);
 
-    await tester.enterText(find.byKey(const Key('upiIdField')), 'driver@upi');
-    await tester.tap(find.byKey(const Key('payButton')));
+    await tester.enterText(find.byKey(const Key('upiIdField')), 'fake@upi');
+    await tester.tap(find.byKey(const Key('authorizeButton')));
     await tester.pump();
-    expect(find.text('Processing securely…'), findsOneWidget);
+    expect(
+      find.text('UPI ID could not be verified. Use driver@upi'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(find.byKey(const Key('upiIdField')), 'driver@upi');
+    await tester.tap(find.byKey(const Key('authorizeButton')));
+    await tester.pump();
+    expect(find.text('Validating securely…'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pump();
+
+    expect(find.text('Live charging session'), findsOneWidget);
+    expect(
+      find.text('Payment method verified. ₹0.00 was charged upfront.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('UPI dr••@upi'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.tap(find.byKey(const Key('stopChargingButton')));
+    await tester.pump();
+    expect(find.text('Finalizing payment…'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 800));
     await tester.pumpAndSettle();
 
-    expect(find.text('Payment successful'), findsOneWidget);
-    expect(find.textContaining('UPI dr••@upi'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('startChargingButton')));
+    expect(find.text('Charging complete'), findsOneWidget);
+    expect(
+      find.text('Final payment captured after charging finished.'),
+      findsOneWidget,
+    );
+    expect(find.text('₹28.13'), findsWidgets);
+    expect(find.textContaining('VM-'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('chargingDoneButton')));
     await tester.pumpAndSettle();
-    expect(find.text('Charging session started'), findsOneWidget);
-    expect(find.textContaining('Receipt: VM-'), findsOneWidget);
+    expect(find.text('Charging session complete'), findsOneWidget);
+    expect(find.textContaining('Final payment: ₹28.13'), findsOneWidget);
   });
 
-  testWidgets('card checkout validates fields and accepts a test card', (
+  testWidgets('card authorization rejects declined cards before charging', (
     tester,
   ) async {
     _useDesktopViewport(tester);
@@ -142,12 +169,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(cardOption);
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('payButton')));
+    await tester.tap(find.byKey(const Key('authorizeButton')));
     await tester.pump();
     await tester.ensureVisible(find.byKey(const Key('cardholderField')));
     await tester.pumpAndSettle();
     expect(find.text('Enter the cardholder name'), findsOneWidget);
-    expect(find.text('Enter a valid 16-digit test card'), findsOneWidget);
+    expect(find.text('Enter a valid 16-digit sandbox card'), findsOneWidget);
 
     await tester.ensureVisible(find.byKey(const Key('cardholderField')));
     await tester.enterText(
@@ -157,20 +184,38 @@ void main() {
     await tester.ensureVisible(find.byKey(const Key('cardNumberField')));
     await tester.enterText(
       find.byKey(const Key('cardNumberField')),
-      '4242424242424242',
+      '4000000000000002',
     );
     await tester.ensureVisible(find.byKey(const Key('expiryField')));
     await tester.enterText(find.byKey(const Key('expiryField')), '1230');
     await tester.enterText(find.byKey(const Key('cvvField')), '123');
-    await tester.tap(find.byKey(const Key('payButton')));
+    await tester.tap(find.byKey(const Key('authorizeButton')));
+    await tester.pump();
+    expect(
+      find.text(
+        'Card was declined. Use sandbox card 4242 4242 4242 4242',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('cardNumberField')),
+      '4242424242424242',
+    );
+    await tester.tap(find.byKey(const Key('authorizeButton')));
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pump();
+
+    expect(find.text('Live charging session'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.tap(find.byKey(const Key('stopChargingButton')));
     await tester.pump(const Duration(milliseconds: 800));
     await tester.pumpAndSettle();
-
-    expect(find.text('Payment successful'), findsOneWidget);
+    expect(find.text('Charging complete'), findsOneWidget);
     expect(find.text('Card ending 4242'), findsOneWidget);
   });
 
-  testWidgets('wallet checkout completes without payment credentials', (
+  testWidgets('wallet authorizes first and captures after charging', (
     tester,
   ) async {
     _useDesktopViewport(tester);
@@ -189,12 +234,53 @@ void main() {
     await tester.tap(walletOption);
     await tester.pumpAndSettle();
     expect(find.textContaining('Sandbox balance is unlimited'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('payButton')));
+    await tester.tap(find.byKey(const Key('authorizeButton')));
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pump();
+
+    expect(find.text('Live charging session'), findsOneWidget);
+    expect(
+      find.text('Payment method verified. ₹0.00 was charged upfront.'),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.tap(find.byKey(const Key('stopChargingButton')));
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+    expect(find.text('Charging complete'), findsOneWidget);
+    expect(find.text('VoltMap demo wallet'), findsOneWidget);
+  });
+
+  testWidgets('charging stops and captures automatically at the energy limit', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: ChargingSessionScreen(
+            station: sampleStations.first,
+            connectorType: 'CCS2',
+            energyLimitKwh: 1.25,
+            paymentMethod: 'VoltMap demo wallet',
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.text('Payment method verified. ₹0.00 was charged upfront.'),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(milliseconds: 650));
+    expect(find.text('Finalizing payment…'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 800));
     await tester.pumpAndSettle();
 
-    expect(find.text('Payment successful'), findsOneWidget);
-    expect(find.text('VoltMap demo wallet'), findsOneWidget);
+    expect(find.text('Charging complete'), findsOneWidget);
+    expect(find.text('Paid • Automatic stop'), findsOneWidget);
+    expect(find.text('₹28.13'), findsWidgets);
   });
 }
 

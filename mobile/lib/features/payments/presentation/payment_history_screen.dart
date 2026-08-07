@@ -99,7 +99,7 @@ class _ReceiptCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    '${receipt.energyKwh.toStringAsFixed(0)} kWh • ${receipt.connectorType}',
+                    '${receipt.energyKwh.toStringAsFixed(2)} kWh • ${receipt.connectorType} • paid after charging',
                   ),
                   Text(receipt.paymentMethod),
                   const SizedBox(height: 8),

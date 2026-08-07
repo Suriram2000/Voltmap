@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -58,7 +61,7 @@ class _ChargingCheckoutScreenState
     return PopScope(
       canPop: !_processing,
       child: Scaffold(
-        appBar: AppBar(title: const Text('Charging checkout')),
+        appBar: AppBar(title: const Text('Set up charging')),
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 760),
@@ -99,7 +102,9 @@ class _ChargingCheckoutScreenState
                         const SizedBox(height: 22),
                         Row(
                           children: [
-                            const Expanded(child: Text('Charging limit')),
+                            const Expanded(
+                              child: Text('Automatic stop limit'),
+                            ),
                             Text(
                               '${_energyKwh.toStringAsFixed(0)} kWh',
                               style: Theme.of(context)
@@ -121,7 +126,7 @@ class _ChargingCheckoutScreenState
                               : (value) => setState(() => _energyKwh = value),
                         ),
                         Text(
-                          'You authorize up to this amount. The demo session stops at the selected energy limit.',
+                          'Nothing is charged now. Charging stops automatically at this limit, and the final amount uses only the energy actually delivered.',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
@@ -129,7 +134,8 @@ class _ChargingCheckoutScreenState
                   ),
                   const SizedBox(height: 14),
                   _CheckoutSection(
-                    title: 'Amount summary',
+                    title: 'Estimated maximum',
+                    subtitle: 'Final payment is calculated after charging',
                     icon: Icons.receipt_long_outlined,
                     child: Column(
                       children: [
@@ -142,7 +148,7 @@ class _ChargingCheckoutScreenState
                         const _AmountRow(label: 'Platform fee', value: '₹5.00'),
                         const Divider(height: 24),
                         _AmountRow(
-                          label: 'Maximum payable',
+                          label: 'Maximum after charging',
                           value: _currency(_total),
                           emphasized: true,
                         ),
@@ -152,7 +158,7 @@ class _ChargingCheckoutScreenState
                   const SizedBox(height: 14),
                   _CheckoutSection(
                     title: 'Payment method',
-                    subtitle: 'Choose one secure demo method',
+                    subtitle: 'Validated now, charged only after the session',
                     icon: Icons.account_balance_wallet_outlined,
                     child: Column(
                       children: [
@@ -160,7 +166,7 @@ class _ChargingCheckoutScreenState
                           key: const Key('paymentMethod_upi'),
                           icon: Icons.qr_code_2,
                           title: 'UPI',
-                          subtitle: 'Pay using a test UPI ID',
+                          subtitle: 'Validate an approved sandbox UPI ID',
                           selected: _paymentOption == PaymentOption.upi,
                           onTap: () => _selectPaymentOption(PaymentOption.upi),
                         ),
@@ -169,7 +175,7 @@ class _ChargingCheckoutScreenState
                           key: const Key('paymentMethod_card'),
                           icon: Icons.credit_card,
                           title: 'Credit / debit card',
-                          subtitle: 'Visa, Mastercard, or RuPay test card',
+                          subtitle: 'Validate a sandbox card before charging',
                           selected: _paymentOption == PaymentOption.card,
                           onTap: () => _selectPaymentOption(PaymentOption.card),
                         ),
@@ -178,7 +184,7 @@ class _ChargingCheckoutScreenState
                           key: const Key('paymentMethod_wallet'),
                           icon: Icons.wallet_outlined,
                           title: 'VoltMap wallet',
-                          subtitle: 'Instant sandbox wallet payment',
+                          subtitle: 'Authorize the sandbox wallet',
                           selected: _paymentOption == PaymentOption.wallet,
                           onTap: () =>
                               _selectPaymentOption(PaymentOption.wallet),
@@ -196,7 +202,7 @@ class _ChargingCheckoutScreenState
                     const LinearProgressIndicator(),
                     const SizedBox(height: 8),
                     const Text(
-                      'Authorizing demo payment…',
+                      'Validating payment method…',
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -215,8 +221,8 @@ class _ChargingCheckoutScreenState
                 child: SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    key: const Key('payButton'),
-                    onPressed: _processing ? null : _pay,
+                    key: const Key('authorizeButton'),
+                    onPressed: _processing ? null : _authorizeAndStart,
                     icon: _processing
                         ? const SizedBox.square(
                             dimension: 18,
@@ -225,8 +231,8 @@ class _ChargingCheckoutScreenState
                         : const Icon(Icons.lock_outline),
                     label: Text(
                       _processing
-                          ? 'Processing securely…'
-                          : 'Pay ${_currency(_total)}',
+                          ? 'Validating securely…'
+                          : 'Validate & start charging',
                     ),
                   ),
                 ),
@@ -251,7 +257,8 @@ class _ChargingCheckoutScreenState
           decoration: const InputDecoration(
             labelText: 'UPI ID',
             hintText: 'driver@upi',
-            helperText: 'Use a test ID such as driver@upi. It is not stored.',
+            helperText:
+                'Approved sandbox ID: driver@upi. Real UPI IDs are rejected and nothing is stored.',
             prefixIcon: Icon(Icons.alternate_email),
           ),
           validator: _validateUpi,
@@ -284,7 +291,7 @@ class _ChargingCheckoutScreenState
                 labelText: 'Card number',
                 hintText: '4242 4242 4242 4242',
                 helperText:
-                    'Use a test card number. Card details are not stored.',
+                    'Approved sandbox card: 4242 4242 4242 4242. Details are not stored.',
                 prefixIcon: Icon(Icons.credit_card),
               ),
               validator: _validateCardNumber,
@@ -348,7 +355,7 @@ class _ChargingCheckoutScreenState
               SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'VoltMap demo wallet is ready. Sandbox balance is unlimited and no real money is used.',
+                  'VoltMap demo wallet is ready for authorization. Sandbox balance is unlimited and no real money is used.',
                 ),
               ),
             ],
@@ -363,7 +370,7 @@ class _ChargingCheckoutScreenState
     _formKey.currentState?.reset();
   }
 
-  Future<void> _pay() async {
+  Future<void> _authorizeAndStart() async {
     FocusScope.of(context).unfocus();
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
@@ -371,33 +378,26 @@ class _ChargingCheckoutScreenState
     await Future<void>.delayed(const Duration(milliseconds: 700));
     if (!mounted) return;
 
-    final now = DateTime.now();
-    final receipt = ChargingReceipt(
-      id: 'VM-${now.millisecondsSinceEpoch.toRadixString(36).toUpperCase()}',
-      stationId: widget.station.id,
-      stationName: widget.station.name,
-      connectorType: _connectorType,
-      energyKwh: _energyKwh,
-      amount: _total,
-      paymentMethod: _paymentMethodLabel(),
-      createdAt: now,
-    );
+    final paymentMethod = _paymentMethodLabel();
 
     _upiController.clear();
     _cardholderController.clear();
     _cardNumberController.clear();
     _expiryController.clear();
     _cvvController.clear();
-    await ref.read(appStateProvider).saveChargingReceipt(receipt);
-    if (!mounted) return;
     setState(() => _processing = false);
 
-    final startCharging = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (_) => ChargingReceiptScreen(receipt: receipt),
+    final receipt = await Navigator.of(context).push<ChargingReceipt>(
+      MaterialPageRoute<ChargingReceipt>(
+        builder: (_) => ChargingSessionScreen(
+          station: widget.station,
+          connectorType: _connectorType,
+          energyLimitKwh: _energyKwh,
+          paymentMethod: paymentMethod,
+        ),
       ),
     );
-    if (mounted && startCharging == true) {
+    if (mounted && receipt != null) {
       Navigator.of(context).pop(receipt);
     }
   }
@@ -419,17 +419,23 @@ class _ChargingCheckoutScreenState
   }
 
   static String? _validateUpi(String? value) {
-    final trimmed = value?.trim() ?? '';
-    return RegExp(r'^[a-zA-Z0-9._-]{2,}@[a-zA-Z]{2,}$').hasMatch(trimmed)
+    final trimmed = value?.trim().toLowerCase() ?? '';
+    if (!RegExp(r'^[a-zA-Z0-9._-]{2,}@[a-zA-Z]{2,}$').hasMatch(trimmed)) {
+      return 'Enter a valid sandbox UPI ID';
+    }
+    return const {'driver@upi', 'success@upi'}.contains(trimmed)
         ? null
-        : 'Enter a valid test UPI ID';
+        : 'UPI ID could not be verified. Use driver@upi';
   }
 
   static String? _validateCardNumber(String? value) {
     final digits = _digits(value ?? '');
-    return digits.length == 16 && _passesLuhn(digits)
+    if (digits.length != 16 || !_passesLuhn(digits)) {
+      return 'Enter a valid 16-digit sandbox card';
+    }
+    return digits == '4242424242424242'
         ? null
-        : 'Enter a valid 16-digit test card';
+        : 'Card was declined. Use sandbox card 4242 4242 4242 4242';
   }
 
   static String? _validateExpiry(String? value) {
@@ -465,94 +471,252 @@ class _ChargingCheckoutScreenState
   static String _currency(double value) => '₹${value.toStringAsFixed(2)}';
 }
 
-class ChargingReceiptScreen extends StatelessWidget {
-  const ChargingReceiptScreen({super.key, required this.receipt});
+class ChargingSessionScreen extends ConsumerStatefulWidget {
+  const ChargingSessionScreen({
+    super.key,
+    required this.station,
+    required this.connectorType,
+    required this.energyLimitKwh,
+    required this.paymentMethod,
+  });
 
-  final ChargingReceipt receipt;
+  final ChargingStation station;
+  final String connectorType;
+  final double energyLimitKwh;
+  final String paymentMethod;
+
+  @override
+  ConsumerState<ChargingSessionScreen> createState() =>
+      _ChargingSessionScreenState();
+}
+
+class _ChargingSessionScreenState extends ConsumerState<ChargingSessionScreen> {
+  static const _platformFee = 5.0;
+  static const _meterInterval = Duration(milliseconds: 600);
+  static const _energyPerTick = 1.25;
+
+  Timer? _meterTimer;
+  double _energyDelivered = 0;
+  bool _finishing = false;
+  bool _stoppedAutomatically = false;
+  ChargingReceipt? _receipt;
+
+  double get _energyCharge => _energyDelivered * widget.station.pricePerKwh;
+  double get _currentTotal => _energyCharge + _platformFee;
+  bool get _complete => _receipt != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _meterTimer = Timer.periodic(_meterInterval, (_) {
+      if (!mounted || _finishing || _complete) return;
+      final nextEnergy = math.min(
+        widget.energyLimitKwh,
+        _energyDelivered + _energyPerTick,
+      );
+      setState(() => _energyDelivered = nextEnergy.toDouble());
+      if (_energyDelivered >= widget.energyLimitKwh) {
+        _meterTimer?.cancel();
+        unawaited(_finishSession(automatic: true));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _meterTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Payment receipt')),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 680),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
-            children: [
-              Icon(Icons.check_circle, color: colors.primary, size: 76),
-              const SizedBox(height: 12),
-              Text(
-                'Payment successful',
-                textAlign: TextAlign.center,
-                style: Theme.of(
-                  context,
-                )
-                    .textTheme
-                    .headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _ChargingCheckoutScreenState._currency(receipt.amount),
-                textAlign: TextAlign.center,
-                style: Theme.of(
-                  context,
-                )
-                    .textTheme
-                    .headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 22),
-              Card(
-                child: Padding(
+    final progress = (_energyDelivered / widget.energyLimitKwh).clamp(0.0, 1.0);
+    return PopScope(
+      canPop: _complete,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Live charging session')),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 126),
+              children: [
+                Container(
                   padding: const EdgeInsets.all(18),
-                  child: Column(
+                  decoration: BoxDecoration(
+                    color: _complete
+                        ? colors.primaryContainer
+                        : colors.tertiaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _ReceiptRow(label: 'Station', value: receipt.stationName),
-                      _ReceiptRow(
-                        label: 'Charging limit',
-                        value: '${receipt.energyKwh.toStringAsFixed(0)} kWh',
+                      Icon(
+                        _complete
+                            ? Icons.check_circle_rounded
+                            : Icons.bolt_rounded,
+                        size: 34,
+                        color: _complete ? colors.primary : colors.tertiary,
                       ),
-                      _ReceiptRow(
-                          label: 'Connector', value: receipt.connectorType),
-                      _ReceiptRow(
-                          label: 'Payment', value: receipt.paymentMethod),
-                      _ReceiptRow(label: 'Transaction', value: receipt.id),
-                      _ReceiptRow(
-                        label: 'Status',
-                        value: 'Paid • Demo',
-                        last: true,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _complete
+                                  ? 'Charging complete'
+                                  : 'Charging in progress',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _complete
+                                  ? 'Final payment captured after charging finished.'
+                                  : 'Payment method verified. ₹0.00 was charged upfront.',
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                'This receipt is saved locally under Profile → Payments & receipts. No card number, CVV, or full UPI ID is stored.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
+                const SizedBox(height: 16),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                widget.station.name,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                            Chip(
+                              avatar: Icon(
+                                _complete ? Icons.check : Icons.electric_bolt,
+                                size: 17,
+                              ),
+                              label: Text(_complete ? 'Complete' : 'Live'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 12,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          '${_energyDelivered.toStringAsFixed(2)} of ${widget.energyLimitKwh.toStringAsFixed(0)} kWh delivered',
+                          key: const Key('meteredEnergyText'),
+                        ),
+                        const SizedBox(height: 20),
+                        _ReceiptRow(
+                          label: 'Connector',
+                          value: widget.connectorType,
+                        ),
+                        _ReceiptRow(
+                          label: 'Energy rate',
+                          value:
+                              '₹${widget.station.pricePerKwh.toStringAsFixed(2)}/kWh',
+                        ),
+                        _ReceiptRow(
+                          label: 'Payment method',
+                          value: widget.paymentMethod,
+                        ),
+                        _ReceiptRow(
+                          label: 'Energy cost',
+                          value: _ChargingCheckoutScreenState._currency(
+                            _energyCharge,
+                          ),
+                        ),
+                        const _ReceiptRow(
+                          label: 'Platform fee',
+                          value: '₹5.00',
+                        ),
+                        _ReceiptRow(
+                          label:
+                              _complete ? 'Final payment' : 'Payable at stop',
+                          value: _ChargingCheckoutScreenState._currency(
+                            _currentTotal,
+                          ),
+                          last: !_complete,
+                        ),
+                        if (_complete) ...[
+                          _ReceiptRow(
+                            label: 'Receipt',
+                            value: _receipt!.id,
+                          ),
+                          _ReceiptRow(
+                            label: 'Status',
+                            value: _stoppedAutomatically
+                                ? 'Paid • Automatic stop'
+                                : 'Paid • Driver stop',
+                            last: true,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  _complete
+                      ? 'The receipt is saved under Profile → Payments & receipts. No full UPI ID, card number, expiry, or CVV was stored.'
+                      : 'The session stops automatically at ${widget.energyLimitKwh.toStringAsFixed(0)} kWh. You can stop earlier and pay only for the delivered energy plus the ₹5 platform fee.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Center(
-          heightFactor: 1,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  key: const Key('startChargingButton'),
-                  onPressed: () => Navigator.of(context).pop(true),
-                  icon: const Icon(Icons.bolt),
-                  label: const Text('Start charging'),
+        bottomNavigationBar: SafeArea(
+          child: Center(
+            heightFactor: 1,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    key: Key(_complete
+                        ? 'chargingDoneButton'
+                        : 'stopChargingButton'),
+                    onPressed: _complete
+                        ? () => Navigator.of(context).pop(_receipt)
+                        : _energyDelivered > 0 && !_finishing
+                            ? () => _finishSession(automatic: false)
+                            : null,
+                    icon: _finishing
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(_complete ? Icons.done : Icons.stop_circle),
+                    label: Text(
+                      _complete
+                          ? 'Done'
+                          : _finishing
+                              ? 'Finalizing payment…'
+                              : 'Stop charging & pay ${_ChargingCheckoutScreenState._currency(_currentTotal)}',
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -560,6 +724,40 @@ class ChargingReceiptScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _finishSession({required bool automatic}) async {
+    if (_finishing || _complete || _energyDelivered <= 0) return;
+    _meterTimer?.cancel();
+    setState(() {
+      _finishing = true;
+      _stoppedAutomatically = automatic;
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+
+    final billedEnergy = double.parse(_energyDelivered.toStringAsFixed(2));
+    final amount = double.parse(
+      (billedEnergy * widget.station.pricePerKwh + _platformFee)
+          .toStringAsFixed(2),
+    );
+    final now = DateTime.now();
+    final receipt = ChargingReceipt(
+      id: 'VM-${now.millisecondsSinceEpoch.toRadixString(36).toUpperCase()}',
+      stationId: widget.station.id,
+      stationName: widget.station.name,
+      connectorType: widget.connectorType,
+      energyKwh: billedEnergy,
+      amount: amount,
+      paymentMethod: widget.paymentMethod,
+      createdAt: now,
+    );
+    await ref.read(appStateProvider).saveChargingReceipt(receipt);
+    if (!mounted) return;
+    setState(() {
+      _receipt = receipt;
+      _finishing = false;
+    });
   }
 }
 
@@ -579,7 +777,7 @@ class _DemoNotice extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Demo checkout — no real money is charged. Use only the test details shown below, never real payment credentials.',
+              'Postpaid demo — no money is collected before charging. Only the approved sandbox UPI ID, card, or wallet can authorize a session; never enter real payment credentials.',
             ),
           ),
         ],

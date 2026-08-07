@@ -191,9 +191,9 @@ class StationDetailsScreen extends ConsumerWidget {
                       onPressed: station.available
                           ? () => _startSession(context)
                           : null,
-                      icon: const Icon(Icons.payment),
+                      icon: const Icon(Icons.ev_station_rounded),
                       label: Text(
-                        station.available ? 'Pay & start' : 'Station full',
+                        station.available ? 'Set up charging' : 'Station full',
                       ),
                     ),
                   ),
@@ -231,11 +231,12 @@ class StationDetailsScreen extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         icon: const Icon(Icons.bolt, size: 40),
-        title: const Text('Charging session started'),
+        title: const Text('Charging session complete'),
         content: Text(
-          '${receipt.connectorType} is reserved at ${station.name} for up to '
-          '${receipt.energyKwh.toStringAsFixed(0)} kWh.\n\n'
-          'Payment: ${receipt.paymentMethod}\nReceipt: ${receipt.id}',
+          '${receipt.energyKwh.toStringAsFixed(2)} kWh was delivered through '
+          '${receipt.connectorType} at ${station.name}.\n\n'
+          'Final payment: ₹${receipt.amount.toStringAsFixed(2)}\n'
+          'Method: ${receipt.paymentMethod}\nReceipt: ${receipt.id}',
         ),
         actions: [
           FilledButton(
