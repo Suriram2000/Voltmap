@@ -96,8 +96,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       top: top,
       child: Semantics(
         button: true,
-        label:
-            '${station.name}, ${station.availableConnectors} connectors available',
+        label: station.available
+            ? '${station.name}, ${station.availableConnectors} connectors available'
+            : '${station.name}, not working or unavailable',
         child: Tooltip(
           message: station.name,
           child: InkWell(
@@ -174,6 +175,17 @@ class _SelectedStationCard extends StatelessWidget {
                     '${station.city}, ${station.state} • PIN ${station.postalCode} • ${station.powerKw} kW',
                     maxLines: 2,
                   ),
+                  if (!station.available) ...[
+                    const SizedBox(height: 5),
+                    Text(
+                      'NOT WORKING / UNAVAILABLE',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

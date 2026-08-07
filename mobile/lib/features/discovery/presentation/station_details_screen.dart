@@ -35,6 +35,33 @@ class StationDetailsScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
             children: [
+              if (!station.available) ...[
+                Container(
+                  key: const Key('unavailableStationBanner'),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: colors.errorContainer,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: colors.error, width: 2),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.power_off_rounded, color: colors.error),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'NOT WORKING / UNAVAILABLE\nDo not travel to this charger for an active session.',
+                          style: TextStyle(
+                            color: colors.error,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+              ],
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -193,7 +220,7 @@ class StationDetailsScreen extends ConsumerWidget {
                           : null,
                       icon: const Icon(Icons.ev_station_rounded),
                       label: Text(
-                        station.available ? 'Set up charging' : 'Station full',
+                        station.available ? 'Set up charging' : 'Unavailable',
                       ),
                     ),
                   ),

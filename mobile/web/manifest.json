@@ -3,9 +3,12 @@
   "short_name": "VoltMap",
   "start_url": ".",
   "display": "standalone",
+  "scope": ".",
+  "id": "./",
   "background_color": "#F4F7F2",
   "theme_color": "#071D17",
   "description": "Find EV chargers, plan smarter trips, and charge with confidence.",
   "orientation": "any",
+  "categories": ["navigation", "travel", "utilities"],
   "prefer_related_applications": false
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../discovery/presentation/discovery_screen.dart';
+import '../../discovery/presentation/add_charger_screen.dart';
 import '../../favorites/presentation/favorites_screen.dart';
 import '../../map/presentation/map_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
@@ -22,6 +23,7 @@ class _AppShellState extends State<AppShell> {
     MapScreen(),
     TripPlannerScreen(),
     FavoritesScreen(),
+    AddChargerScreen(),
     ProfileScreen(),
   ];
 
@@ -30,6 +32,11 @@ class _AppShellState extends State<AppShell> {
     _Destination('Map', Icons.map_outlined, Icons.map),
     _Destination('Trips', Icons.route_outlined, Icons.route),
     _Destination('Favorites', Icons.favorite_border, Icons.favorite),
+    _Destination(
+      'Add',
+      Icons.add_location_alt_outlined,
+      Icons.add_location_alt_rounded,
+    ),
     _Destination('Profile', Icons.person_outline, Icons.person),
   ];
 
@@ -78,6 +85,8 @@ class _AppShellState extends State<AppShell> {
               ],
             ),
             child: NavigationBar(
+              labelBehavior:
+                  NavigationDestinationLabelBehavior.onlyShowSelected,
               selectedIndex: index,
               onDestinationSelected: _selectDestination,
               destinations: destinations

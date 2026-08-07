@@ -59,6 +59,30 @@ class PlaceSearchService {
     }
   }
 
+  Future<PlaceSuggestion?> reverseIndia({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final url = Uri.https('photon.komoot.io', '/reverse', {
+        'lat': latitude.toStringAsFixed(6),
+        'lon': longitude.toStringAsFixed(6),
+        'lang': 'en',
+      });
+      final response = await http.get(url).timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200) return null;
+      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      final features = payload['features'] as List<dynamic>? ?? const [];
+      for (final feature in features) {
+        final place = _parseFeature(feature);
+        if (place != null) return place;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   PlaceSuggestion? _parseFeature(dynamic rawFeature) {
     if (rawFeature is! Map<String, dynamic>) return null;
     final properties = rawFeature['properties'];
@@ -122,6 +146,14 @@ class PlaceSearchService {
 
 const _popularIndianPlaces = <PlaceSuggestion>[
   PlaceSuggestion(
+    primaryText: 'Karmanghat / Vaishalinagar - 500079',
+    secondaryText: 'Saroornagar, South East Hyderabad, Telangana, India',
+    latitude: 17.3366,
+    longitude: 78.5349,
+    type: 'postcode',
+    aliases: ['500079', 'Jillellaguda', 'South Hyderabad'],
+  ),
+  PlaceSuggestion(
     primaryText: 'Bengaluru',
     secondaryText: 'Karnataka, India',
     latitude: 12.9716,
@@ -155,6 +187,27 @@ const _popularIndianPlaces = <PlaceSuggestion>[
     secondaryText: 'Bengaluru, Karnataka, India',
     latitude: 13.0143,
     longitude: 77.6519,
+    type: 'locality',
+  ),
+  PlaceSuggestion(
+    primaryText: 'Benson Town',
+    secondaryText: 'Bengaluru, Karnataka, India',
+    latitude: 13.0014,
+    longitude: 77.6053,
+    type: 'locality',
+  ),
+  PlaceSuggestion(
+    primaryText: 'Benniganahalli',
+    secondaryText: 'Bengaluru, Karnataka, India',
+    latitude: 13.0055,
+    longitude: 77.6626,
+    type: 'locality',
+  ),
+  PlaceSuggestion(
+    primaryText: 'Bannerghatta',
+    secondaryText: 'Bengaluru, Karnataka, India',
+    latitude: 12.8001,
+    longitude: 77.5774,
     type: 'locality',
   ),
   PlaceSuggestion(

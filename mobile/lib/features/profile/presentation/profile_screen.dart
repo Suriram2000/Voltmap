@@ -100,6 +100,73 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.cloud_done_outlined),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Your saved workspace',
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
+                                ),
+                                Text(
+                                  'Available after login on this device',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          _WorkspaceStat(
+                            icon: Icons.favorite_rounded,
+                            value: '${appState.favoriteStationIds.length}',
+                            label: 'Favorites',
+                          ),
+                          _WorkspaceStat(
+                            icon: Icons.route_rounded,
+                            value: '${appState.savedTrips.length}',
+                            label: 'Trips',
+                          ),
+                          _WorkspaceStat(
+                            icon: Icons.receipt_long_rounded,
+                            value: '${appState.chargingReceipts.length}',
+                            label: 'Bills',
+                          ),
+                          _WorkspaceStat(
+                            icon: Icons.add_location_alt_rounded,
+                            value: '${appState.chargerSubmissions.length}',
+                            label: 'Reports',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Card(
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 20,
@@ -223,7 +290,7 @@ class ProfileScreen extends ConsumerWidget {
                       leading: Icon(Icons.info_outline),
                       title: Text('VoltMap demo'),
                       subtitle: Text(
-                        'Premium browser build • Version 1.7.0',
+                        'Android, iOS & browser-ready • Version 1.8.0',
                       ),
                     ),
                   ],
@@ -383,5 +450,52 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
     if (shouldSignOut ?? false) await appState.signOut();
+  }
+}
+
+class _WorkspaceStat extends StatelessWidget {
+  const _WorkspaceStat({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 150,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
