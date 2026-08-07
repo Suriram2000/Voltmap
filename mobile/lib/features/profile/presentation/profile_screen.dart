@@ -200,6 +200,21 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                     ),
                     const Divider(height: 1),
+                    ListTile(
+                      key: const Key('signOutTile'),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      leading: const Icon(Icons.logout_rounded),
+                      title: const Text('Sign out'),
+                      subtitle: const Text(
+                        'Your local favorites, trips, and receipts stay saved',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => _confirmSignOut(context, appState),
+                    ),
+                    const Divider(height: 1),
                     const ListTile(
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 20,
@@ -208,7 +223,7 @@ class ProfileScreen extends ConsumerWidget {
                       leading: Icon(Icons.info_outline),
                       title: Text('VoltMap demo'),
                       subtitle: Text(
-                        'Premium browser build • Version 1.3.0',
+                        'Premium browser build • Version 1.6.0',
                       ),
                     ),
                   ],
@@ -341,5 +356,32 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
     nameController.dispose();
+  }
+
+  Future<void> _confirmSignOut(
+    BuildContext context,
+    AppState appState,
+  ) async {
+    final shouldSignOut = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sign out of VoltMap?'),
+        content: const Text(
+          'Your browser keeps this demo account and saved app data so you can sign in again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const Key('confirmSignOutButton'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (shouldSignOut ?? false) await appState.signOut();
   }
 }

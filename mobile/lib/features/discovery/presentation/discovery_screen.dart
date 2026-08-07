@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/charging_station.dart';
 import '../../../shared/state/app_state.dart';
 import '../data/sample_stations.dart';
+import '../data/national_charger_data.dart';
 import 'station_card.dart';
 import 'station_details_screen.dart';
 
@@ -73,6 +75,8 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                             setState(() => query = value),
                         onClear: _clearSearch,
                       ),
+                      const SizedBox(height: 22),
+                      _NationalCoverageCard(query: query),
                       const SizedBox(height: 22),
                       _FilterRow(
                         availableOnly: availableOnly,
@@ -291,7 +295,7 @@ class _DiscoveryHero extends StatelessWidget {
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 620),
                       child: Text(
-                        'Search representative charging stations across India by PIN code, city, state, area, network, or connector.',
+                        'Search detailed VoltMap demos, then open live charger results for any PIN code, city, state, or area across India.',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                               color: const Color(0xFFB8CEC4),
                               fontSize: compact ? 15 : 17,
@@ -304,17 +308,16 @@ class _DiscoveryHero extends StatelessWidget {
                       runSpacing: 12,
                       children: [
                         _HeroMetric(
+                          value: '29,277',
+                          label: 'verified public stations',
+                        ),
+                        _HeroMetric(
                           value: '${sampleStations.length}',
-                          label: 'demo stations',
+                          label: 'detailed demos',
                         ),
                         _HeroMetric(
                           value: '$availableConnectors',
-                          label: 'connectors available',
-                        ),
-                        _HeroMetric(
-                          value:
-                              '${sampleStations.map((station) => station.city).toSet().length}',
-                          label: 'cities covered',
+                          label: 'demo connectors ready',
                         ),
                       ],
                     ),
@@ -351,7 +354,7 @@ class _DiscoveryHero extends StatelessWidget {
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 4),
                       child: Text(
-                        'Try 110001, Mumbai, Whitefield, Tamil Nadu, or 500-081.',
+                        'Try 110001, Mumbai, Whitefield, Tamil Nadu, or 500-081 — live national search works for any location.',
                         style: TextStyle(
                           color: Color(0xFF9FB8AD),
                           fontSize: 11,
@@ -367,6 +370,240 @@ class _DiscoveryHero extends StatelessWidget {
       },
     );
   }
+}
+
+class _NationalCoverageCard extends StatelessWidget {
+  const _NationalCoverageCard({required this.query});
+
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmedQuery = query.trim();
+    final matchingStates = trimmedQuery.isEmpty
+        ? const <StateChargerCoverage>[]
+        : stateChargerCoverage
+            .where((coverage) => coverage.matches(trimmedQuery))
+            .toList(growable: false);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 760;
+            final content = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.verified_rounded, size: 16),
+                          SizedBox(width: 6),
+                          Text(
+                            'GOVERNMENT OF INDIA DATA',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      'Updated $officialStationDataDate',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '${_withCommas(officialStationTotal)} public charging stations',
+                  key: const Key('officialStationTotal'),
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  matchingStates.isNotEmpty
+                      ? '${matchingStates.first.state} has ${_withCommas(matchingStates.first.stationCount)} officially reported public stations. Open live results to find individual chargers near “$trimmedQuery”.'
+                      : trimmedQuery.isEmpty
+                          ? 'Verified totals cover every State and Union Territory. VoltMap includes 45 detailed demo locations; use live search for individual chargers anywhere in India.'
+                          : 'The bundled detailed catalog may not include “$trimmedQuery”. Open live results to search individual chargers for this PIN or area across India.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 18),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    FilledButton.icon(
+                      key: const Key('liveNationalSearchButton'),
+                      onPressed: () => _openLiveSearch(context, trimmedQuery),
+                      icon: const Icon(Icons.travel_explore_rounded),
+                      label: Text(
+                        trimmedQuery.isEmpty
+                            ? 'Search all live stations'
+                            : 'Search “$trimmedQuery” live',
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      key: const Key('allStateTotalsButton'),
+                      onPressed: () => _showAllStateTotals(context),
+                      icon: const Icon(Icons.bar_chart_rounded),
+                      label: const Text('View all state totals'),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _openUrl(
+                        context,
+                        Uri.parse(evYatraUrl),
+                      ),
+                      icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                      label: const Text('Official EV Yatra'),
+                    ),
+                  ],
+                ),
+              ],
+            );
+
+            if (compact) return content;
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 74,
+                  height: 74,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppTheme.brandLime, AppTheme.brandGreen],
+                    ),
+                    borderRadius: BorderRadius.circular(23),
+                  ),
+                  child: const Icon(
+                    Icons.public_rounded,
+                    color: AppTheme.brandNavy,
+                    size: 34,
+                  ),
+                ),
+                const SizedBox(width: 22),
+                Expanded(child: content),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openLiveSearch(
+    BuildContext context,
+    String location,
+  ) async {
+    final area = location.isEmpty ? 'India' : location;
+    final url = Uri.https(
+      'www.google.com',
+      '/maps/search/',
+      {'api': '1', 'query': 'EV charging stations near $area'},
+    );
+    await _openUrl(context, url);
+  }
+
+  Future<void> _openUrl(BuildContext context, Uri url) async {
+    final opened = await launchUrl(url, mode: LaunchMode.externalApplication);
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the external directory.')),
+      );
+    }
+  }
+
+  void _showAllStateTotals(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Official public stations by state'),
+        content: SizedBox(
+          width: 620,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${_withCommas(officialStationTotal)} stations reported as of $officialStationDataDate.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: stateChargerCoverage.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (context, index) {
+                    final coverage = stateChargerCoverage[index];
+                    return ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: CircleAvatar(
+                        child: Text('${index + 1}'),
+                      ),
+                      title: Text(coverage.state),
+                      trailing: Text(
+                        _withCommas(coverage.stationCount),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () => _openUrl(
+              context,
+              Uri.parse(officialStationSourceUrl),
+            ),
+            icon: const Icon(Icons.open_in_new_rounded, size: 18),
+            label: const Text('View official source'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _withCommas(int value) {
+  final digits = value.toString();
+  final buffer = StringBuffer();
+  for (var index = 0; index < digits.length; index++) {
+    if (index > 0 && (digits.length - index) % 3 == 0) buffer.write(',');
+    buffer.write(digits[index]);
+  }
+  return buffer.toString();
 }
 
 class _FilterRow extends StatelessWidget {
@@ -409,7 +646,7 @@ class _FilterRow extends StatelessWidget {
         ),
         Chip(
           avatar: const Icon(Icons.tune_rounded, size: 17),
-          label: const Text('India-wide demo'),
+          label: const Text('45 detailed demos'),
           side: BorderSide.none,
           backgroundColor: Theme.of(context).colorScheme.surface,
         ),
@@ -435,15 +672,15 @@ class _ResultsHeader extends StatelessWidget {
             children: [
               Text(
                 query.trim().isEmpty
-                    ? 'Charging network across India'
-                    : 'Search results',
+                    ? 'Detailed VoltMap locations'
+                    : 'Detailed demo matches',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 4),
               Text(
                 query.trim().isEmpty
-                    ? 'Explore the bundled demo network by city, state, area, or PIN'
-                    : 'Matching "${query.trim()}" across area, city, state, PIN, and network',
+                    ? 'Explore 45 bundled locations with full connector, price, and charging details'
+                    : 'Bundled locations matching “${query.trim()}”; use live national search above for complete results',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -458,7 +695,7 @@ class _ResultsHeader extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text(
-            '$count ${count == 1 ? 'result' : 'results'}',
+            '$count ${count == 1 ? 'demo' : 'demos'}',
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),

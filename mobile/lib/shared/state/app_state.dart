@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,10 +25,15 @@ class AppState extends ChangeNotifier {
   static const _emailKey = 'voltmap_profile_email';
   static const _vehicleKey = 'voltmap_vehicle';
   static const _rangeKey = 'voltmap_vehicle_range';
+  static const _signedInKey = 'voltmap_signed_in';
+  static const _accountSaltKey = 'voltmap_account_salt';
+  static const _accountPasswordHashKey = 'voltmap_account_password_hash';
 
   SharedPreferences? _preferences;
 
   bool isReady = false;
+  bool isSignedIn = false;
+  bool hasLocalAccount = false;
   bool darkMode = false;
   bool notificationsEnabled = true;
   String userName = 'VoltMap Driver';
@@ -50,6 +57,8 @@ class AppState extends ChangeNotifier {
       userEmail = preferences.getString(_emailKey) ?? userEmail;
       vehicleName = preferences.getString(_vehicleKey) ?? vehicleName;
       vehicleRangeKm = preferences.getDouble(_rangeKey) ?? vehicleRangeKm;
+      isSignedIn = preferences.getBool(_signedInKey) ?? false;
+      hasLocalAccount = preferences.containsKey(_accountPasswordHashKey);
 
       final savedTripJson = preferences.getString(_tripsKey);
       if (savedTripJson != null) {
@@ -83,6 +92,86 @@ class AppState extends ChangeNotifier {
   }
 
   bool isFavorite(String stationId) => favoriteStationIds.contains(stationId);
+
+  Future<String?> signUp({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    if (_preferences == null) {
+      return 'Browser storage is unavailable. Please enable it and try again.';
+    }
+    if (hasLocalAccount) {
+      return 'A local account already exists. Sign in or reset this browser data.';
+    }
+
+    final saltBytes = List<int>.generate(
+      24,
+      (_) => Random.secure().nextInt(256),
+    );
+    final salt = base64UrlEncode(saltBytes);
+    final digest = _passwordDigest(password, salt);
+
+    userName = name.trim();
+    userEmail = normalizedEmail;
+    hasLocalAccount = true;
+    isSignedIn = true;
+    await Future.wait([
+      _preferences!.setString(_nameKey, userName),
+      _preferences!.setString(_emailKey, userEmail),
+      _preferences!.setString(_accountSaltKey, salt),
+      _preferences!.setString(_accountPasswordHashKey, digest),
+      _preferences!.setBool(_signedInKey, true),
+    ]);
+    notifyListeners();
+    return null;
+  }
+
+  Future<String?> signIn({
+    required String email,
+    required String password,
+  }) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    if (_preferences == null) {
+      return 'Browser storage is unavailable. Please enable it and try again.';
+    }
+
+    final salt = _preferences!.getString(_accountSaltKey);
+    final savedDigest = _preferences!.getString(_accountPasswordHashKey);
+    final isValid = hasLocalAccount &&
+        normalizedEmail == userEmail.toLowerCase() &&
+        salt != null &&
+        savedDigest != null &&
+        _passwordDigest(password, salt) == savedDigest;
+    if (!isValid) return 'Email or password is incorrect.';
+
+    isSignedIn = true;
+    await _preferences!.setBool(_signedInKey, true);
+    notifyListeners();
+    return null;
+  }
+
+  Future<void> enterDemoAccount() async {
+    userName = 'VoltMap Demo Driver';
+    userEmail = 'demo@voltmap.in';
+    isSignedIn = true;
+    final preferences = _preferences;
+    if (preferences != null) {
+      await Future.wait([
+        preferences.setString(_nameKey, userName),
+        preferences.setString(_emailKey, userEmail),
+        preferences.setBool(_signedInKey, true),
+      ]);
+    }
+    notifyListeners();
+  }
+
+  Future<void> signOut() async {
+    isSignedIn = false;
+    await _preferences?.setBool(_signedInKey, false);
+    notifyListeners();
+  }
 
   Future<void> toggleFavorite(String stationId) async {
     if (!favoriteStationIds.add(stationId)) {
@@ -170,5 +259,9 @@ class AppState extends ChangeNotifier {
     } catch (_) {
       // Keep the in-memory receipt if browser storage is unavailable.
     }
+  }
+
+  String _passwordDigest(String password, String salt) {
+    return sha256.convert(utf8.encode('$salt:$password')).toString();
   }
 }
