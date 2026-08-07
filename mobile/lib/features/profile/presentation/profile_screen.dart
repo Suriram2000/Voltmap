@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/state/app_state.dart';
 import '../../modules/presentation/modules_screen.dart';
+import '../../payments/presentation/payment_history_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -102,6 +103,24 @@ class ProfileScreen extends ConsumerWidget {
             child: Column(
               children: [
                 ListTile(
+                  key: const Key('paymentHistoryTile'),
+                  leading: const Icon(Icons.receipt_long_outlined),
+                  title: const Text('Payments & receipts'),
+                  subtitle: Text(
+                    appState.chargingReceipts.isEmpty
+                        ? 'No demo charging payments yet'
+                        : '${appState.chargingReceipts.length} saved demo receipt${appState.chargingReceipts.length == 1 ? '' : 's'}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const PaymentHistoryScreen(),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: const Icon(Icons.apps),
                   title: const Text('Enterprise roadmap'),
                   subtitle: const Text(
@@ -119,7 +138,7 @@ class ProfileScreen extends ConsumerWidget {
                 const ListTile(
                   leading: Icon(Icons.info_outline),
                   title: Text('VoltMap demo'),
-                  subtitle: Text('Offline-first browser build • Version 1.1.2'),
+                  subtitle: Text('Offline-first browser build • Version 1.2.0'),
                 ),
               ],
             ),
