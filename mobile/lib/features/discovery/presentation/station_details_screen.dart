@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../shared/models/charging_receipt.dart';
 import '../../../shared/models/charging_station.dart';
 import '../../../shared/state/app_state.dart';
+import '../../payments/presentation/charging_checkout_screen.dart';
 
 class StationDetailsScreen extends ConsumerWidget {
   const StationDetailsScreen({super.key, required this.station});
@@ -179,12 +181,13 @@ class StationDetailsScreen extends ConsumerWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton.icon(
+                  key: const Key('openCheckoutButton'),
                   onPressed: station.available
                       ? () => _startSession(context)
                       : null,
-                  icon: const Icon(Icons.bolt),
+                  icon: const Icon(Icons.payment),
                   label: Text(
-                    station.available ? 'Start charging' : 'Station full',
+                    station.available ? 'Pay & start' : 'Station full',
                   ),
                 ),
               ),
@@ -209,18 +212,26 @@ class StationDetailsScreen extends ConsumerWidget {
   }
 
   Future<void> _startSession(BuildContext context) async {
+    final receipt = await Navigator.of(context).push<ChargingReceipt>(
+      MaterialPageRoute<ChargingReceipt>(
+        builder: (_) => ChargingCheckoutScreen(station: station),
+      ),
+    );
+    if (!context.mounted || receipt == null) return;
+
     await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         icon: const Icon(Icons.bolt, size: 40),
         title: const Text('Charging session started'),
         content: Text(
-          'Connector reserved at ${station.name}. This demo session uses the '
-          'local station data and does not initiate a real payment.',
+          '${receipt.connectorType} is reserved at ${station.name} for up to '
+          '${receipt.energyKwh.toStringAsFixed(0)} kWh.\n\n'
+          'Payment: ${receipt.paymentMethod}\nReceipt: ${receipt.id}',
         ),
         actions: [
           FilledButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Done'),
           ),
         ],
