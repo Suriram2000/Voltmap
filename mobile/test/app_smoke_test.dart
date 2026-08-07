@@ -7,6 +7,9 @@ import 'package:voltmap/features/discovery/data/sample_stations.dart';
 import 'package:voltmap/features/discovery/data/national_charger_data.dart';
 import 'package:voltmap/features/discovery/presentation/station_details_screen.dart';
 import 'package:voltmap/features/payments/presentation/charging_checkout_screen.dart';
+import 'package:voltmap/features/trips/presentation/trip_planner_screen.dart';
+import 'package:voltmap/shared/models/place_suggestion.dart';
+import 'package:voltmap/shared/services/place_search_service.dart';
 
 void main() {
   setUp(() {
@@ -81,6 +84,36 @@ void main() {
     expect(stateChargerCoverage, hasLength(36));
   });
 
+  testWidgets('Trip search suggests India-wide places for partial text', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          home: TripPlannerScreen(searchService: _FakePlaceSearchService()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final destination = find.widgetWithText(TextField, 'Destination');
+    await tester.enterText(destination, 'ban');
+    await tester.pumpAndSettle();
+    expect(find.text('Bengaluru'), findsOneWidget);
+    expect(find.text('Bandra'), findsOneWidget);
+
+    await tester.tap(find.text('Bengaluru'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Plan route'));
+    await tester.tap(find.text('Plan route'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Coordinate-based road estimate'), findsOneWidget);
+    expect(find.text('Open live directions'), findsOneWidget);
+    expect(find.textContaining('Estimated energy:'), findsOneWidget);
+  });
+
   testWidgets('search, favorites, navigation, and trip planning work', (
     tester,
   ) async {
@@ -122,6 +155,7 @@ void main() {
       find.widgetWithText(TextField, 'Destination'),
       'Vijayawada',
     );
+    await tester.ensureVisible(find.text('Plan route'));
     await tester.tap(find.text('Plan route'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Estimated energy:'), findsOneWidget);
@@ -353,6 +387,15 @@ void main() {
     expect(find.text('Paid • Automatic stop'), findsOneWidget);
     expect(find.text('₹28.13'), findsWidgets);
   });
+}
+
+class _FakePlaceSearchService extends PlaceSearchService {
+  const _FakePlaceSearchService();
+
+  @override
+  Future<List<PlaceSuggestion>> searchIndia(String rawQuery) async {
+    return localSuggestions(rawQuery);
+  }
 }
 
 void _useDesktopViewport(WidgetTester tester) {

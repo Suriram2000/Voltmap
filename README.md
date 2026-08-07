@@ -8,6 +8,8 @@ VoltMap is a polished, responsive Flutter web demo for discovering EV chargers, 
 - See the Government of India’s official total of 29,277 public charging stations (1 August 2025) with the complete state/UT breakdown.
 - Search the 45 detailed VoltMap demo locations by station, locality, city, state, connector, or PIN code, including formatted PINs such as `500-081`.
 - Launch a live Google Maps charger search for any Indian PIN code or area, or open the official BEE EV Yatra directory.
+- Search-as-you-type for Trip starting points and destinations across India using OpenStreetMap/Photon place, locality, address, and PIN data, with major-city aliases available offline.
+- Select suggested places for coordinate-based distance and energy estimates, then open the journey in Google Maps for live road directions.
 - Open charger details, directions, amenities, pricing, and connector data.
 - Validate a sandbox UPI ID, credit/debit card, or VoltMap wallet before charging, meter the demo session by actual kWh, and capture the final amount only after charging stops.
 - Use a premium responsive interface with adaptive mobile navigation, a two-column desktop charger grid, and light or dark appearance.
@@ -15,7 +17,7 @@ VoltMap is a polished, responsive Flutter web demo for discovering EV chargers, 
 - Save favorites, trips, vehicle information, and preferences in browser storage.
 - Switch between light and dark themes.
 
-The 29,277 figure and state totals are official aggregate data, while the 45 bundled locations, availability, pricing, route calculations, metered sessions, and postpaid checkout are representative demonstration data rather than a complete live charger inventory. Live PIN/area search opens current Google Maps results because BEE’s complete station database is not exposed as an open client API. Only documented sandbox payment credentials are accepted; validation happens in the browser, no real money is charged, and sensitive test details are not saved. Local Login/Signup is browser-only. Real multi-device authentication, UPI/card verification, authorization and capture, live charger telemetry, road routing, OCPP/OCPI, and provider roaming require production credentials and backend services.
+The 29,277 figure and state totals are official aggregate data, while the 45 bundled locations, availability, pricing, charging-stop suggestions, metered sessions, and postpaid checkout are representative demonstration data rather than a complete live charger inventory. Trip autocomplete uses the fair-use Photon public demo API with an offline major-city fallback; selected-place distance is a coordinate-based estimate, while the live directions button opens Google Maps. Live charger PIN/area search opens current Google Maps results because BEE’s complete station database is not exposed as an open client API. Only documented sandbox payment credentials are accepted; validation happens in the browser, no real money is charged, and sensitive test details are not saved. Local Login/Signup is browser-only. Real multi-device authentication, UPI/card verification, authorization and capture, live charger telemetry, first-party road routing, OCPP/OCPI, and provider roaming require production credentials and backend services.
 
 Official coverage sources: [Government of India state totals](https://sansad.in/getFile/annex/268/AU1521_5sMm07.pdf?source=pqars) and [BEE EV Yatra](https://evyatra.beeindia.gov.in/).
 
