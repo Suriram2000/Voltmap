@@ -32,124 +32,136 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
     final appState = ref.watch(appStateProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Trip Planner')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-        children: [
-          Text(
-            'Plan an EV-ready route',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'VoltMap estimates range and adds available charging stops using the demo network.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 18),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: originController,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Starting point',
-                      prefixIcon: Icon(Icons.my_location),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: destinationController,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _planRoute(),
-                    decoration: const InputDecoration(
-                      labelText: 'Destination',
-                      hintText: 'For example: Vijayawada',
-                      prefixIcon: Icon(Icons.flag),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 920),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
+            children: [
+              Text(
+                'Plan an EV-ready route',
+                style: Theme.of(
+                  context,
+                )
+                    .textTheme
+                    .headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'VoltMap estimates range and adds available charging stops using the demo network.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 18),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
                     children: [
-                      const Icon(Icons.directions_car),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Usable vehicle range: ${rangeKm.round()} km'),
-                            Slider(
-                              value: rangeKm,
-                              min: 120,
-                              max: 600,
-                              divisions: 24,
-                              label: '${rangeKm.round()} km',
-                              onChanged: (value) =>
-                                  setState(() => rangeKm = value),
+                      TextField(
+                        controller: originController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Starting point',
+                          prefixIcon: Icon(Icons.my_location),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: destinationController,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _planRoute(),
+                        decoration: const InputDecoration(
+                          labelText: 'Destination',
+                          hintText: 'For example: Vijayawada',
+                          prefixIcon: Icon(Icons.flag),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          const Icon(Icons.directions_car),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                    'Usable vehicle range: ${rangeKm.round()} km'),
+                                Slider(
+                                  value: rangeKm,
+                                  min: 120,
+                                  max: 600,
+                                  divisions: 24,
+                                  label: '${rangeKm.round()} km',
+                                  onChanged: (value) =>
+                                      setState(() => rangeKm = value),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _planRoute,
+                          icon: const Icon(Icons.route),
+                          label: const Text('Plan route'),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _planRoute,
-                      icon: const Icon(Icons.route),
-                      label: const Text('Plan route'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (route != null) ...[
-            const SizedBox(height: 18),
-            _RouteResult(route: route!, onSave: () => _saveRoute(appState)),
-          ],
-          const SizedBox(height: 28),
-          Row(
-            children: [
-              Text(
-                'Saved trips',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const Spacer(),
-              Text('${appState.savedTrips.length}'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (appState.savedTrips.isEmpty)
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.all(22),
-                child: Row(
-                  children: [
-                    Icon(Icons.route_outlined),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text('Plan and save a route to see it here.'),
-                    ),
-                  ],
                 ),
               ),
-            )
-          else
-            for (final trip in appState.savedTrips) ...[
-              _SavedTripCard(
-                trip: trip,
-                onDelete: () => appState.removeTrip(trip.id),
+              if (route != null) ...[
+                const SizedBox(height: 18),
+                _RouteResult(route: route!, onSave: () => _saveRoute(appState)),
+              ],
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Text(
+                    'Saved trips',
+                    style: Theme.of(
+                      context,
+                    )
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                  const Spacer(),
+                  Text('${appState.savedTrips.length}'),
+                ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
+              if (appState.savedTrips.isEmpty)
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(22),
+                    child: Row(
+                      children: [
+                        Icon(Icons.route_outlined),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text('Plan and save a route to see it here.'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                for (final trip in appState.savedTrips) ...[
+                  _SavedTripCard(
+                    trip: trip,
+                    onDelete: () => appState.removeTrip(trip.id),
+                  ),
+                  const SizedBox(height: 10),
+                ],
             ],
-        ],
+          ),
+        ),
       ),
     );
   }
@@ -166,16 +178,14 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
       return;
     }
 
-    final seed =
-        origin.codeUnits.fold<int>(0, (sum, unit) => sum + unit) +
+    final seed = origin.codeUnits.fold<int>(0, (sum, unit) => sum + unit) +
         destination.codeUnits.fold<int>(0, (sum, unit) => sum + unit);
     final distance = 70.0 + (seed % 420);
     final safeLegDistance = rangeKm * 0.72;
     final legCount = (distance / safeLegDistance).ceil();
     final stopCount = legCount > 1 ? legCount - 1 : 0;
-    final availableStations = sampleStations
-        .where((station) => station.available)
-        .toList();
+    final availableStations =
+        sampleStations.where((station) => station.available).toList();
     final stopIds = List<String>.generate(
       stopCount,
       (index) => availableStations[index % availableStations.length].id,
@@ -238,7 +248,9 @@ class _RouteResult extends StatelessWidget {
                     children: [
                       Text(
                         '${route.origin} → ${route.destination}',
-                        style: Theme.of(context).textTheme.titleMedium
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       Text(
