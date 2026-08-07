@@ -4,6 +4,8 @@ class ChargingStation {
     required this.name,
     required this.network,
     required this.address,
+    required this.city,
+    required this.state,
     required this.postalCode,
     required this.distanceKm,
     required this.powerKw,
@@ -15,12 +17,15 @@ class ChargingStation {
     required this.pricePerKwh,
     required this.rating,
     required this.amenities,
+    this.searchAliases = const [],
   });
 
   final String id;
   final String name;
   final String network;
   final String address;
+  final String city;
+  final String state;
   final String postalCode;
   final double distanceKm;
   final int powerKw;
@@ -32,8 +37,9 @@ class ChargingStation {
   final double pricePerKwh;
   final double rating;
   final List<String> amenities;
+  final List<String> searchAliases;
 
   bool get available => availableConnectors > 0;
   bool get isFast => powerKw >= 100;
-  String get formattedAddress => '$address, PIN $postalCode';
+  String get formattedAddress => '$address, $city, $state, PIN $postalCode';
 }
