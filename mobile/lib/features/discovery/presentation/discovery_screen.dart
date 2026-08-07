@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/charging_station.dart';
+import '../../../shared/models/place_suggestion.dart';
+import '../../../shared/services/place_search_service.dart';
 import '../../../shared/state/app_state.dart';
+import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../data/sample_stations.dart';
 import '../data/national_charger_data.dart';
 import 'station_card.dart';
@@ -19,9 +23,20 @@ class DiscoveryScreen extends ConsumerStatefulWidget {
 
 class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   final searchController = TextEditingController();
+  final placeSearchService = const PlaceSearchService();
   String query = '';
   bool availableOnly = false;
   bool fastOnly = false;
+  bool locating = false;
+  String? locationMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _usePreviouslyAllowedLocation();
+    });
+  }
 
   @override
   void dispose() {
@@ -73,6 +88,13 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                         query: query,
                         onSearchChanged: (value) =>
                             setState(() => query = value),
+                        searchService: placeSearchService,
+                        onLocationSelected: _selectLocation,
+                        onUseLocation: () => _resolveCurrentLocation(
+                          requestPermission: true,
+                        ),
+                        locating: locating,
+                        locationMessage: locationMessage,
                         onClear: _clearSearch,
                       ),
                       const SizedBox(height: 22),
@@ -133,7 +155,10 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
   void _clearSearch() {
     searchController.clear();
-    setState(() => query = '');
+    setState(() {
+      query = '';
+      locationMessage = null;
+    });
   }
 
   void _resetFilters() {
@@ -152,6 +177,82 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       ),
     );
   }
+
+  void _selectLocation(PlaceSuggestion? place) {
+    if (place == null) return;
+    setState(() {
+      query = place.displayName;
+      locationMessage = 'India location selected: ${place.primaryText}';
+    });
+  }
+
+  Future<void> _usePreviouslyAllowedLocation() async {
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse) {
+        await _resolveCurrentLocation(requestPermission: false);
+      }
+    } catch (_) {
+      // Search remains fully usable when geolocation is unsupported.
+    }
+  }
+
+  Future<void> _resolveCurrentLocation({
+    required bool requestPermission,
+  }) async {
+    if (locating) return;
+    setState(() {
+      locating = true;
+      locationMessage = 'Finding your current area...';
+    });
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Turn on location services, then try again.');
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied && requestPermission) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        throw Exception(
+          'Location permission is off. Allow it to load your area automatically.',
+        );
+      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 12),
+        ),
+      );
+      final place = await placeSearchService.reverseIndia(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+      if (!mounted) return;
+      final displayName = place?.displayName ??
+          '${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}, India';
+      searchController
+        ..text = displayName
+        ..selection = TextSelection.collapsed(offset: displayName.length);
+      setState(() {
+        query = displayName;
+        locating = false;
+        locationMessage = place == null
+            ? 'Using your current coordinates in India'
+            : 'Near you: ${place.primaryText}';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      final message = error.toString().replaceFirst('Exception: ', '');
+      setState(() {
+        locating = false;
+        locationMessage = message;
+      });
+    }
+  }
 }
 
 class _DiscoveryHero extends StatelessWidget {
@@ -159,12 +260,22 @@ class _DiscoveryHero extends StatelessWidget {
     required this.searchController,
     required this.query,
     required this.onSearchChanged,
+    required this.searchService,
+    required this.onLocationSelected,
+    required this.onUseLocation,
+    required this.locating,
+    required this.locationMessage,
     required this.onClear,
   });
 
   final TextEditingController searchController;
   final String query;
   final ValueChanged<String> onSearchChanged;
+  final PlaceSearchService searchService;
+  final ValueChanged<PlaceSuggestion?> onLocationSelected;
+  final VoidCallback onUseLocation;
+  final bool locating;
+  final String? locationMessage;
   final VoidCallback onClear;
 
   @override
@@ -211,7 +322,9 @@ class _DiscoveryHero extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -243,7 +356,6 @@ class _DiscoveryHero extends StatelessWidget {
                             ],
                           ),
                         ),
-                        const Spacer(),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
@@ -307,7 +419,7 @@ class _DiscoveryHero extends StatelessWidget {
                       spacing: 20,
                       runSpacing: 12,
                       children: [
-                        _HeroMetric(
+                        const _HeroMetric(
                           value: '29,277',
                           label: 'verified public stations',
                         ),
@@ -335,29 +447,54 @@ class _DiscoveryHero extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: SearchBar(
+                      child: LocationAutocompleteField(
                         controller: searchController,
-                        hintText: 'Station, area, connector, or PIN code',
-                        leading: const Icon(Icons.search_rounded),
-                        trailing: [
-                          if (query.isNotEmpty)
-                            IconButton(
-                              tooltip: 'Clear search',
-                              onPressed: onClear,
-                              icon: const Icon(Icons.close),
-                            ),
-                        ],
+                        label: 'Search across India',
+                        hint: 'Area, city, station, or 6-digit PIN',
+                        prefixIcon: Icons.search_rounded,
+                        searchService: searchService,
                         onChanged: onSearchChanged,
+                        onSelected: onLocationSelected,
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (query.isNotEmpty)
+                              IconButton(
+                                tooltip: 'Clear search',
+                                onPressed: onClear,
+                                icon: const Icon(Icons.close),
+                              ),
+                            IconButton(
+                              key: const Key('useCurrentLocationButton'),
+                              tooltip: 'Use my current location',
+                              onPressed: locating ? null : onUseLocation,
+                              icon: locating
+                                  ? const SizedBox.square(
+                                      dimension: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.my_location_rounded),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Text(
-                        'Try 110001, Mumbai, Whitefield, Tamil Nadu, or 500-081 — live national search works for any location.',
+                        locationMessage ??
+                            'Try ben, 500079, Whitefield, or Tamil Nadu. Suggestions and live searches stay inside India.',
                         style: TextStyle(
-                          color: Color(0xFF9FB8AD),
+                          color: locationMessage != null
+                              ? AppTheme.brandLime
+                              : const Color(0xFF9FB8AD),
                           fontSize: 11,
+                          fontWeight: locationMessage != null
+                              ? FontWeight.w700
+                              : FontWeight.w400,
                         ),
                       ),
                     ),
@@ -518,7 +655,7 @@ class _NationalCoverageCard extends StatelessWidget {
     BuildContext context,
     String location,
   ) async {
-    final area = location.isEmpty ? 'India' : location;
+    final area = location.isEmpty ? 'India' : '$location, India';
     final url = Uri.https(
       'www.google.com',
       '/maps/search/',
@@ -816,27 +953,33 @@ class _HeroMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppTheme.brandLime,
-            fontSize: 20,
-            fontWeight: FontWeight.w900,
+    return SizedBox(
+      width: 220,
+      child: Row(
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppTheme.brandLime,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-        ),
-        const SizedBox(width: 7),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFFACC2B8),
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFFACC2B8),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

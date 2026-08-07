@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voltmap/app/voltmap_app.dart';
 import 'package:voltmap/features/discovery/data/sample_stations.dart';
 import 'package:voltmap/features/discovery/data/national_charger_data.dart';
+import 'package:voltmap/features/discovery/presentation/add_charger_screen.dart';
 import 'package:voltmap/features/discovery/presentation/station_details_screen.dart';
 import 'package:voltmap/features/payments/presentation/charging_checkout_screen.dart';
 import 'package:voltmap/features/trips/presentation/trip_planner_screen.dart';
@@ -55,7 +56,11 @@ void main() {
 
     await tester.tap(find.text('Profile'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const Key('signOutTile')));
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('signOutTile')),
+      260,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('signOutTile')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('confirmSignOutButton')));
@@ -127,13 +132,19 @@ void main() {
 
     expect(find.text('Find the right charger, faster.'), findsOneWidget);
 
-    await tester.enterText(find.byType(SearchBar), '500081');
+    await tester.enterText(
+      find.byKey(const Key('locationField_Search across India')),
+      '500081',
+    );
     await tester.pumpAndSettle();
     expect(find.text('ChargeZone Hitech City'), findsOneWidget);
     expect(find.text('Tata Power Madhapur'), findsOneWidget);
     expect(find.text('2 demos'), findsOneWidget);
 
-    await tester.enterText(find.byType(SearchBar), 'Zeon');
+    await tester.enterText(
+      find.byKey(const Key('locationField_Search across India')),
+      'Zeon',
+    );
     await tester.pumpAndSettle();
     expect(find.text('Zeon Charging Hub'), findsOneWidget);
 
@@ -169,29 +180,170 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(SearchBar), '110001');
+    final discoverySearch =
+        find.byKey(const Key('locationField_Search across India'));
+    await tester.enterText(discoverySearch, '110001');
     await tester.pumpAndSettle();
     expect(find.text('Statiq Connaught Place'), findsOneWidget);
     expect(find.text('1 demo'), findsOneWidget);
 
-    await tester.enterText(find.byType(SearchBar), '400-051');
+    await tester.enterText(discoverySearch, '400-051');
     await tester.pumpAndSettle();
     expect(find.text('Tata Power BKC'), findsOneWidget);
     expect(find.text('1 demo'), findsOneWidget);
 
-    await tester.enterText(find.byType(SearchBar), 'Whitefield');
+    await tester.enterText(discoverySearch, 'Whitefield');
     await tester.pumpAndSettle();
     expect(find.text('Ather Grid Whitefield'), findsOneWidget);
 
-    await tester.enterText(find.byType(SearchBar), 'Bangalore');
+    await tester.enterText(discoverySearch, 'Bangalore');
     await tester.pumpAndSettle();
     expect(find.text('Ather Grid Whitefield'), findsOneWidget);
     expect(find.text('3 demos'), findsOneWidget);
 
-    await tester.enterText(find.byType(SearchBar), 'Tamil Nadu');
+    await tester.enterText(discoverySearch, 'Tamil Nadu');
     await tester.pumpAndSettle();
     expect(find.text('Zeon Peelamedu'), findsOneWidget);
     expect(find.text('3 demos'), findsOneWidget);
+  });
+
+  test('local India suggestions resolve 500079 and partial ben searches', () {
+    const service = PlaceSearchService();
+    final pinResults = service.localSuggestions('500079');
+    expect(pinResults, isNotEmpty);
+    expect(pinResults.first.primaryText, contains('Karmanghat'));
+    expect(pinResults.first.secondaryText, contains('Hyderabad'));
+
+    final benResults = service.localSuggestions('ben');
+    expect(benResults.map((place) => place.primaryText), contains('Bengaluru'));
+    expect(
+        benResults.map((place) => place.primaryText), contains('Benson Town'));
+    expect(
+      benResults.map((place) => place.primaryText),
+      contains('Benniganahalli'),
+    );
+  });
+
+  testWidgets('unavailable chargers are clearly marked and cannot charge', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    final unavailable = sampleStations.firstWhere(
+      (station) => !station.available,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: StationDetailsScreen(station: unavailable),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('unavailableStationBanner')), findsOneWidget);
+    expect(find.textContaining('NOT WORKING / UNAVAILABLE'), findsOneWidget);
+    final button = tester.widget<FilledButton>(
+      find.ancestor(
+        of: find.text('Unavailable'),
+        matching: find.byType(FilledButton),
+      ),
+    );
+    expect(button.onPressed, isNull);
+  });
+
+  testWidgets('public charger reports validate and remain saved for review', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: AddChargerScreen())),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Station name'),
+      'Community EV Hub',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Operator or network'),
+      'Community Charge',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Street address / landmark'),
+      'LB Nagar Metro',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'City / area'),
+      'Karmanghat',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'State / UT'),
+      'Telangana',
+    );
+    await tester.enterText(
+      find.byKey(const Key('chargerPinField')),
+      '500079',
+    );
+    await tester.drag(find.byType(ListView).first, const Offset(0, -700));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('submitChargerReportButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Report saved'), findsOneWidget);
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('voltmap_charger_submissions'), isNotNull);
+  });
+
+  testWidgets('compact phone navigation reaches every responsive app section', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
+    await tester.pumpAndSettle();
+
+    final navigation = find.byType(NavigationBar);
+    expect(navigation, findsOneWidget);
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.byIcon(Icons.map_outlined)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('India Charger Map'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: navigation,
+        matching: find.byIcon(Icons.route_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Trip Planner'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: navigation,
+        matching: find.byIcon(Icons.favorite_border),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Favorites'), findsWidgets);
+    await tester.tap(
+      find.descendant(
+        of: navigation,
+        matching: find.byIcon(Icons.add_location_alt_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Add a missing charger'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: navigation,
+        matching: find.byIcon(Icons.person_outline),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Profile & settings'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('UPI is verified before metered charging and charged afterward', (

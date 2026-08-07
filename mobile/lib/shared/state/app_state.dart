@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/charging_receipt.dart';
+import '../models/charger_submission.dart';
 import '../models/saved_trip.dart';
 
 final appStateProvider = ChangeNotifierProvider<AppState>((ref) {
@@ -28,6 +29,7 @@ class AppState extends ChangeNotifier {
   static const _signedInKey = 'voltmap_signed_in';
   static const _accountSaltKey = 'voltmap_account_salt';
   static const _accountPasswordHashKey = 'voltmap_account_password_hash';
+  static const _chargerSubmissionsKey = 'voltmap_charger_submissions';
 
   SharedPreferences? _preferences;
 
@@ -43,6 +45,7 @@ class AppState extends ChangeNotifier {
   final Set<String> favoriteStationIds = {};
   final List<SavedTrip> savedTrips = [];
   final List<ChargingReceipt> chargingReceipts = [];
+  final List<ChargerSubmission> chargerSubmissions = [];
 
   Future<void> load() async {
     try {
@@ -80,6 +83,20 @@ class AppState extends ChangeNotifier {
           ..addAll(
             decoded.map(
               (item) => ChargingReceipt.fromJson(item as Map<String, dynamic>),
+            ),
+          );
+      }
+
+      final submissionJson = preferences.getString(_chargerSubmissionsKey);
+      if (submissionJson != null) {
+        final decoded = jsonDecode(submissionJson) as List<dynamic>;
+        chargerSubmissions
+          ..clear()
+          ..addAll(
+            decoded.map(
+              (item) => ChargerSubmission.fromJson(
+                item as Map<String, dynamic>,
+              ),
             ),
           );
       }
@@ -205,6 +222,19 @@ class AppState extends ChangeNotifier {
     }
     notifyListeners();
     await _persistReceipts();
+  }
+
+  Future<void> saveChargerSubmission(ChargerSubmission submission) async {
+    chargerSubmissions.removeWhere((saved) => saved.id == submission.id);
+    chargerSubmissions.insert(0, submission);
+    if (chargerSubmissions.length > 20) {
+      chargerSubmissions.removeRange(20, chargerSubmissions.length);
+    }
+    notifyListeners();
+    final encoded = jsonEncode(
+      chargerSubmissions.map((item) => item.toJson()).toList(growable: false),
+    );
+    await _preferences?.setString(_chargerSubmissionsKey, encoded);
   }
 
   Future<void> updateProfile({

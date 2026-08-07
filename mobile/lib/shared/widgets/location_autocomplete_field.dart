@@ -16,6 +16,8 @@ class LocationAutocompleteField extends StatefulWidget {
     required this.onSelected,
     this.textInputAction = TextInputAction.next,
     this.onSubmitted,
+    this.onChanged,
+    this.suffixIcon,
   });
 
   final TextEditingController controller;
@@ -26,6 +28,8 @@ class LocationAutocompleteField extends StatefulWidget {
   final ValueChanged<PlaceSuggestion?> onSelected;
   final TextInputAction textInputAction;
   final ValueChanged<String>? onSubmitted;
+  final ValueChanged<String>? onChanged;
+  final Widget? suffixIcon;
 
   @override
   State<LocationAutocompleteField> createState() =>
@@ -67,6 +71,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TextField(
+          key: ValueKey('locationField_${widget.label}'),
           controller: widget.controller,
           focusNode: _focusNode,
           textInputAction: widget.textInputAction,
@@ -84,7 +89,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                   )
-                : null,
+                : widget.suffixIcon,
           ),
         ),
         AnimatedSize(
@@ -189,6 +194,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
   }
 
   void _search(String value) {
+    widget.onChanged?.call(value);
     widget.onSelected(null);
     _debounce?.cancel();
     final query = value.trim();

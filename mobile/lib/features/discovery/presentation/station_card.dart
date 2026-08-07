@@ -25,6 +25,13 @@ class StationCard extends StatelessWidget {
         : station.availableConnectors / station.totalConnectors;
 
     return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(
+          color: station.available ? colors.outlineVariant : colors.error,
+          width: station.available ? 1 : 2,
+        ),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
         onTap: onTap,
@@ -51,9 +58,7 @@ class StationCard extends StatelessWidget {
                                 ],
                               )
                             : null,
-                        color: station.available
-                            ? null
-                            : colors.surfaceContainerHighest,
+                        color: station.available ? null : colors.errorContainer,
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: Icon(
@@ -62,7 +67,7 @@ class StationCard extends StatelessWidget {
                             : Icons.ev_station_rounded,
                         color: station.available
                             ? const Color(0xFF075D3E)
-                            : colors.onSurfaceVariant,
+                            : colors.error,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -226,12 +231,13 @@ class _AvailabilityBadge extends StatelessWidget {
       child: Text(
         station.available
             ? '${station.availableConnectors} available'
-            : 'Currently full',
+            : 'NOT WORKING / UNAVAILABLE',
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: station.available
                   ? const Color(0xFF09623F)
                   : colors.onErrorContainer,
               fontWeight: FontWeight.w900,
+              letterSpacing: station.available ? 0 : 0.35,
             ),
       ),
     );
