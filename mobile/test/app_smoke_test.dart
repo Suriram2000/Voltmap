@@ -43,7 +43,7 @@ void main() {
 
     await tester.tap(find.text('Map'));
     await tester.pumpAndSettle();
-    expect(find.text('Charger Map'), findsOneWidget);
+    expect(find.text('India Charger Map'), findsOneWidget);
 
     await tester.tap(find.text('Trips'));
     await tester.pumpAndSettle();
@@ -55,6 +55,38 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Estimated energy:'), findsOneWidget);
     expect(find.text('Save this trip'), findsOneWidget);
+  });
+
+  testWidgets('India-wide discovery searches PIN, area, city, and state', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(SearchBar), '110001');
+    await tester.pumpAndSettle();
+    expect(find.text('Statiq Connaught Place'), findsOneWidget);
+    expect(find.text('1 result'), findsOneWidget);
+
+    await tester.enterText(find.byType(SearchBar), '400-051');
+    await tester.pumpAndSettle();
+    expect(find.text('Tata Power BKC'), findsOneWidget);
+    expect(find.text('1 result'), findsOneWidget);
+
+    await tester.enterText(find.byType(SearchBar), 'Whitefield');
+    await tester.pumpAndSettle();
+    expect(find.text('Ather Grid Whitefield'), findsOneWidget);
+
+    await tester.enterText(find.byType(SearchBar), 'Bangalore');
+    await tester.pumpAndSettle();
+    expect(find.text('Ather Grid Whitefield'), findsOneWidget);
+    expect(find.text('3 results'), findsOneWidget);
+
+    await tester.enterText(find.byType(SearchBar), 'Tamil Nadu');
+    await tester.pumpAndSettle();
+    expect(find.text('Zeon Peelamedu'), findsOneWidget);
+    expect(find.text('3 results'), findsOneWidget);
   });
 
   testWidgets('UPI checkout saves a receipt and starts charging', (

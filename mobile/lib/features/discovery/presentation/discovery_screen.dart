@@ -28,12 +28,19 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   List<ChargingStation> get filteredStations {
-    return sampleStations.where((station) {
+    final matches = sampleStations.where((station) {
       return _matchesSearch(station, query) &&
           (!availableOnly || station.available) &&
           (!fastOnly || station.isFast);
-    }).toList(growable: false)
-      ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+    }).toList(growable: false);
+
+    if (query.trim().isNotEmpty) {
+      matches.sort((a, b) {
+        final pinComparison = a.postalCode.compareTo(b.postalCode);
+        return pinComparison != 0 ? pinComparison : a.name.compareTo(b.name);
+      });
+    }
+    return matches;
   }
 
   @override
@@ -76,7 +83,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                             setState(() => fastOnly = value),
                       ),
                       const SizedBox(height: 30),
-                      _ResultsHeader(count: stations.length),
+                      _ResultsHeader(count: stations.length, query: query),
                       const SizedBox(height: 14),
                       if (stations.isEmpty)
                         _EmptySearch(onReset: _resetFilters)
@@ -255,7 +262,7 @@ class _DiscoveryHero extends StatelessWidget {
                               ),
                               SizedBox(width: 5),
                               Text(
-                                'Hyderabad',
+                                'Across India',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w700,
@@ -284,7 +291,7 @@ class _DiscoveryHero extends StatelessWidget {
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 620),
                       child: Text(
-                        'Reliable charging, clear pricing, and effortless trip planning—built around your drive.',
+                        'Search representative charging stations across India by PIN code, city, state, area, network, or connector.',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                               color: const Color(0xFFB8CEC4),
                               fontSize: compact ? 15 : 17,
@@ -298,13 +305,17 @@ class _DiscoveryHero extends StatelessWidget {
                       children: [
                         _HeroMetric(
                           value: '${sampleStations.length}',
-                          label: 'verified stations',
+                          label: 'demo stations',
                         ),
                         _HeroMetric(
                           value: '$availableConnectors',
                           label: 'connectors available',
                         ),
-                        const _HeroMetric(value: '24/7', label: 'network view'),
+                        _HeroMetric(
+                          value:
+                              '${sampleStations.map((station) => station.city).toSet().length}',
+                          label: 'cities covered',
+                        ),
                       ],
                     ),
                     SizedBox(height: compact ? 26 : 34),
@@ -340,7 +351,7 @@ class _DiscoveryHero extends StatelessWidget {
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 4),
                       child: Text(
-                        'PIN search accepts formats like 500081, 500 081, or 500-081.',
+                        'Try 110001, Mumbai, Whitefield, Tamil Nadu, or 500-081.',
                         style: TextStyle(
                           color: Color(0xFF9FB8AD),
                           fontSize: 11,
@@ -398,7 +409,7 @@ class _FilterRow extends StatelessWidget {
         ),
         Chip(
           avatar: const Icon(Icons.tune_rounded, size: 17),
-          label: const Text('Nearest first'),
+          label: const Text('India-wide demo'),
           side: BorderSide.none,
           backgroundColor: Theme.of(context).colorScheme.surface,
         ),
@@ -408,9 +419,10 @@ class _FilterRow extends StatelessWidget {
 }
 
 class _ResultsHeader extends StatelessWidget {
-  const _ResultsHeader({required this.count});
+  const _ResultsHeader({required this.count, required this.query});
 
   final int count;
+  final String query;
 
   @override
   Widget build(BuildContext context) {
@@ -422,12 +434,16 @@ class _ResultsHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Chargers near you',
+                query.trim().isEmpty
+                    ? 'Charging network across India'
+                    : 'Search results',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 4),
               Text(
-                'Availability and pricing at a glance',
+                query.trim().isEmpty
+                    ? 'Explore the bundled demo network by city, state, area, or PIN'
+                    : 'Matching "${query.trim()}" across area, city, state, PIN, and network',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -442,7 +458,7 @@ class _ResultsHeader extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text(
-            '$count results',
+            '$count ${count == 1 ? 'result' : 'results'}',
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
@@ -468,8 +484,11 @@ bool _matchesSearch(ChargingStation station, String rawQuery) {
     station.name,
     station.network,
     station.address,
+    station.city,
+    station.state,
     station.postalCode,
     ...station.connectorTypes,
+    ...station.searchAliases,
   ].join(' ').toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
 
   return terms.every(searchableText.contains);
@@ -498,12 +517,12 @@ class _EmptySearch extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Text(
-              'No chargers match those filters',
+              'No demo stations match that search',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 6),
             Text(
-              'Try another PIN code or clear the quick filters.',
+              'Try another city, state, area, or PIN code. The bundled catalog is representative and does not yet include every charger in India.',
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),

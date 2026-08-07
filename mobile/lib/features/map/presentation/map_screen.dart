@@ -22,15 +22,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final appState = ref.watch(appStateProvider);
     final stations = availableOnly
         ? sampleStations
-              .where((station) => station.available)
-              .toList(growable: false)
+            .where((station) => station.available)
+            .toList(growable: false)
         : sampleStations;
 
     if (!stations.contains(selected)) selected = stations.first;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Charger Map'),
+        title: const Text('India Charger Map'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -78,16 +78,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   Widget _buildMarker(ChargingStation station, BoxConstraints constraints) {
-    const minLat = 17.39;
-    const maxLat = 17.49;
-    const minLng = 78.32;
-    const maxLng = 78.49;
+    const minLat = 7.5;
+    const maxLat = 32.5;
+    const minLng = 68.5;
+    const maxLng = 97.5;
     final usableWidth = constraints.maxWidth - 64;
     final usableHeight = constraints.maxHeight - 220;
     final left =
         20 + ((station.longitude - minLng) / (maxLng - minLng)) * usableWidth;
-    final top =
-        18 +
+    final top = 18 +
         (1 - (station.latitude - minLat) / (maxLat - minLat)) * usableHeight;
     final isSelected = station.id == selected.id;
     final colors = Theme.of(context).colorScheme;
@@ -106,8 +105,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             onTap: () => setState(() => selected = station),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              width: isSelected ? 54 : 44,
-              height: isSelected ? 54 : 44,
+              width: isSelected ? 48 : 34,
+              height: isSelected ? 48 : 34,
               decoration: BoxDecoration(
                 color: station.available ? colors.primary : colors.error,
                 shape: BoxShape.circle,
@@ -122,6 +121,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
               child: Icon(
                 station.isFast ? Icons.bolt : Icons.ev_station,
+                size: isSelected ? 24 : 18,
                 color: station.available ? colors.onPrimary : colors.onError,
               ),
             ),
@@ -166,12 +166,12 @@ class _SelectedStationCard extends StatelessWidget {
                   Text(
                     station.name,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${station.powerKw} kW • ${station.availableConnectors}/${station.totalConnectors} available • ${station.distanceKm.toStringAsFixed(1)} km',
+                    '${station.city}, ${station.state} • PIN ${station.postalCode} • ${station.powerKw} kW',
                     maxLines: 2,
                   ),
                 ],

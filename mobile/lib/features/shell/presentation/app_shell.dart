@@ -179,7 +179,7 @@ class _DesktopNavigation extends StatelessWidget {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              '8 stations nearby',
+                              'India-wide demo coverage',
                               style: TextStyle(
                                 color: Color(0xFF9FB7AD),
                                 fontSize: 11,
