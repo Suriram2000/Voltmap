@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/charging_receipt.dart';
 import '../models/saved_trip.dart';
 
 final appStateProvider = ChangeNotifierProvider<AppState>((ref) {
@@ -15,6 +16,7 @@ final appStateProvider = ChangeNotifierProvider<AppState>((ref) {
 class AppState extends ChangeNotifier {
   static const _favoritesKey = 'voltmap_favorites';
   static const _tripsKey = 'voltmap_saved_trips';
+  static const _receiptsKey = 'voltmap_charging_receipts';
   static const _darkModeKey = 'voltmap_dark_mode';
   static const _notificationsKey = 'voltmap_notifications';
   static const _nameKey = 'voltmap_profile_name';
@@ -33,6 +35,7 @@ class AppState extends ChangeNotifier {
   double vehicleRangeKm = 325;
   final Set<String> favoriteStationIds = {};
   final List<SavedTrip> savedTrips = [];
+  final List<ChargingReceipt> chargingReceipts = [];
 
   Future<void> load() async {
     try {
@@ -56,6 +59,18 @@ class AppState extends ChangeNotifier {
           ..addAll(
             decoded.map(
               (item) => SavedTrip.fromJson(item as Map<String, dynamic>),
+            ),
+          );
+      }
+
+      final receiptJson = preferences.getString(_receiptsKey);
+      if (receiptJson != null) {
+        final decoded = jsonDecode(receiptJson) as List<dynamic>;
+        chargingReceipts
+          ..clear()
+          ..addAll(
+            decoded.map(
+              (item) => ChargingReceipt.fromJson(item as Map<String, dynamic>),
             ),
           );
       }
@@ -91,6 +106,16 @@ class AppState extends ChangeNotifier {
     savedTrips.removeWhere((trip) => trip.id == tripId);
     notifyListeners();
     await _persistTrips();
+  }
+
+  Future<void> saveChargingReceipt(ChargingReceipt receipt) async {
+    chargingReceipts.removeWhere((saved) => saved.id == receipt.id);
+    chargingReceipts.insert(0, receipt);
+    if (chargingReceipts.length > 25) {
+      chargingReceipts.removeRange(25, chargingReceipts.length);
+    }
+    notifyListeners();
+    await _persistReceipts();
   }
 
   Future<void> updateProfile({
@@ -132,5 +157,18 @@ class AppState extends ChangeNotifier {
       savedTrips.map((trip) => trip.toJson()).toList(growable: false),
     );
     await _preferences?.setString(_tripsKey, encoded);
+  }
+
+  Future<void> _persistReceipts() async {
+    final encoded = jsonEncode(
+      chargingReceipts
+          .map((receipt) => receipt.toJson())
+          .toList(growable: false),
+    );
+    try {
+      await _preferences?.setString(_receiptsKey, encoded);
+    } catch (_) {
+      // Keep the in-memory receipt if browser storage is unavailable.
+    }
   }
 }
