@@ -37,13 +37,19 @@ class PaymentHistoryScreen extends ConsumerWidget {
                 ),
               ),
             )
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: receipts.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                return _ReceiptCard(receipt: receipts[index]);
-              },
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 920),
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
+                  itemCount: receipts.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    return _ReceiptCard(receipt: receipts[index]);
+                  },
+                ),
+              ),
             ),
     );
   }
