@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voltmap/app/voltmap_app.dart';
+import 'package:voltmap/features/discovery/data/sample_stations.dart';
+import 'package:voltmap/features/discovery/presentation/station_details_screen.dart';
+import 'package:voltmap/features/payments/presentation/charging_checkout_screen.dart';
 
 void main() {
   setUp(() {
@@ -53,4 +56,119 @@ void main() {
     expect(find.textContaining('Estimated energy:'), findsOneWidget);
     expect(find.text('Save this trip'), findsOneWidget);
   });
+
+  testWidgets('UPI checkout saves a receipt and starts charging', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: StationDetailsScreen(station: sampleStations.first),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('openCheckoutButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Charging checkout'), findsOneWidget);
+    expect(find.text('Credit / debit card'), findsOneWidget);
+    expect(find.text('VoltMap wallet'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('upiIdField')), 'driver@upi');
+    await tester.tap(find.byKey(const Key('payButton')));
+    await tester.pump();
+    expect(find.text('Processing securely…'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Payment successful'), findsOneWidget);
+    expect(find.textContaining('UPI dr••@upi'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('startChargingButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Charging session started'), findsOneWidget);
+    expect(find.textContaining('Receipt: VM-'), findsOneWidget);
+  });
+
+  testWidgets('card checkout validates fields and accepts a test card', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: ChargingCheckoutScreen(station: sampleStations.first),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final cardOption = find.byKey(const Key('paymentMethod_card'));
+    await tester.ensureVisible(cardOption);
+    await tester.pumpAndSettle();
+    await tester.tap(cardOption);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('payButton')));
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const Key('cardholderField')));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter the cardholder name'), findsOneWidget);
+    expect(find.text('Enter a valid 16-digit test card'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const Key('cardholderField')));
+    await tester.enterText(
+      find.byKey(const Key('cardholderField')),
+      'Test Driver',
+    );
+    await tester.ensureVisible(find.byKey(const Key('cardNumberField')));
+    await tester.enterText(
+      find.byKey(const Key('cardNumberField')),
+      '4242424242424242',
+    );
+    await tester.ensureVisible(find.byKey(const Key('expiryField')));
+    await tester.enterText(find.byKey(const Key('expiryField')), '1230');
+    await tester.enterText(find.byKey(const Key('cvvField')), '123');
+    await tester.tap(find.byKey(const Key('payButton')));
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Payment successful'), findsOneWidget);
+    expect(find.text('Card ending 4242'), findsOneWidget);
+  });
+
+  testWidgets('wallet checkout completes without payment credentials', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: ChargingCheckoutScreen(station: sampleStations.first),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final walletOption = find.byKey(const Key('paymentMethod_wallet'));
+    await tester.ensureVisible(walletOption);
+    await tester.pumpAndSettle();
+    await tester.tap(walletOption);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Sandbox balance is unlimited'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('payButton')));
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Payment successful'), findsOneWidget);
+    expect(find.text('VoltMap demo wallet'), findsOneWidget);
+  });
+}
+
+void _useDesktopViewport(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1200, 900);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
 }
