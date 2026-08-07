@@ -223,7 +223,7 @@ class ProfileScreen extends ConsumerWidget {
                       leading: Icon(Icons.info_outline),
                       title: Text('VoltMap demo'),
                       subtitle: Text(
-                        'Premium browser build • Version 1.6.0',
+                        'Premium browser build • Version 1.7.0',
                       ),
                     ),
                   ],

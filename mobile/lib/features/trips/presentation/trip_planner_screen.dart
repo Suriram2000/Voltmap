@@ -1,12 +1,23 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../shared/models/place_suggestion.dart';
 import '../../../shared/models/saved_trip.dart';
+import '../../../shared/services/place_search_service.dart';
 import '../../../shared/state/app_state.dart';
+import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../discovery/data/sample_stations.dart';
 
 class TripPlannerScreen extends ConsumerStatefulWidget {
-  const TripPlannerScreen({super.key});
+  const TripPlannerScreen({
+    super.key,
+    this.searchService = const PlaceSearchService(),
+  });
+
+  final PlaceSearchService searchService;
 
   @override
   ConsumerState<TripPlannerScreen> createState() => _TripPlannerScreenState();
@@ -17,6 +28,14 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
     text: 'Hitech City, Hyderabad',
   );
   final destinationController = TextEditingController();
+  PlaceSuggestion? originPlace = const PlaceSuggestion(
+    primaryText: 'Hitech City',
+    secondaryText: 'Hyderabad, Telangana, India',
+    latitude: 17.4504,
+    longitude: 78.3808,
+    type: 'locality',
+  );
+  PlaceSuggestion? destinationPlace;
   double rangeKm = 325;
   _RoutePlan? route;
 
@@ -49,7 +68,7 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'VoltMap estimates range and adds available charging stops using the demo network.',
+                'Search real places across India, estimate range, and add charging stops from the demo network.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 18),
@@ -58,24 +77,38 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                   padding: const EdgeInsets.all(18),
                   child: Column(
                     children: [
-                      TextField(
+                      LocationAutocompleteField(
                         controller: originController,
+                        label: 'Starting point',
+                        hint: 'Search any city, area, address, or PIN',
+                        prefixIcon: Icons.my_location,
+                        searchService: widget.searchService,
+                        onSelected: (place) => originPlace = place,
                         textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Starting point',
-                          prefixIcon: Icon(Icons.my_location),
-                        ),
                       ),
                       const SizedBox(height: 14),
-                      TextField(
+                      LocationAutocompleteField(
                         controller: destinationController,
+                        label: 'Destination',
+                        hint: 'Try “ban” for Bengaluru and more places',
+                        prefixIcon: Icons.flag,
+                        searchService: widget.searchService,
+                        onSelected: (place) => destinationPlace = place,
                         textInputAction: TextInputAction.done,
                         onSubmitted: (_) => _planRoute(),
-                        decoration: const InputDecoration(
-                          labelText: 'Destination',
-                          hintText: 'For example: Vijayawada',
-                          prefixIcon: Icon(Icons.flag),
-                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Row(
+                        children: [
+                          Icon(Icons.public_rounded, size: 16),
+                          SizedBox(width: 7),
+                          Expanded(
+                            child: Text(
+                              'Type 2+ letters for India-wide city, locality, address, and PIN suggestions.',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 18),
                       Row(
@@ -117,7 +150,11 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
               ),
               if (route != null) ...[
                 const SizedBox(height: 18),
-                _RouteResult(route: route!, onSave: () => _saveRoute(appState)),
+                _RouteResult(
+                  route: route!,
+                  onSave: () => _saveRoute(appState),
+                  onOpenDirections: _openLiveRoute,
+                ),
               ],
               const SizedBox(height: 28),
               Row(
@@ -167,6 +204,7 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
   }
 
   void _planRoute() {
+    FocusScope.of(context).unfocus();
     final origin = originController.text.trim();
     final destination = destinationController.text.trim();
     if (origin.isEmpty || destination.isEmpty) {
@@ -178,17 +216,17 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
       return;
     }
 
-    final seed = origin.codeUnits.fold<int>(0, (sum, unit) => sum + unit) +
-        destination.codeUnits.fold<int>(0, (sum, unit) => sum + unit);
-    final distance = 70.0 + (seed % 420);
+    final hasCoordinates = originPlace != null && destinationPlace != null;
+    final distance = hasCoordinates
+        ? _estimatedRoadDistance(originPlace!, destinationPlace!)
+        : _fallbackDistance(origin, destination);
     final safeLegDistance = rangeKm * 0.72;
     final legCount = (distance / safeLegDistance).ceil();
     final stopCount = legCount > 1 ? legCount - 1 : 0;
-    final availableStations =
-        sampleStations.where((station) => station.available).toList();
-    final stopIds = List<String>.generate(
-      stopCount,
-      (index) => availableStations[index % availableStations.length].id,
+    final stopIds = _selectChargingStops(
+      stopCount: stopCount,
+      origin: originPlace,
+      destination: destinationPlace,
     );
     final driveMinutes = (distance / 65 * 60).round();
 
@@ -200,8 +238,115 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
         estimatedMinutes: driveMinutes + stopCount * 25,
         energyKwh: distance * 0.16,
         stopStationIds: stopIds,
+        locationBased: hasCoordinates,
       );
     });
+  }
+
+  double _fallbackDistance(String origin, String destination) {
+    final seed = origin.codeUnits.fold<int>(0, (sum, unit) => sum + unit) +
+        destination.codeUnits.fold<int>(0, (sum, unit) => sum + unit);
+    return 70.0 + (seed % 420);
+  }
+
+  double _estimatedRoadDistance(
+    PlaceSuggestion origin,
+    PlaceSuggestion destination,
+  ) {
+    return math.max(
+      1,
+      _straightLineDistance(
+            origin.latitude,
+            origin.longitude,
+            destination.latitude,
+            destination.longitude,
+          ) *
+          1.22,
+    );
+  }
+
+  List<String> _selectChargingStops({
+    required int stopCount,
+    required PlaceSuggestion? origin,
+    required PlaceSuggestion? destination,
+  }) {
+    if (stopCount == 0) return const [];
+    final availableStations =
+        sampleStations.where((station) => station.available).toList();
+    if (origin == null || destination == null) {
+      return List<String>.generate(
+        stopCount,
+        (index) => availableStations[index % availableStations.length].id,
+      );
+    }
+
+    final selected = <String>[];
+    for (var index = 0; index < stopCount; index++) {
+      final fraction = (index + 1) / (stopCount + 1);
+      final targetLatitude =
+          origin.latitude + (destination.latitude - origin.latitude) * fraction;
+      final targetLongitude = origin.longitude +
+          (destination.longitude - origin.longitude) * fraction;
+      final candidates = availableStations
+          .where((station) => !selected.contains(station.id))
+          .toList()
+        ..sort((left, right) {
+          final leftDistance = _straightLineDistance(
+            targetLatitude,
+            targetLongitude,
+            left.latitude,
+            left.longitude,
+          );
+          final rightDistance = _straightLineDistance(
+            targetLatitude,
+            targetLongitude,
+            right.latitude,
+            right.longitude,
+          );
+          return leftDistance.compareTo(rightDistance);
+        });
+      selected.add(
+          (candidates.isEmpty ? availableStations.first : candidates.first).id);
+    }
+    return selected;
+  }
+
+  double _straightLineDistance(
+    double originLatitudeDegrees,
+    double originLongitudeDegrees,
+    double destinationLatitudeDegrees,
+    double destinationLongitudeDegrees,
+  ) {
+    const earthRadiusKm = 6371.0;
+    final latitudeDelta =
+        _radians(destinationLatitudeDegrees - originLatitudeDegrees);
+    final longitudeDelta =
+        _radians(destinationLongitudeDegrees - originLongitudeDegrees);
+    final originLatitude = _radians(originLatitudeDegrees);
+    final destinationLatitude = _radians(destinationLatitudeDegrees);
+    final a = math.sin(latitudeDelta / 2) * math.sin(latitudeDelta / 2) +
+        math.cos(originLatitude) *
+            math.cos(destinationLatitude) *
+            math.sin(longitudeDelta / 2) *
+            math.sin(longitudeDelta / 2);
+    return earthRadiusKm * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+  }
+
+  double _radians(double degrees) => degrees * math.pi / 180;
+
+  Future<void> _openLiveRoute() async {
+    final url = Uri.https('www.google.com', '/maps/dir/', {
+      'api': '1',
+      'origin': originController.text.trim(),
+      'destination': destinationController.text.trim(),
+      'travelmode': 'driving',
+    });
+    final opened = await launchUrl(url, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open live directions.')),
+      );
+    }
   }
 
   void _saveRoute(AppState appState) {
@@ -223,10 +368,15 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
 }
 
 class _RouteResult extends StatelessWidget {
-  const _RouteResult({required this.route, required this.onSave});
+  const _RouteResult({
+    required this.route,
+    required this.onSave,
+    required this.onOpenDirections,
+  });
 
   final _RoutePlan route;
   final VoidCallback onSave;
+  final VoidCallback onOpenDirections;
 
   @override
   Widget build(BuildContext context) {
@@ -255,6 +405,12 @@ class _RouteResult extends StatelessWidget {
                       ),
                       Text(
                         '${route.distanceKm.toStringAsFixed(0)} km • ${hours}h ${minutes}m',
+                      ),
+                      Text(
+                        route.locationBased
+                            ? 'Coordinate-based road estimate'
+                            : 'Demo estimate — select a search suggestion for location-based results',
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
                   ),
@@ -292,17 +448,30 @@ class _RouteResult extends StatelessWidget {
                     stationById(route.stopStationIds[index])?.name ??
                         'Charging stop',
                   ),
-                  subtitle: const Text('Suggested 25 minute charging break'),
+                  subtitle: Text(
+                    route.locationBased
+                        ? 'Nearest available demo charger to this route segment'
+                        : 'Suggested 25 minute demo charging break',
+                  ),
                 ),
             ],
             const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: onSave,
-                icon: const Icon(Icons.bookmark_add_outlined),
-                label: const Text('Save this trip'),
-              ),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: onSave,
+                  icon: const Icon(Icons.bookmark_add_outlined),
+                  label: const Text('Save this trip'),
+                ),
+                FilledButton.icon(
+                  key: const Key('openLiveDirectionsButton'),
+                  onPressed: onOpenDirections,
+                  icon: const Icon(Icons.open_in_new_rounded),
+                  label: const Text('Open live directions'),
+                ),
+              ],
             ),
           ],
         ),
@@ -344,6 +513,7 @@ class _RoutePlan {
     required this.estimatedMinutes,
     required this.energyKwh,
     required this.stopStationIds,
+    required this.locationBased,
   });
 
   final String origin;
@@ -352,4 +522,5 @@ class _RoutePlan {
   final int estimatedMinutes;
   final double energyKwh;
   final List<String> stopStationIds;
+  final bool locationBased;
 }
