@@ -10,6 +10,86 @@ Use this document on the other computer to continue the same project.
 - Default branch: `main`
 - GitHub account: `Suriram2000`
 
+## Prompt and work history
+
+This section preserves the user requests that drove the project and the work completed in response. Original wording is retained where it was available in the Codex task history. Older compacted turns are summarized rather than presented as an exact transcript.
+
+### Project publishing and continuation requests
+
+1. **Prompt:** â€œvoltmap checkin alcode and give me U readyâ€
+   - Identified the connected GitHub account as `Suriram2000`.
+   - Located `Suriram2000/Voltmap`, created a dedicated Codex task, and established the repository as the source of truth.
+
+2. **Prompt:** â€œcheck and give publish url for testingâ€
+   - Added Flutter web hosting support and a GitHub Pages deployment workflow.
+   - Published the permanent test site at https://suriram2000.github.io/Voltmap/.
+   - Verified the public site in a browser.
+
+3. **Prompt:** â€œwhy i'm not able to see projects for same account in other systemâ€
+   - Explained that GitHub repositories are account-accessible, while local Codex project folders must be cloned or opened separately on each computer.
+
+4. **Prompt:** â€œdocument i need this in other system so that other system contuniues from hereâ€
+   - Created this handoff document with setup steps and a continuation prompt.
+
+5. **Prompt:** â€œcheck inâ€
+   - Added the handoff document on branch `codex/add-handoff-document` in draft PR #11.
+
+6. **Prompt:** â€œalso include all my prompts work done by chatgptâ€
+   - Expanded the handoff with this prompt/work history for continuation on another computer.
+
+### Product and UI requests
+
+1. **Prompt:** â€œhow to test UI?â€
+   - Documented Flutter browser and Android test commands.
+   - Identified that the initial repository lacked generated web, Android, and iOS host projects.
+   - Later added the missing platform projects and automated build validation.
+
+2. **Summarized prompt:** Build a functional VoltMap application instead of placeholder screens.
+   - Added charger discovery, favorites, a custom interactive map, range-aware trip planning, saved trips, editable vehicle/profile settings, theme persistence, and an offline Hyderabad charger dataset.
+   - Added GitHub Pages build and deployment automation.
+   - Delivered this work through PR #1.
+
+3. **Summarized prompt:** Search chargers by PIN code and show postal codes.
+   - Added normalized PIN matching for forms such as `500081`, `500 081`, and `500-081`.
+   - Displayed PIN codes on charger cards and details.
+   - Added regression coverage and public browser validation.
+   - Delivered this work through PR #2.
+
+4. **Summarized prompt:** Improve the applicationâ€™s overall visual design and responsiveness.
+   - Added a premium EV-green design system, branded desktop navigation, polished mobile navigation, responsive discovery layouts, richer charger cards, and coordinated light/dark themes.
+   - Improved profile, trip, details, checkout, receipt, and favorites layouts.
+   - Verified desktop and 390Ã—844 mobile layouts with no browser console errors.
+   - Delivered this work through merged PR #5.
+
+5. **Original consolidated usability prompt:**
+
+   > â€œ1. ADD Small TAB for adding new charger or missing charger from public 2.login and signup for trips saving bills favorites best possible 3. non working charges clearly say in red not working or unavailable 4. zip or area should be correct when search 500079 which is south Hyderabad it looks for usa avoid also and depending on location tracking load zip or area automatically automatically 5. make it work flawless in android and apple and any browser and best improvement you like to add app can be user friendly and 6. when i type ben like google it shd get all areas in search dropdown like like googleâ€
+
+   Work completed:
+
+   - Added a compact **Add Charger** tab with validation, device-local pending history, and moderated GitHub submission.
+   - Kept public charger additions subject to review so unverified reports do not silently become official station data.
+   - Corrected India-only place behavior and mapped PIN `500079` to Karmanghat/Vaishalinagar in southeast Hyderabad.
+   - Added partial-area suggestions for searches such as `ben`, including Bengaluru-area results and live India-only Photon results.
+   - Added foreground, permission-controlled current-location detection using Geolocator; no background tracking was added.
+   - Added prominent red **NOT WORKING / UNAVAILABLE** states and blocked charging actions for unavailable stations.
+   - Expanded the profile workspace summary for favorites, trips, bills, and charger reports.
+   - Added complete Android and iOS host projects and mobile CI.
+   - Hardened all six tabs for phone-sized screens.
+   - Added or updated automated tests, reaching 13 passing tests.
+   - Built web, Android APK, and unsigned iOS release outputs successfully.
+   - Deployed and browser-tested the final result through merged PR #10.
+
+### Delivery timeline
+
+- PR #1: integrated functional offline-first application and initial Pages deployment.
+- PR #2: normalized PIN-code charger search.
+- PR #5: premium responsive UI redesign.
+- PR #10: charger reporting, India location intelligence, unavailable-state safety, geolocation, and Android/iOS hardening.
+- PR #11: this cross-system handoff document and prompt/work record.
+
+The Git history and pull requests remain the authoritative detailed record of exact file changes, commits, reviews, and CI runs.
+
 ## Current status
 
 VoltMap is a Flutter EV-charging application. The latest changes were implemented, reviewed, merged, deployed to GitHub Pages, and tested in a live browser.
