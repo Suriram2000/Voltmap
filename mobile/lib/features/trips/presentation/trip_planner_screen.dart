@@ -223,16 +223,20 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
     final safeLegDistance = rangeKm * 0.72;
     final legCount = (distance / safeLegDistance).ceil();
     final stopCount = legCount > 1 ? legCount - 1 : 0;
+    final corridorKm = _routeCorridorKm(distance);
+    final routeChargers = _chargersForRoute(
+      origin: originPlace,
+      destination: destinationPlace,
+      corridorKm: corridorKm,
+    );
     final stopIds = _selectChargingStops(
       stopCount: stopCount,
       origin: originPlace,
       destination: destinationPlace,
+      eligibleStationIds:
+          routeChargers.map((charger) => charger.stationId).toSet(),
     );
     final driveMinutes = (distance / 65 * 60).round();
-    final routeChargers = _chargersForRoute(
-      origin: originPlace,
-      destination: destinationPlace,
-    );
 
     setState(() {
       route = _RoutePlan(
@@ -242,7 +246,9 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
         estimatedMinutes: driveMinutes + stopCount * 25,
         energyKwh: distance * 0.16,
         stopStationIds: stopIds,
+        requiredStopCount: stopCount,
         routeChargers: routeChargers,
+        corridorKm: corridorKm,
         locationBased: hasCoordinates,
       );
     });
@@ -251,11 +257,10 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
   List<_RouteCharger> _chargersForRoute({
     required PlaceSuggestion? origin,
     required PlaceSuggestion? destination,
+    required double corridorKm,
   }) {
     if (origin == null || destination == null) {
-      return sampleStations
-          .map((station) => _RouteCharger(stationId: station.id))
-          .toList(growable: false);
+      return const [];
     }
 
     final chargers = sampleStations.map((station) {
@@ -269,11 +274,50 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
           destination.latitude,
           destination.longitude,
         ),
+        routeProgress: _routeProgress(
+          station.latitude,
+          station.longitude,
+          origin.latitude,
+          origin.longitude,
+          destination.latitude,
+          destination.longitude,
+        ),
       );
-    }).toList();
-    chargers.sort((left, right) =>
-        left.distanceFromRouteKm!.compareTo(right.distanceFromRouteKm!));
+    }).where((charger) => charger.distanceFromRouteKm! <= corridorKm).toList();
+    chargers.sort((left, right) {
+      final progressComparison =
+          left.routeProgress!.compareTo(right.routeProgress!);
+      return progressComparison != 0
+          ? progressComparison
+          : left.distanceFromRouteKm!.compareTo(right.distanceFromRouteKm!);
+    });
     return chargers;
+  }
+
+  double _routeCorridorKm(double routeDistanceKm) {
+    return (routeDistanceKm * 0.08).clamp(25.0, 75.0).toDouble();
+  }
+
+  double _routeProgress(
+    double stationLatitude,
+    double stationLongitude,
+    double originLatitude,
+    double originLongitude,
+    double destinationLatitude,
+    double destinationLongitude,
+  ) {
+    final latitudeScale = math.cos(
+      _radians((originLatitude + destinationLatitude) / 2),
+    );
+    final routeX = (destinationLongitude - originLongitude) * latitudeScale;
+    final routeY = destinationLatitude - originLatitude;
+    final stationX = (stationLongitude - originLongitude) * latitudeScale;
+    final stationY = stationLatitude - originLatitude;
+    final routeLengthSquared = routeX * routeX + routeY * routeY;
+    if (routeLengthSquared == 0) return 0;
+    return ((stationX * routeX + stationY * routeY) / routeLengthSquared)
+        .clamp(0.0, 1.0)
+        .toDouble();
   }
 
   double _distanceFromRoute(
@@ -335,15 +379,17 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
     required int stopCount,
     required PlaceSuggestion? origin,
     required PlaceSuggestion? destination,
+    required Set<String> eligibleStationIds,
   }) {
     if (stopCount == 0) return const [];
-    final availableStations =
-        sampleStations.where((station) => station.available).toList();
-    if (origin == null || destination == null) {
-      return List<String>.generate(
-        stopCount,
-        (index) => availableStations[index % availableStations.length].id,
-      );
+    final availableStations = sampleStations
+        .where((station) =>
+            station.available && eligibleStationIds.contains(station.id))
+        .toList();
+    if (origin == null ||
+        destination == null ||
+        availableStations.isEmpty) {
+      return const [];
     }
 
     final selected = <String>[];
@@ -371,8 +417,8 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
           );
           return leftDistance.compareTo(rightDistance);
         });
-      selected.add(
-          (candidates.isEmpty ? availableStations.first : candidates.first).id);
+      if (candidates.isEmpty) break;
+      selected.add(candidates.first.id);
     }
     return selected;
   }
@@ -491,13 +537,25 @@ class _RouteResult extends StatelessWidget {
             const Divider(height: 28),
             Text('Estimated energy: ${route.energyKwh.toStringAsFixed(1)} kWh'),
             const SizedBox(height: 12),
-            if (route.stopStationIds.isEmpty)
+            if (route.requiredStopCount == 0)
               const ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(Icons.check_circle),
                 title: Text('No charging stop needed'),
                 subtitle: Text(
                   'This route fits within the selected safe range.',
+                ),
+              )
+            else if (route.stopStationIds.isEmpty)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  Icons.warning_amber_rounded,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                title: const Text('No demo charger coverage on this route'),
+                subtitle: const Text(
+                  'Open live directions and verify charging options before travelling.',
                 ),
               )
             else ...[
@@ -520,11 +578,23 @@ class _RouteResult extends StatelessWidget {
                         : 'Suggested 25 minute demo charging break',
                   ),
                 ),
+              if (route.stopStationIds.length < route.requiredStopCount)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    Icons.warning_amber_rounded,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  title: const Text('Limited demo coverage'),
+                  subtitle: Text(
+                    'This trip needs about ${route.requiredStopCount} stops, but only ${route.stopStationIds.length} suitable demo charger${route.stopStationIds.length == 1 ? '' : 's'} were found on the route.',
+                  ),
+                ),
             ],
             const Divider(height: 30),
             Text(
-              'All chargers for this route (${route.routeChargers.length})',
-              key: const Key('allRouteChargersHeading'),
+              'Chargers along this route (${route.routeChargers.length})',
+              key: const Key('routeChargersHeading'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -532,18 +602,28 @@ class _RouteResult extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               route.locationBased
-                  ? 'All demo chargers, ordered by distance from the planned route.'
-                  : 'All demo chargers. Select origin and destination suggestions to order them by route proximity.',
+                  ? 'Demo chargers within ${route.corridorKm.toStringAsFixed(0)} km of the route, ordered from origin to destination.'
+                  : 'Select origin and destination suggestions to find chargers along the route.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 8),
-            for (final routeCharger in route.routeChargers)
-              _RouteChargerTile(
-                routeCharger: routeCharger,
-                recommended: route.stopStationIds.contains(
-                  routeCharger.stationId,
+            if (route.routeChargers.isEmpty)
+              const ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.ev_station_outlined),
+                title: Text('No route chargers found'),
+                subtitle: Text(
+                  'Try another route or open live directions for current charging options.',
                 ),
-              ),
+              )
+            else
+              for (final routeCharger in route.routeChargers)
+                _RouteChargerTile(
+                  routeCharger: routeCharger,
+                  recommended: route.stopStationIds.contains(
+                    routeCharger.stationId,
+                  ),
+                ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 10,
@@ -654,7 +734,9 @@ class _RoutePlan {
     required this.estimatedMinutes,
     required this.energyKwh,
     required this.stopStationIds,
+    required this.requiredStopCount,
     required this.routeChargers,
+    required this.corridorKm,
     required this.locationBased,
   });
 
@@ -664,7 +746,9 @@ class _RoutePlan {
   final int estimatedMinutes;
   final double energyKwh;
   final List<String> stopStationIds;
+  final int requiredStopCount;
   final List<_RouteCharger> routeChargers;
+  final double corridorKm;
   final bool locationBased;
 }
 
@@ -672,8 +756,10 @@ class _RouteCharger {
   const _RouteCharger({
     required this.stationId,
     this.distanceFromRouteKm,
+    this.routeProgress,
   });
 
   final String stationId;
   final double? distanceFromRouteKm;
+  final double? routeProgress;
 }
