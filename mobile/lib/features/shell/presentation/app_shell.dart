@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../discovery/presentation/discovery_screen.dart';
@@ -7,15 +8,17 @@ import '../../favorites/presentation/favorites_screen.dart';
 import '../../map/presentation/map_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../trips/presentation/trip_planner_screen.dart';
+import '../../../shared/state/app_state.dart';
+import '../../../shared/widgets/registered_account_gate.dart';
 
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> {
   int index = 0;
 
   static const screens = [
@@ -105,7 +108,19 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  void _selectDestination(int value) => setState(() => index = value);
+  Future<void> _selectDestination(int value) async {
+    final appState = ref.read(appStateProvider);
+    final requiresRegisteredAccount = value == 2 || value == 3 || value == 4;
+    if (requiresRegisteredAccount &&
+        !await requireRegisteredAccount(
+          context,
+          appState,
+          destinations[value].label,
+        )) {
+      return;
+    }
+    if (mounted) setState(() => index = value);
+  }
 }
 
 class _DesktopNavigation extends StatelessWidget {

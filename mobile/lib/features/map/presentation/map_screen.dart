@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/models/charging_station.dart';
 import '../../../shared/state/app_state.dart';
+import '../../../shared/widgets/registered_account_gate.dart';
 import '../../discovery/data/sample_stations.dart';
 import '../../discovery/presentation/station_details_screen.dart';
 
@@ -62,7 +63,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 child: _SelectedStationCard(
                   station: selected,
                   isFavorite: appState.isFavorite(selected.id),
-                  onFavorite: () => appState.toggleFavorite(selected.id),
+                  onFavorite: () async {
+                    if (await requireRegisteredAccount(
+                      context,
+                      appState,
+                      'Favorites',
+                    )) {
+                      await appState.toggleFavorite(selected.id);
+                    }
+                  },
                   onDetails: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => StationDetailsScreen(station: selected),

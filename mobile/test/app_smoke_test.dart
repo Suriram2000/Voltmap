@@ -89,6 +89,29 @@ void main() {
     expect(stateChargerCoverage, hasLength(36));
   });
 
+  testWidgets('demo users are asked to sign up for personal features', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'voltmap_signed_in': true,
+      'voltmap_profile_name': 'VoltMap Demo Driver',
+      'voltmap_profile_email': 'demo@voltmap.in',
+    });
+    _useDesktopViewport(tester);
+
+    await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Trips'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('signupRequiredDialog')), findsOneWidget);
+    expect(find.text('Sign up to use Trips'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('goToSignupButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Welcome back'), findsOneWidget);
+    expect(find.text('Sign up'), findsOneWidget);
+  });
+
   testWidgets('Trip search suggests India-wide places for partial text', (
     tester,
   ) async {

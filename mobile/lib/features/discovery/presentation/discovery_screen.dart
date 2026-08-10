@@ -8,6 +8,7 @@ import '../../../shared/models/charging_station.dart';
 import '../../../shared/models/place_suggestion.dart';
 import '../../../shared/services/place_search_service.dart';
 import '../../../shared/state/app_state.dart';
+import '../../../shared/widgets/registered_account_gate.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../data/sample_stations.dart';
 import '../data/national_charger_data.dart';
@@ -132,9 +133,17 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                                       isFavorite: appState.isFavorite(
                                         station.id,
                                       ),
-                                      onFavorite: () => appState.toggleFavorite(
-                                        station.id,
-                                      ),
+                                      onFavorite: () async {
+                                        if (await requireRegisteredAccount(
+                                          context,
+                                          appState,
+                                          'Favorites',
+                                        )) {
+                                          await appState.toggleFavorite(
+                                            station.id,
+                                          );
+                                        }
+                                      },
                                       onTap: () => _openDetails(station),
                                     ),
                                   ),

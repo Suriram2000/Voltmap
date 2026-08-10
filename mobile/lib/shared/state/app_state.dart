@@ -47,6 +47,11 @@ class AppState extends ChangeNotifier {
   final List<ChargingReceipt> chargingReceipts = [];
   final List<ChargerSubmission> chargerSubmissions = [];
 
+  bool get isDemoAccount =>
+      isSignedIn &&
+      !hasLocalAccount &&
+      userEmail.toLowerCase() == 'demo@voltmap.in';
+
   Future<void> load() async {
     try {
       _preferences = await SharedPreferences.getInstance();
