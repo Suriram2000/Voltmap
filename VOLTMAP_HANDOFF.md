@@ -5,7 +5,8 @@ Use this document on the other computer to continue the same project.
 ## Project links
 
 - GitHub repository: https://github.com/Suriram2000/Voltmap
-- Live test site: https://suriram2000.github.io/Voltmap/
+- Production site: https://voltmapev.com/
+- Legacy GitHub Pages URL: https://suriram2000.github.io/Voltmap/
 - Latest merged work: https://github.com/Suriram2000/Voltmap/pull/10
 - Default branch: `main`
 - GitHub account: `Suriram2000`
@@ -22,7 +23,7 @@ This section preserves the user requests that drove the project and the work com
 
 2. **Prompt:** â€œcheck and give publish url for testingâ€
    - Added Flutter web hosting support and a GitHub Pages deployment workflow.
-   - Published the permanent test site at https://suriram2000.github.io/Voltmap/.
+   - Published the original permanent test site at https://suriram2000.github.io/Voltmap/ and later moved production to https://voltmapev.com/.
    - Verified the public site in a browser.
 
 3. **Prompt:** â€œwhy i'm not able to see projects for same account in other systemâ€
@@ -146,7 +147,7 @@ https://github.com/Suriram2000/Voltmap.
 
 First read VOLTMAP_HANDOFF.md, inspect the repository and Git history, run
 git status, confirm the latest merged PR is #10, and verify the live site at
-https://suriram2000.github.io/Voltmap/. Preserve all existing functionality.
+https://voltmapev.com/. Preserve all existing functionality.
 
 Before changing code, run Flutter analysis and tests. Make new work on a
 separate codex/ branch, test web and applicable mobile builds, open a pull

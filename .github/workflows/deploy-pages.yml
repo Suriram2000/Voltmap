@@ -43,7 +43,11 @@ jobs:
 
       - name: Build Flutter web app
         working-directory: mobile
-        run: flutter build web --release --base-href "/Voltmap/"
+        run: flutter build web --release --base-href "/"
+
+      - name: Add custom domain marker
+        working-directory: mobile
+        run: echo "voltmapev.com" > build/web/CNAME
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
