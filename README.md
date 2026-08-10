@@ -2,6 +2,8 @@
 
 VoltMap is a polished, responsive Flutter web demo for discovering EV chargers, reviewing station details, saving favorites, planning range-aware trips, and managing a local driver account.
 
+Production site: [https://voltmapev.com](https://voltmapev.com)
+
 ## Working in the browser
 
 - Create a local Login/Signup account with a salted password hash, persisted session, and logout flow, or enter with the one-click demo account.
@@ -31,4 +33,4 @@ flutter test
 flutter run -d chrome
 ```
 
-GitHub Pages builds use `flutter build web --release --base-href "/Voltmap/"`.
+GitHub Pages builds use `flutter build web --release --base-href "/"` for the custom domain.
