@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/models/charging_receipt.dart';
 import '../../../shared/models/charging_station.dart';
 import '../../../shared/state/app_state.dart';
+import '../../../shared/widgets/registered_account_gate.dart';
 import '../../payments/presentation/charging_checkout_screen.dart';
 
 class StationDetailsScreen extends ConsumerWidget {
@@ -24,7 +25,15 @@ class StationDetailsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: isFavorite ? 'Remove from favorites' : 'Add to favorites',
-            onPressed: () => appState.toggleFavorite(station.id),
+            onPressed: () async {
+              if (await requireRegisteredAccount(
+                context,
+                appState,
+                'Favorites',
+              )) {
+                await appState.toggleFavorite(station.id);
+              }
+            },
             icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
           ),
         ],
