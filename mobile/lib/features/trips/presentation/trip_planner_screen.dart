@@ -229,6 +229,10 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
       destination: destinationPlace,
     );
     final driveMinutes = (distance / 65 * 60).round();
+    final routeChargers = _chargersForRoute(
+      origin: originPlace,
+      destination: destinationPlace,
+    );
 
     setState(() {
       route = _RoutePlan(
@@ -238,9 +242,71 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
         estimatedMinutes: driveMinutes + stopCount * 25,
         energyKwh: distance * 0.16,
         stopStationIds: stopIds,
+        routeChargers: routeChargers,
         locationBased: hasCoordinates,
       );
     });
+  }
+
+  List<_RouteCharger> _chargersForRoute({
+    required PlaceSuggestion? origin,
+    required PlaceSuggestion? destination,
+  }) {
+    if (origin == null || destination == null) {
+      return sampleStations
+          .map((station) => _RouteCharger(stationId: station.id))
+          .toList(growable: false);
+    }
+
+    final chargers = sampleStations.map((station) {
+      return _RouteCharger(
+        stationId: station.id,
+        distanceFromRouteKm: _distanceFromRoute(
+          station.latitude,
+          station.longitude,
+          origin.latitude,
+          origin.longitude,
+          destination.latitude,
+          destination.longitude,
+        ),
+      );
+    }).toList();
+    chargers.sort((left, right) =>
+        left.distanceFromRouteKm!.compareTo(right.distanceFromRouteKm!));
+    return chargers;
+  }
+
+  double _distanceFromRoute(
+    double stationLatitude,
+    double stationLongitude,
+    double originLatitude,
+    double originLongitude,
+    double destinationLatitude,
+    double destinationLongitude,
+  ) {
+    final latitudeScale = math.cos(
+      _radians((originLatitude + destinationLatitude) / 2),
+    );
+    final routeX = (destinationLongitude - originLongitude) * latitudeScale;
+    final routeY = destinationLatitude - originLatitude;
+    final stationX = (stationLongitude - originLongitude) * latitudeScale;
+    final stationY = stationLatitude - originLatitude;
+    final routeLengthSquared = routeX * routeX + routeY * routeY;
+    final fraction = routeLengthSquared == 0
+        ? 0.0
+        : ((stationX * routeX + stationY * routeY) / routeLengthSquared)
+            .clamp(0.0, 1.0)
+            .toDouble();
+    final nearestLatitude =
+        originLatitude + (destinationLatitude - originLatitude) * fraction;
+    final nearestLongitude =
+        originLongitude + (destinationLongitude - originLongitude) * fraction;
+    return _straightLineDistance(
+      stationLatitude,
+      stationLongitude,
+      nearestLatitude,
+      nearestLongitude,
+    );
   }
 
   double _fallbackDistance(String origin, String destination) {
@@ -455,6 +521,29 @@ class _RouteResult extends StatelessWidget {
                   ),
                 ),
             ],
+            const Divider(height: 30),
+            Text(
+              'All chargers for this route (${route.routeChargers.length})',
+              key: const Key('allRouteChargersHeading'),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              route.locationBased
+                  ? 'All demo chargers, ordered by distance from the planned route.'
+                  : 'All demo chargers. Select origin and destination suggestions to order them by route proximity.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            for (final routeCharger in route.routeChargers)
+              _RouteChargerTile(
+                routeCharger: routeCharger,
+                recommended: route.stopStationIds.contains(
+                  routeCharger.stationId,
+                ),
+              ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 10,
@@ -505,6 +594,58 @@ class _SavedTripCard extends StatelessWidget {
   }
 }
 
+class _RouteChargerTile extends StatelessWidget {
+  const _RouteChargerTile({
+    required this.routeCharger,
+    required this.recommended,
+  });
+
+  final _RouteCharger routeCharger;
+  final bool recommended;
+
+  @override
+  Widget build(BuildContext context) {
+    final station = stationById(routeCharger.stationId)!;
+    final statusColor = station.available
+        ? Theme.of(context).colorScheme.primary
+        : Theme.of(context).colorScheme.error;
+    return ListTile(
+      key: Key('routeCharger_${station.id}'),
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        station.available ? Icons.ev_station_rounded : Icons.block_rounded,
+        color: statusColor,
+      ),
+      title: Text(station.name),
+      subtitle: Text(
+        '${station.formattedAddress}\n'
+        '${station.powerKw} kW • ${station.connectorTypes.join(', ')}'
+        '${routeCharger.distanceFromRouteKm == null ? '' : ' • ${routeCharger.distanceFromRouteKm!.toStringAsFixed(0)} km from route'}',
+      ),
+      isThreeLine: true,
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            station.available ? 'AVAILABLE' : 'UNAVAILABLE',
+            style: TextStyle(
+              color: statusColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (recommended)
+            const Text(
+              'RECOMMENDED',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RoutePlan {
   const _RoutePlan({
     required this.origin,
@@ -513,6 +654,7 @@ class _RoutePlan {
     required this.estimatedMinutes,
     required this.energyKwh,
     required this.stopStationIds,
+    required this.routeChargers,
     required this.locationBased,
   });
 
@@ -522,5 +664,16 @@ class _RoutePlan {
   final int estimatedMinutes;
   final double energyKwh;
   final List<String> stopStationIds;
+  final List<_RouteCharger> routeChargers;
   final bool locationBased;
+}
+
+class _RouteCharger {
+  const _RouteCharger({
+    required this.stationId,
+    this.distanceFromRouteKm,
+  });
+
+  final String stationId;
+  final double? distanceFromRouteKm;
 }
