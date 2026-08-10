@@ -117,14 +117,12 @@ void main() {
     expect(find.text('Coordinate-based road estimate'), findsOneWidget);
     expect(find.text('Open live directions'), findsOneWidget);
     expect(find.textContaining('Estimated energy:'), findsOneWidget);
-    expect(
-      find.text('All chargers for this route (${sampleStations.length})'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Chargers along this route ('), findsOneWidget);
     expect(
       find.byKey(Key('routeCharger_${sampleStations.first.id}')),
       findsOneWidget,
     );
+    expect(find.text('Statiq Connaught Place'), findsNothing);
   });
 
   testWidgets('search, favorites, navigation, and trip planning work', (
