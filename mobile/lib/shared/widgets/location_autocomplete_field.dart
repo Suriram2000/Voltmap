@@ -82,15 +82,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
             labelText: widget.label,
             hintText: widget.hint,
             prefixIcon: Icon(widget.prefixIcon),
-            suffixIcon: _searching
-                ? const Padding(
-                    padding: EdgeInsets.all(15),
-                    child: SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                : widget.suffixIcon,
+            suffixIcon: widget.suffixIcon,
           ),
         ),
         if (canShow)

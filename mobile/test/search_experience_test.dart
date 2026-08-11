@@ -29,7 +29,7 @@ void main() {
     expect(uri.queryParameters['zoom'], '13');
   });
 
-  testWidgets('PIN search opens live charger results inside the app', (
+  testWidgets('selecting a PIN opens live charger results immediately', (
     tester,
   ) async {
     _useDesktopViewport(tester);
@@ -44,13 +44,6 @@ void main() {
     );
     await tester.pump();
     await tester.tap(find.text('Karmanghat / Vaishalinagar - 500079'));
-    await tester.pump();
-    await tester.drag(
-      find.byKey(const PageStorageKey('discoveryScrollView')),
-      const Offset(0, -650),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('liveNationalSearchButton')));
     await tester.pumpAndSettle();
 
     expect(
@@ -63,6 +56,34 @@ void main() {
       find.byKey(const Key('verifyLiveResultsOnGoogleButton')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('the visible Search action opens live PIN charger results', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: DiscoveryScreen())),
+    );
+    await tester.pump();
+
+    await tester.enterText(
+      find.byKey(const Key('locationField_Search across India')),
+      '500079',
+    );
+    await tester.pump();
+    expect(
+      find.byKey(const Key('submitLiveChargerSearchButton')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('submitLiveChargerSearchButton')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Live chargers near Karmanghat / Vaishalinagar - 500079'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('liveChargerPlatformView')), findsOneWidget);
   });
 
   testWidgets('discovery lazily builds cards and dismisses input on drag', (
