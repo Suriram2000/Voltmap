@@ -149,7 +149,17 @@ void main() {
     await tester.ensureVisible(find.text('Plan route'));
     await tester.tap(find.text('Plan route'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Save this trip'), 300);
+    final tripScrollable = find
+        .descendant(
+          of: find.byType(TripPlannerScreen),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    await tester.scrollUntilVisible(
+      find.text('Save this trip'),
+      300,
+      scrollable: tripScrollable,
+    );
     await tester.tap(find.text('Save this trip'));
     await tester.pumpAndSettle();
 
