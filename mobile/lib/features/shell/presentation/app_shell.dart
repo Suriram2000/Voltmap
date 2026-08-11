@@ -37,7 +37,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     _Destination('Trips', Icons.route_outlined, Icons.route),
     _Destination('Favorites', Icons.favorite_border, Icons.favorite),
     _Destination(
-      'Add',
+      'Addstation',
       Icons.add_location_alt_outlined,
       Icons.add_location_alt_rounded,
     ),
@@ -116,7 +116,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   Future<void> _selectDestination(int value) async {
     final appState = ref.read(appStateProvider);
-    final requiresRegisteredAccount = value == 3 || value == 4;
+    final requiresRegisteredAccount = value == 3;
     if (requiresRegisteredAccount &&
         !await requireRegisteredAccount(
           context,

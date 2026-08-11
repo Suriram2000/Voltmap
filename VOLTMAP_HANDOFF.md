@@ -93,14 +93,14 @@ The Git history and pull requests remain the authoritative detailed record of ex
 
 ## Current status
 
-VoltMapEV is a Flutter EV-charging application published at https://voltmapev.com/. The latest changes were implemented through pull request #16 and validated with GitHub Actions before deployment.
+VoltMapEV is a Flutter EV-charging application published at https://voltmapev.com/. The latest deployed search release was implemented through pull request #24 and validated with GitHub Actions before deployment.
 
 Completed functionality includes:
 
 - Responsive web, Android, and iOS project support.
 - Six navigation tabs hardened for phone-sized screens.
-- Compact **Add Charger** tab with validation.
-- Charger reports saved locally as pending and submitted through a moderated GitHub issue flow.
+- Public **Addstation** tab with validation and no VoltMapEV signup gate.
+- Charger reports saved locally first without signup; sending the prefilled report through the moderated GitHub issue flow is optional.
 - India-only place and PIN-code search.
 - PIN `500079` resolves to the Karmanghat/Vaishalinagar area of southeast Hyderabad.
 - Partial searches such as `ben` offer Bengaluru-area suggestions and live Photon results.
@@ -110,13 +110,13 @@ Completed functionality includes:
 - Premium responsive interface with coordinated light and dark themes.
 - Customer-facing website branding and metadata use **VoltMapEV**.
 - Charger lookup, map browsing, charger details, and trip planning are public without signup.
-- Email-or-phone signup is requested only for favorites, saved trips, charger reports, payments, and personal history.
+- Email-or-phone signup is requested only for favorites, saved trips, payments, and personal history.
 - An About & Contact page publishes `skotla100@gmail.com` and `+919392788714`, with a persistent 2026 copyright footer.
 - `skotla100@gmail.com` alone receives the admin dashboard for browser-local account, activity, charger-report, and demo-payment summaries. Credential hashes and payment credentials are never displayed.
 
-### Pending local release (10 August 2026)
+### Search and launch release (PR #24, 11 August 2026)
 
-The current working tree contains a tested release that has not yet been pushed or deployed. It adds:
+The deployed release adds:
 
 - smoother iOS/macOS bounce physics and touch, trackpad, stylus, and mouse drag support;
 - lazy rendering for the unfiltered 45-card discovery grid, avoiding a full card rebuild during search;
@@ -127,12 +127,12 @@ The current working tree contains a tested release that has not yet been pushed 
 - release Android internet permission and consistent VoltMapEV Android/iOS display names;
 - search-engine metadata and crawler files, expanded sandbox payment validation, launch-readiness guidance, and an hourly read-only quality script.
 
-Local validation for this pending release includes clean Flutter analysis, 39 passing automated tests, a successful production web build, and an iPhone-sized browser walkthrough. The walkthrough confirmed that `500079` stays inside VoltMapEV and the embedded map exposes 11 community charger markers in the tested viewport. Run the Android and unsigned iOS GitHub Actions builds after publishing the branch.
+Validation for this release included clean Flutter analysis, 39 passing automated tests, a successful production web build, Android and unsigned iOS GitHub Actions builds, and an iPhone-sized live-browser walkthrough. The walkthrough confirmed that `500079` stays inside VoltMapEV and the embedded map exposes 11 community charger markers in the tested viewport.
 
 ## Validation completed
 
 - `flutter analyze` passed.
-- 13 automated tests passed.
+- 39 automated tests passed for PR #24; later releases must meet or exceed this baseline.
 - Flutter production web build passed.
 - Android APK build passed in GitHub Actions.
 - Unsigned iOS release build passed in GitHub Actions.
