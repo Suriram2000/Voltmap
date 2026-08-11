@@ -256,7 +256,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     );
   }
 
-  void _selectLocation(PlaceSuggestion? place) {
+  Future<void> _selectLocation(PlaceSuggestion? place) async {
     if (place == null) {
       selectedPlace = null;
       return;
@@ -266,6 +266,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       selectedPlace = place;
       locationMessage = 'India location selected: ${place.primaryText}';
     });
+    await _openLiveResults();
   }
 
   Future<void> _openLiveResults() async {
@@ -595,6 +596,7 @@ class _DiscoveryHero extends StatelessWidget {
                         label: 'Search across India',
                         hint: 'Area, city, station, or 6-digit PIN',
                         prefixIcon: Icons.search_rounded,
+                        textInputAction: TextInputAction.search,
                         searchService: searchService,
                         onChanged: onSearchChanged,
                         onSubmitted: onSearchSubmitted,
@@ -607,6 +609,16 @@ class _DiscoveryHero extends StatelessWidget {
                                 tooltip: 'Clear search',
                                 onPressed: onClear,
                                 icon: const Icon(Icons.close),
+                              ),
+                            if (query.isNotEmpty)
+                              IconButton(
+                                key: const Key(
+                                  'submitLiveChargerSearchButton',
+                                ),
+                                tooltip: 'Search live chargers',
+                                onPressed: () =>
+                                    onSearchSubmitted(searchController.text),
+                                icon: const Icon(Icons.arrow_forward_rounded),
                               ),
                             IconButton(
                               key: const Key('useCurrentLocationButton'),
@@ -630,7 +642,7 @@ class _DiscoveryHero extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Text(
                         locationMessage ??
-                            'Try ben, 500079, Whitefield, or Tamil Nadu. Suggestions and live searches stay inside India.',
+                            'Try 500079, Whitefield, or Tamil Nadu. Choose a suggestion or tap Search to open live chargers inside VoltMapEV.',
                         style: TextStyle(
                           color: locationMessage != null
                               ? AppTheme.brandLime
