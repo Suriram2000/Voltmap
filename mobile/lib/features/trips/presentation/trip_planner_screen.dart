@@ -475,9 +475,10 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
   }
 
   Future<void> _saveRoute(AppState appState) async {
+    final messenger = ScaffoldMessenger.of(context);
     final canSave =
         await requireRegisteredAccount(context, appState, 'Saved trips');
-    if (!context.mounted || !canSave) return;
+    if (!mounted || !canSave) return;
     final current = route!;
     final trip = SavedTrip(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -489,10 +490,10 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
       createdAt: DateTime.now(),
     );
     await appState.saveTrip(trip);
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Trip saved on this device.')));
+    if (!mounted) return;
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Trip saved on this device.')),
+    );
   }
 }
 
