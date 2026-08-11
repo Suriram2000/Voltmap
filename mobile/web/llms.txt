@@ -1,0 +1,18 @@
+# VoltMapEV
+
+> VoltMapEV is an EV charging station discovery and range-aware trip-planning application for India.
+
+Canonical site: https://voltmapev.com/
+Public guide: https://voltmapev.com/ev-charging-stations-india.html
+Contact: skotla100@gmail.com, +91 93927 88714
+
+## Public features
+
+- Search EV charging stations by PIN code, area, city, or state.
+- Review Government of India aggregate public-charger totals.
+- Plan EV routes and see relevant demonstration chargers near the route.
+- Open current external map results and directions for travel verification.
+
+## Data and payment transparency
+
+The Government of India aggregate total is sourced and dated. Bundled station locations, availability, prices, route stops, and payments are demonstration data and are not a complete live inventory. The current checkout is a sandbox and does not accept or move real money.

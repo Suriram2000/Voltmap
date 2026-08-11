@@ -7,7 +7,7 @@
   "id": "./",
   "background_color": "#F4F7F2",
   "theme_color": "#071D17",
-  "description": "Find EV chargers, plan smarter trips, and charge with confidence.",
+  "description": "Find EV charging stations across India and plan range-aware trips with route-relevant charger stops.",
   "orientation": "any",
   "categories": ["navigation", "travel", "utilities"],
   "prefer_related_applications": false
