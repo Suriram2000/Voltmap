@@ -5,7 +5,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/state/app_state.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({super.key, this.initialSignUp = false});
+
+  final bool initialSignUp;
 
   @override
   ConsumerState<AuthScreen> createState() => _AuthScreenState();
@@ -14,18 +16,24 @@ class AuthScreen extends ConsumerStatefulWidget {
 class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
-  bool _signUp = false;
+  late bool _signUp;
   bool _obscurePassword = true;
   bool _submitting = false;
   String? _serverError;
 
   @override
+  void initState() {
+    super.initState();
+    _signUp = widget.initialSignUp;
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
+    _identifierController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
     super.dispose();
@@ -96,8 +104,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               _signUp
                   ? 'Save favorites, trips, charging receipts, and preferences on this browser.'
                   : appState.hasLocalAccount
-                      ? 'Sign in to continue to your saved VoltMap workspace.'
-                      : 'No local account yet? Create one, or explore the demo instantly.',
+                      ? 'Sign in to continue to your saved VoltMapEV workspace.'
+                      : 'Create an account only when you want to save personal activity.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -142,20 +150,23 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               const SizedBox(height: 14),
             ],
             TextFormField(
-              key: const Key('authEmailField'),
-              controller: _emailController,
-              autofillHints: const [AutofillHints.email],
-              keyboardType: TextInputType.emailAddress,
+              key: const Key('authIdentifierField'),
+              controller: _identifierController,
+              autofillHints: const [
+                AutofillHints.email,
+                AutofillHints.telephoneNumber,
+              ],
+              keyboardType: TextInputType.text,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
-                labelText: 'Email address',
-                prefixIcon: Icon(Icons.alternate_email_rounded),
+                labelText: 'Email or phone number',
+                hintText: 'name@example.com or +91 93927 88714',
+                prefixIcon: Icon(Icons.contact_mail_outlined),
               ),
               validator: (value) {
-                final email = value?.trim() ?? '';
-                return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)
+                return AppState.normalizeAccountIdentifier(value ?? '') != null
                     ? null
-                    : 'Enter a valid email address';
+                    : 'Enter a valid email or phone number';
               },
             ),
             const SizedBox(height: 14),
@@ -243,16 +254,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 label: Text(_signUp ? 'Create account' : 'Login securely'),
               ),
             ),
-            if (!appState.hasLocalAccount && !_signUp) ...[
+            if (!_signUp) ...[
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  key: const Key('demoAccountButton'),
-                  onPressed:
-                      _submitting ? null : () => appState.enterDemoAccount(),
-                  icon: const Icon(Icons.explore_outlined),
-                  label: const Text('Explore with demo account'),
+                  key: const Key('continueWithoutAccountButton'),
+                  onPressed: _submitting
+                      ? null
+                      : () => Navigator.of(context).maybePop(),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  label: const Text('Continue without an account'),
                 ),
               ),
             ],
@@ -268,7 +280,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Demo privacy: your salted password hash and account data stay in this browser. Production multi-device accounts require a secure backend.',
+                    'Privacy: your salted password hash and account data stay in this browser. Never enter payment credentials you use elsewhere.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -290,14 +302,20 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     final error = _signUp
         ? await appState.signUp(
             name: _nameController.text,
-            email: _emailController.text,
+            identifier: _identifierController.text,
             password: _passwordController.text,
           )
         : await appState.signIn(
-            email: _emailController.text,
+            identifier: _identifierController.text,
             password: _passwordController.text,
           );
     if (!mounted) return;
+    if (error == null && appState.isRegisteredAccount) {
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      return;
+    }
     setState(() {
       _submitting = false;
       _serverError = error;
@@ -343,7 +361,7 @@ class _AuthStory extends StatelessWidget {
           ),
           SizedBox(height: compact ? 18 : 34),
           Text(
-            'VoltMap',
+            'VoltMapEV',
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
                   color: Colors.white,
                   fontSize: compact ? 36 : 52,

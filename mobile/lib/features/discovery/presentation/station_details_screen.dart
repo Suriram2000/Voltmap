@@ -225,7 +225,15 @@ class StationDetailsScreen extends ConsumerWidget {
                     child: FilledButton.icon(
                       key: const Key('openCheckoutButton'),
                       onPressed: station.available
-                          ? () => _startSession(context)
+                          ? () async {
+                              if (await requireRegisteredAccount(
+                                context,
+                                appState,
+                                'Payments',
+                              )) {
+                                await _startSession(context);
+                              }
+                            }
                           : null,
                       icon: const Icon(Icons.ev_station_rounded),
                       label: Text(

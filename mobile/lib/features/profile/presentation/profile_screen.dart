@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/state/app_state.dart';
+import '../../about/presentation/about_screen.dart';
+import '../../admin/presentation/admin_dashboard_screen.dart';
+import '../../auth/presentation/auth_screen.dart';
 import '../../modules/presentation/modules_screen.dart';
 import '../../payments/presentation/payment_history_screen.dart';
 
@@ -12,6 +15,9 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appState = ref.watch(appStateProvider);
+    if (!appState.isRegisteredAccount) {
+      return _buildGuestProfile(context);
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Profile & settings')),
       body: Center(
@@ -75,7 +81,7 @@ class ProfileScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              appState.userEmail,
+                              appState.userIdentifier,
                               style: const TextStyle(color: Color(0xFFB8CEC4)),
                             ),
                             if (!appState.isReady) ...[
@@ -226,6 +232,29 @@ class ProfileScreen extends ConsumerWidget {
               Card(
                 child: Column(
                   children: [
+                    if (appState.isAdminAccount) ...[
+                      ListTile(
+                        key: const Key('adminDashboardTile'),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 5,
+                        ),
+                        leading:
+                            const Icon(Icons.admin_panel_settings_outlined),
+                        title: const Text('Admin dashboard'),
+                        subtitle: const Text(
+                          'Local users, activity, reports, and demo payments',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => const AdminDashboardScreen(),
+                          ),
+                        ),
+                      ),
+                      const Divider(height: 1),
+                    ],
                     ListTile(
                       key: const Key('paymentHistoryTile'),
                       contentPadding: const EdgeInsets.symmetric(
@@ -244,6 +273,26 @@ class ProfileScreen extends ConsumerWidget {
                         context,
                         MaterialPageRoute<void>(
                           builder: (_) => const PaymentHistoryScreen(),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      key: const Key('aboutVoltMapEVTile'),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      leading: const Icon(Icons.info_outline_rounded),
+                      title: const Text('About & contact VoltMapEV'),
+                      subtitle: const Text(
+                        '${AppState.contactEmail} • ${AppState.contactPhone}',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const AboutScreen(),
                         ),
                       ),
                     ),
@@ -288,12 +337,105 @@ class ProfileScreen extends ConsumerWidget {
                         vertical: 5,
                       ),
                       leading: Icon(Icons.info_outline),
-                      title: Text('VoltMap demo'),
+                      title: Text('VoltMapEV demo'),
                       subtitle: Text(
-                        'Android, iOS & browser-ready • Version 1.8.0',
+                        'Android, iOS & browser-ready • Version 1.9.0',
                       ),
                     ),
                   ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGuestProfile(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Profile & settings')),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(26),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.person_add_alt_1_rounded,
+                        size: 58,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Explore first. Sign up when you save.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 9),
+                      const Text(
+                        'Charger lookup, maps, charger details, and trip planning are public. Create a browser-local account only for favorites, saved trips, charger reports, and demo payments.',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 22),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          key: const Key('profileSignUpButton'),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) =>
+                                  const AuthScreen(initialSignUp: true),
+                            ),
+                          ),
+                          icon: const Icon(Icons.person_add_alt_1_rounded),
+                          label: const Text('Create account'),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          key: const Key('profileSignInButton'),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => const AuthScreen(),
+                            ),
+                          ),
+                          icon: const Icon(Icons.login_rounded),
+                          label: const Text('Sign in'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Card(
+                child: ListTile(
+                  key: const Key('guestAboutTile'),
+                  leading: const Icon(Icons.info_outline_rounded),
+                  title: const Text('About & contact VoltMapEV'),
+                  subtitle: const Text(
+                    '${AppState.contactEmail} • ${AppState.contactPhone}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const AboutScreen(),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -311,7 +453,8 @@ class ProfileScreen extends ConsumerWidget {
 
   Future<void> _editProfile(BuildContext context, AppState appState) async {
     final nameController = TextEditingController(text: appState.userName);
-    final emailController = TextEditingController(text: appState.userEmail);
+    final identifierController =
+        TextEditingController(text: appState.userIdentifier);
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -327,9 +470,10 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'Email'),
+                controller: identifierController,
+                keyboardType: TextInputType.text,
+                decoration:
+                    const InputDecoration(labelText: 'Email or phone number'),
               ),
             ],
           ),
@@ -342,12 +486,15 @@ class ProfileScreen extends ConsumerWidget {
           FilledButton(
             onPressed: () {
               if (nameController.text.trim().isEmpty ||
-                  !emailController.text.contains('@')) {
+                  AppState.normalizeAccountIdentifier(
+                        identifierController.text,
+                      ) ==
+                      null) {
                 return;
               }
               appState.updateProfile(
                 name: nameController.text,
-                email: emailController.text,
+                identifier: identifierController.text,
               );
               Navigator.pop(dialogContext);
             },
@@ -357,7 +504,7 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
     nameController.dispose();
-    emailController.dispose();
+    identifierController.dispose();
   }
 
   Future<void> _editVehicle(BuildContext context, AppState appState) async {
@@ -432,7 +579,7 @@ class ProfileScreen extends ConsumerWidget {
     final shouldSignOut = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Sign out of VoltMap?'),
+        title: const Text('Sign out of VoltMapEV?'),
         content: const Text(
           'Your browser keeps this demo account and saved app data so you can sign in again.',
         ),

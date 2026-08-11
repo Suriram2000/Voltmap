@@ -91,7 +91,7 @@ class _AddChargerScreenState extends ConsumerState<AddChargerScreen> {
                           ),
                           SizedBox(height: 6),
                           Text(
-                            'Reports are saved as pending and opened for public review. VoltMap verifies a charger before adding it to the catalog.',
+                            'Reports are saved as pending and opened for public review. VoltMapEV verifies a charger before adding it to the catalog.',
                             style: TextStyle(color: Color(0xFFC4D8CF)),
                           ),
                         ],

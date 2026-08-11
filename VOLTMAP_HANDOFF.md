@@ -93,7 +93,7 @@ The Git history and pull requests remain the authoritative detailed record of ex
 
 ## Current status
 
-VoltMap is a Flutter EV-charging application. The latest changes were implemented, reviewed, merged, deployed to GitHub Pages, and tested in a live browser.
+VoltMapEV is a Flutter EV-charging application published at https://voltmapev.com/. The latest changes were implemented through pull request #16 and validated with GitHub Actions before deployment.
 
 Completed functionality includes:
 
@@ -108,6 +108,11 @@ Completed functionality includes:
 - Non-working chargers display a red **NOT WORKING / UNAVAILABLE** warning and cannot begin charging.
 - Profile summarizes saved favorites, trips, bills, and charger reports.
 - Premium responsive interface with coordinated light and dark themes.
+- Customer-facing website branding and metadata use **VoltMapEV**.
+- Charger lookup, map browsing, charger details, and trip planning are public without signup.
+- Email-or-phone signup is requested only for favorites, saved trips, charger reports, payments, and personal history.
+- An About & Contact page publishes `skotla100@gmail.com` and `+919392788714`, with a persistent 2026 copyright footer.
+- `skotla100@gmail.com` alone receives the admin dashboard for browser-local account, activity, charger-report, and demo-payment summaries. Credential hashes and payment credentials are never displayed.
 
 ## Validation completed
 
@@ -121,7 +126,7 @@ Completed functionality includes:
 
 ## Important limitation
 
-Login and user data are currently stored only on the device. Favorites, saved trips, bills, charger reports, and accounts do not synchronize between devices. Cross-device accounts require a hosted authentication and database backend such as Firebase or Supabase.
+Login and user data are currently stored only on the device. Favorites, saved trips, bills, charger reports, accounts, and the admin dashboard do not synchronize between devices. The admin dashboard therefore reports only the current browser. Cross-device accounts and a global admin user list require a hosted authentication and database backend such as Firebase or Supabase.
 
 ## Set up on the other computer
 
@@ -142,11 +147,11 @@ Login and user data are currently stored only on the device. Favorites, saved tr
 ## Continuation prompt for Codex
 
 ```text
-Continue development of VoltMap from the current main branch of
+Continue development of VoltMapEV from the current main branch of
 https://github.com/Suriram2000/Voltmap.
 
 First read VOLTMAP_HANDOFF.md, inspect the repository and Git history, run
-git status, confirm the latest merged PR is #10, and verify the live site at
+git status, confirm the latest merged PR is #16, and verify the live site at
 https://voltmapev.com/. Preserve all existing functionality.
 
 Before changing code, run Flutter analysis and tests. Make new work on a

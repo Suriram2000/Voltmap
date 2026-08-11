@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../features/auth/presentation/auth_screen.dart';
 import '../state/app_state.dart';
 
 Future<bool> requireRegisteredAccount(
@@ -7,7 +8,7 @@ Future<bool> requireRegisteredAccount(
   AppState appState,
   String feature,
 ) async {
-  if (!appState.isDemoAccount) return true;
+  if (appState.isRegisteredAccount) return true;
 
   final createAccount = await showDialog<bool>(
     context: context,
@@ -16,7 +17,7 @@ Future<bool> requireRegisteredAccount(
       icon: const Icon(Icons.person_add_alt_1_rounded),
       title: Text('Sign up to use $feature'),
       content: Text(
-        '$feature saves personal data and is available to registered VoltMap accounts. Create an account to continue.',
+        '$feature saves personal data and is available to registered VoltMapEV accounts. Create an account or sign in to continue.',
       ),
       actions: [
         TextButton(
@@ -27,13 +28,15 @@ Future<bool> requireRegisteredAccount(
           key: const Key('goToSignupButton'),
           onPressed: () => Navigator.pop(dialogContext, true),
           icon: const Icon(Icons.person_add_alt_1_rounded),
-          label: const Text('Create account'),
+          label: const Text('Sign in or create account'),
         ),
       ],
     ),
   );
   if (createAccount == true) {
-    await appState.signOut();
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const AuthScreen()),
+    );
   }
-  return false;
+  return appState.isRegisteredAccount;
 }

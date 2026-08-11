@@ -11,6 +11,7 @@ import 'package:voltmap/features/payments/presentation/charging_checkout_screen.
 import 'package:voltmap/features/trips/presentation/trip_planner_screen.dart';
 import 'package:voltmap/shared/models/place_suggestion.dart';
 import 'package:voltmap/shared/services/place_search_service.dart';
+import 'package:voltmap/shared/state/app_state.dart';
 
 void main() {
   setUp(() {
@@ -18,6 +19,8 @@ void main() {
       'voltmap_signed_in': true,
       'voltmap_profile_name': 'Test Driver',
       'voltmap_profile_email': 'driver@voltmap.in',
+      'voltmap_account_salt': 'test-salt',
+      'voltmap_account_password_hash': 'test-hash',
     });
   });
 
@@ -29,17 +32,19 @@ void main() {
 
     await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
     await tester.pumpAndSettle();
-    expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('Sign up'), findsOneWidget);
+    expect(find.text('Find the right charger, faster.'), findsOneWidget);
+    expect(find.textContaining('© 2026 VoltMapEV'), findsOneWidget);
 
-    await tester.tap(find.text('Sign up'));
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('profileSignUpButton')));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('authNameField')),
       'Priya Sharma',
     );
     await tester.enterText(
-      find.byKey(const Key('authEmailField')),
+      find.byKey(const Key('authIdentifierField')),
       'priya@example.com',
     );
     await tester.enterText(
@@ -52,10 +57,7 @@ void main() {
     );
     await tester.tap(find.byKey(const Key('authSubmitButton')));
     await tester.pumpAndSettle();
-    expect(find.text('Find the right charger, faster.'), findsOneWidget);
-
-    await tester.tap(find.text('Profile'));
-    await tester.pumpAndSettle();
+    expect(find.text('Priya Sharma'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.byKey(const Key('signOutTile')),
       260,
@@ -65,10 +67,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('confirmSignOutButton')));
     await tester.pumpAndSettle();
-    expect(find.text('Welcome back'), findsOneWidget);
+    expect(find.byKey(const Key('profileSignInButton')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('profileSignInButton')));
+    await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.byKey(const Key('authEmailField')),
+      find.byKey(const Key('authIdentifierField')),
       'priya@example.com',
     );
     await tester.enterText(
@@ -77,7 +82,42 @@ void main() {
     );
     await tester.tap(find.byKey(const Key('authSubmitButton')));
     await tester.pumpAndSettle();
-    expect(find.text('Find the right charger, faster.'), findsOneWidget);
+    expect(find.text('Priya Sharma'), findsOneWidget);
+  });
+
+  test('account identifiers accept email and Indian phone formats', () {
+    expect(
+      AppState.normalizeAccountIdentifier('Driver@Example.com'),
+      'driver@example.com',
+    );
+    expect(
+      AppState.normalizeAccountIdentifier('93927 88714'),
+      '+919392788714',
+    );
+    expect(
+      AppState.normalizeAccountIdentifier('+91-93927-88714'),
+      '+919392788714',
+    );
+    expect(AppState.normalizeAccountIdentifier('12345'), isNull);
+  });
+
+  test('only the configured email receives local admin access', () async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState();
+    await state.load();
+    final error = await state.signUp(
+      name: 'VoltMapEV Admin',
+      identifier: 'skotla100@gmail.com',
+      password: 'VoltMapEV123',
+    );
+
+    expect(error, isNull);
+    expect(state.isAdminAccount, isTrue);
+    expect(state.localAccountSummaries, hasLength(1));
+    expect(
+      state.localAccountSummaries.single.identifier,
+      AppState.adminIdentifier,
+    );
   });
 
   test('official state totals add up to the published national count', () {
@@ -89,14 +129,10 @@ void main() {
     expect(stateChargerCoverage, hasLength(36));
   });
 
-  testWidgets('demo users are asked to sign up for personal features', (
+  testWidgets('guests can plan trips and are asked to sign up only to save', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'voltmap_signed_in': true,
-      'voltmap_profile_name': 'VoltMap Demo Driver',
-      'voltmap_profile_email': 'demo@voltmap.in',
-    });
+    SharedPreferences.setMockInitialValues({});
     _useDesktopViewport(tester);
 
     await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
@@ -104,8 +140,21 @@ void main() {
     await tester.tap(find.text('Trips'));
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const Key('signupRequiredDialog')), findsNothing);
+    expect(find.byKey(const Key('publicTripPlannerNotice')), findsOneWidget);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Destination'),
+      'Bengaluru',
+    );
+    await tester.ensureVisible(find.text('Plan route'));
+    await tester.tap(find.text('Plan route'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Save this trip'));
+    await tester.tap(find.text('Save this trip'));
+    await tester.pumpAndSettle();
+
     expect(find.byKey(const Key('signupRequiredDialog')), findsOneWidget);
-    expect(find.text('Sign up to use Trips'), findsOneWidget);
+    expect(find.text('Sign up to use Saved trips'), findsOneWidget);
     await tester.tap(find.byKey(const Key('goToSignupButton')));
     await tester.pumpAndSettle();
     expect(find.text('Welcome back'), findsOneWidget);
@@ -393,7 +442,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Set up charging'), findsOneWidget);
     expect(find.text('Credit / debit card'), findsOneWidget);
-    expect(find.text('VoltMap wallet'), findsOneWidget);
+    expect(find.text('VoltMapEV wallet'), findsOneWidget);
 
     await tester.enterText(find.byKey(const Key('upiIdField')), 'fake@upi');
     await tester.tap(find.byKey(const Key('authorizeButton')));
@@ -534,7 +583,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 800));
     await tester.pumpAndSettle();
     expect(find.text('Charging complete'), findsOneWidget);
-    expect(find.text('VoltMap demo wallet'), findsOneWidget);
+    expect(find.text('VoltMapEV demo wallet'), findsOneWidget);
   });
 
   testWidgets('charging stops and captures automatically at the energy limit', (
@@ -548,7 +597,7 @@ void main() {
             station: sampleStations.first,
             connectorType: 'CCS2',
             energyLimitKwh: 1.25,
-            paymentMethod: 'VoltMap demo wallet',
+            paymentMethod: 'VoltMapEV demo wallet',
           ),
         ),
       ),
