@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/models/charging_receipt.dart';
 import '../../../shared/models/charging_station.dart';
+import '../../../shared/services/sandbox_payment_validator.dart';
 import '../../../shared/state/app_state.dart';
 
 enum PaymentOption { upi, card, wallet }
@@ -93,8 +94,8 @@ class _ChargingCheckoutScreenState
                                   onSelected: _processing
                                       ? null
                                       : (_) => setState(
-                                            () => _connectorType = connector,
-                                          ),
+                                          () => _connectorType = connector,
+                                        ),
                                 ),
                               )
                               .toList(growable: false),
@@ -102,14 +103,10 @@ class _ChargingCheckoutScreenState
                         const SizedBox(height: 22),
                         Row(
                           children: [
-                            const Expanded(
-                              child: Text('Automatic stop limit'),
-                            ),
+                            const Expanded(child: Text('Automatic stop limit')),
                             Text(
                               '${_energyKwh.toStringAsFixed(0)} kWh',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
+                              style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                           ],
@@ -261,7 +258,7 @@ class _ChargingCheckoutScreenState
                 'Approved sandbox ID: driver@upi. Real UPI IDs are rejected and nothing is stored.',
             prefixIcon: Icon(Icons.alternate_email),
           ),
-          validator: _validateUpi,
+          validator: SandboxPaymentValidator.validateUpi,
         );
       case PaymentOption.card:
         return Column(
@@ -276,9 +273,7 @@ class _ChargingCheckoutScreenState
                 labelText: 'Cardholder name',
                 prefixIcon: Icon(Icons.person_outline),
               ),
-              validator: (value) => value == null || value.trim().length < 2
-                  ? 'Enter the cardholder name'
-                  : null,
+              validator: SandboxPaymentValidator.validateCardholder,
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -294,7 +289,7 @@ class _ChargingCheckoutScreenState
                     'Approved sandbox card: 4242 4242 4242 4242. Details are not stored.',
                 prefixIcon: Icon(Icons.credit_card),
               ),
-              validator: _validateCardNumber,
+              validator: SandboxPaymentValidator.validateCardNumber,
             ),
             const SizedBox(height: 12),
             Row(
@@ -311,7 +306,7 @@ class _ChargingCheckoutScreenState
                       labelText: 'Expiry',
                       hintText: 'MM/YY',
                     ),
-                    validator: _validateExpiry,
+                    validator: SandboxPaymentValidator.validateExpiry,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -330,10 +325,7 @@ class _ChargingCheckoutScreenState
                       labelText: 'CVV',
                       hintText: '123',
                     ),
-                    validator: (value) =>
-                        RegExp(r'^\d{3,4}$').hasMatch(value ?? '')
-                            ? null
-                            : 'Enter 3 or 4 digits',
+                    validator: SandboxPaymentValidator.validateCvv,
                   ),
                 ),
               ],
@@ -405,68 +397,13 @@ class _ChargingCheckoutScreenState
   String _paymentMethodLabel() {
     switch (_paymentOption) {
       case PaymentOption.upi:
-        final parts = _upiController.text.trim().split('@');
-        final handle = parts.first;
-        final masked =
-            handle.length <= 2 ? '••' : '${handle.substring(0, 2)}••';
-        return 'UPI $masked@${parts.last}';
+        return SandboxPaymentValidator.maskUpi(_upiController.text);
       case PaymentOption.card:
-        final digits = _digits(_cardNumberController.text);
-        return 'Card ending ${digits.substring(digits.length - 4)}';
+        return SandboxPaymentValidator.maskCard(_cardNumberController.text);
       case PaymentOption.wallet:
         return 'VoltMapEV demo wallet';
     }
   }
-
-  static String? _validateUpi(String? value) {
-    final trimmed = value?.trim().toLowerCase() ?? '';
-    if (!RegExp(r'^[a-zA-Z0-9._-]{2,}@[a-zA-Z]{2,}$').hasMatch(trimmed)) {
-      return 'Enter a valid sandbox UPI ID';
-    }
-    return const {'driver@upi', 'success@upi'}.contains(trimmed)
-        ? null
-        : 'UPI ID could not be verified. Use driver@upi';
-  }
-
-  static String? _validateCardNumber(String? value) {
-    final digits = _digits(value ?? '');
-    if (digits.length != 16 || !_passesLuhn(digits)) {
-      return 'Enter a valid 16-digit sandbox card';
-    }
-    return digits == '4242424242424242'
-        ? null
-        : 'Card was declined. Use sandbox card 4242 4242 4242 4242';
-  }
-
-  static String? _validateExpiry(String? value) {
-    final match = RegExp(r'^(\d{2})/(\d{2})$').firstMatch(value ?? '');
-    if (match == null) return 'Use MM/YY';
-    final month = int.parse(match.group(1)!);
-    final year = 2000 + int.parse(match.group(2)!);
-    if (month < 1 || month > 12) return 'Invalid month';
-    final now = DateTime.now();
-    if (year < now.year || (year == now.year && month < now.month)) {
-      return 'Card is expired';
-    }
-    return null;
-  }
-
-  static bool _passesLuhn(String digits) {
-    var sum = 0;
-    var doubleDigit = false;
-    for (var index = digits.length - 1; index >= 0; index--) {
-      var digit = int.parse(digits[index]);
-      if (doubleDigit) {
-        digit *= 2;
-        if (digit > 9) digit -= 9;
-      }
-      sum += digit;
-      doubleDigit = !doubleDigit;
-    }
-    return sum % 10 == 0;
-  }
-
-  static String _digits(String value) => value.replaceAll(RegExp(r'\D'), '');
 
   static String _currency(double value) => '₹${value.toStringAsFixed(2)}';
 }
@@ -569,9 +506,7 @@ class _ChargingSessionScreenState extends ConsumerState<ChargingSessionScreen> {
                               _complete
                                   ? 'Charging complete'
                                   : 'Charging in progress',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
+                              style: Theme.of(context).textTheme.titleLarge
                                   ?.copyWith(fontWeight: FontWeight.w900),
                             ),
                             const SizedBox(height: 4),
@@ -598,9 +533,7 @@ class _ChargingSessionScreenState extends ConsumerState<ChargingSessionScreen> {
                             Expanded(
                               child: Text(
                                 widget.station.name,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
+                                style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(fontWeight: FontWeight.w800),
                               ),
                             ),
@@ -649,18 +582,16 @@ class _ChargingSessionScreenState extends ConsumerState<ChargingSessionScreen> {
                           value: '₹5.00',
                         ),
                         _ReceiptRow(
-                          label:
-                              _complete ? 'Final payment' : 'Payable at stop',
+                          label: _complete
+                              ? 'Final payment'
+                              : 'Payable at stop',
                           value: _ChargingCheckoutScreenState._currency(
                             _currentTotal,
                           ),
                           last: !_complete,
                         ),
                         if (_complete) ...[
-                          _ReceiptRow(
-                            label: 'Receipt',
-                            value: _receipt!.id,
-                          ),
+                          _ReceiptRow(label: 'Receipt', value: _receipt!.id),
                           _ReceiptRow(
                             label: 'Status',
                             value: _stoppedAutomatically
@@ -695,14 +626,14 @@ class _ChargingSessionScreenState extends ConsumerState<ChargingSessionScreen> {
                 child: SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    key: Key(_complete
-                        ? 'chargingDoneButton'
-                        : 'stopChargingButton'),
+                    key: Key(
+                      _complete ? 'chargingDoneButton' : 'stopChargingButton',
+                    ),
                     onPressed: _complete
                         ? () => Navigator.of(context).pop(_receipt)
                         : _energyDelivered > 0 && !_finishing
-                            ? () => _finishSession(automatic: false)
-                            : null,
+                        ? () => _finishSession(automatic: false)
+                        : null,
                     icon: _finishing
                         ? const SizedBox.square(
                             dimension: 18,
@@ -713,8 +644,8 @@ class _ChargingSessionScreenState extends ConsumerState<ChargingSessionScreen> {
                       _complete
                           ? 'Done'
                           : _finishing
-                              ? 'Finalizing payment…'
-                              : 'Stop charging & pay ${_ChargingCheckoutScreenState._currency(_currentTotal)}',
+                          ? 'Finalizing payment…'
+                          : 'Stop charging & pay ${_ChargingCheckoutScreenState._currency(_currentTotal)}',
                     ),
                   ),
                 ),
@@ -817,9 +748,7 @@ class _CheckoutSection extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
+                        style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                       if (subtitle != null) Text(subtitle!),

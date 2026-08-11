@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -12,6 +13,7 @@ import '../../../shared/widgets/registered_account_gate.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../data/sample_stations.dart';
 import '../data/national_charger_data.dart';
+import 'live_charger_map_screen.dart';
 import 'station_card.dart';
 import 'station_details_screen.dart';
 
@@ -29,7 +31,9 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   bool availableOnly = false;
   bool fastOnly = false;
   bool locating = false;
+  bool openingLiveResults = false;
   String? locationMessage;
+  PlaceSuggestion? selectedPlace;
 
   @override
   void initState() {
@@ -65,96 +69,152 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   Widget build(BuildContext context) {
     final appState = ref.watch(appStateProvider);
     final stations = filteredStations;
+    Widget buildStationCard(ChargingStation station) => RepaintBoundary(
+          child: StationCard(
+            station: station,
+            isFavorite: appState.isFavorite(station.id),
+            onFavorite: () async {
+              if (await requireRegisteredAccount(
+                context,
+                appState,
+                'Favorites',
+              )) {
+                await appState.toggleFavorite(station.id);
+              }
+            },
+            onTap: () => _openDetails(station),
+          ),
+        );
 
     return Scaffold(
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final horizontalPadding = constraints.maxWidth < 600 ? 16.0 : 28.0;
-          return ListView(
-            padding: EdgeInsets.fromLTRB(
-              horizontalPadding,
-              constraints.maxWidth < 600 ? 14 : 26,
-              horizontalPadding,
-              36,
-            ),
-            children: [
-              Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1180),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _DiscoveryHero(
-                        searchController: searchController,
-                        query: query,
-                        onSearchChanged: (value) =>
-                            setState(() => query = value),
-                        searchService: placeSearchService,
-                        onLocationSelected: _selectLocation,
-                        onUseLocation: () => _resolveCurrentLocation(
-                          requestPermission: true,
+          final compact = constraints.maxWidth < 600;
+          final horizontalPadding = compact ? 16.0 : 28.0;
+          final contentWidth =
+              (constraints.maxWidth - horizontalPadding * 2).clamp(0.0, 1180.0);
+          final centeredPadding = (constraints.maxWidth - contentWidth)
+                  .clamp(0.0, double.infinity) /
+              2;
+          return CustomScrollView(
+            key: const PageStorageKey('discoveryScrollView'),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            scrollCacheExtent: const ScrollCacheExtent.pixels(1100),
+            slivers: [
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  centeredPadding,
+                  compact ? 14 : 26,
+                  centeredPadding,
+                  0,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: SizedBox(
+                    width: contentWidth,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _DiscoveryHero(
+                          searchController: searchController,
+                          query: query,
+                          onSearchChanged: _handleSearchChanged,
+                          onSearchSubmitted: (_) => _openLiveResults(),
+                          searchService: placeSearchService,
+                          onLocationSelected: _selectLocation,
+                          onUseLocation: () => _resolveCurrentLocation(
+                            requestPermission: true,
+                          ),
+                          locating: locating,
+                          locationMessage: locationMessage,
+                          onClear: _clearSearch,
                         ),
-                        locating: locating,
-                        locationMessage: locationMessage,
-                        onClear: _clearSearch,
-                      ),
-                      const SizedBox(height: 22),
-                      _NationalCoverageCard(query: query),
-                      const SizedBox(height: 22),
-                      _FilterRow(
-                        availableOnly: availableOnly,
-                        fastOnly: fastOnly,
-                        onAvailableChanged: (value) =>
-                            setState(() => availableOnly = value),
-                        onFastChanged: (value) =>
-                            setState(() => fastOnly = value),
-                      ),
-                      const SizedBox(height: 30),
-                      _ResultsHeader(count: stations.length, query: query),
-                      const SizedBox(height: 14),
-                      if (stations.isEmpty)
-                        _EmptySearch(onReset: _resetFilters)
-                      else
-                        LayoutBuilder(
-                          builder: (context, gridConstraints) {
-                            final twoColumns = gridConstraints.maxWidth >= 760;
-                            final cardWidth = twoColumns
-                                ? (gridConstraints.maxWidth - 16) / 2
-                                : gridConstraints.maxWidth;
-                            return Wrap(
-                              spacing: 16,
-                              runSpacing: 16,
-                              children: [
-                                for (final station in stations)
-                                  SizedBox(
-                                    width: cardWidth,
-                                    child: StationCard(
-                                      station: station,
-                                      isFavorite: appState.isFavorite(
-                                        station.id,
-                                      ),
-                                      onFavorite: () async {
-                                        if (await requireRegisteredAccount(
-                                          context,
-                                          appState,
-                                          'Favorites',
-                                        )) {
-                                          await appState.toggleFavorite(
-                                            station.id,
-                                          );
-                                        }
-                                      },
-                                      onTap: () => _openDetails(station),
+                        const SizedBox(height: 22),
+                        _NationalCoverageCard(
+                          query: query,
+                          openingLiveResults: openingLiveResults,
+                          onOpenLiveResults: _openLiveResults,
+                        ),
+                        const SizedBox(height: 22),
+                        _FilterRow(
+                          availableOnly: availableOnly,
+                          fastOnly: fastOnly,
+                          onAvailableChanged: (value) =>
+                              setState(() => availableOnly = value),
+                          onFastChanged: (value) =>
+                              setState(() => fastOnly = value),
+                        ),
+                        const SizedBox(height: 30),
+                        _ResultsHeader(count: stations.length, query: query),
+                        const SizedBox(height: 14),
+                        if (query.trim().isNotEmpty && stations.isNotEmpty)
+                          LayoutBuilder(
+                            builder: (context, gridConstraints) {
+                              final twoColumns =
+                                  gridConstraints.maxWidth >= 760;
+                              final cardWidth = twoColumns
+                                  ? (gridConstraints.maxWidth - 16) / 2
+                                  : gridConstraints.maxWidth;
+                              return Wrap(
+                                spacing: 16,
+                                runSpacing: 16,
+                                children: [
+                                  for (final station in stations)
+                                    SizedBox(
+                                      width: cardWidth,
+                                      child: buildStationCard(station),
                                     ),
-                                  ),
-                              ],
-                            );
-                          },
-                        ),
-                    ],
+                                ],
+                              );
+                            },
+                          ),
+                        if (query.trim().isNotEmpty && stations.isNotEmpty)
+                          const SizedBox(height: 36),
+                      ],
+                    ),
                   ),
                 ),
               ),
+              if (stations.isEmpty)
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    centeredPadding,
+                    0,
+                    centeredPadding,
+                    36,
+                  ),
+                  sliver: SliverToBoxAdapter(
+                    child: SizedBox(
+                      width: contentWidth,
+                      child: _EmptySearch(onReset: _resetFilters),
+                    ),
+                  ),
+                )
+              else if (query.trim().isEmpty)
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    centeredPadding,
+                    0,
+                    centeredPadding,
+                    36,
+                  ),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 580,
+                      mainAxisExtent: 280,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final station = stations[index];
+                        return buildStationCard(station);
+                      },
+                      childCount: stations.length,
+                      addRepaintBoundaries: false,
+                    ),
+                  ),
+                ),
             ],
           );
         },
@@ -166,6 +226,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     searchController.clear();
     setState(() {
       query = '';
+      selectedPlace = null;
       locationMessage = null;
     });
   }
@@ -174,8 +235,16 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     searchController.clear();
     setState(() {
       query = '';
+      selectedPlace = null;
       availableOnly = false;
       fastOnly = false;
+    });
+  }
+
+  void _handleSearchChanged(String value) {
+    setState(() {
+      selectedPlace = null;
+      query = value;
     });
   }
 
@@ -188,11 +257,65 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   void _selectLocation(PlaceSuggestion? place) {
-    if (place == null) return;
+    if (place == null) {
+      selectedPlace = null;
+      return;
+    }
     setState(() {
       query = place.displayName;
+      selectedPlace = place;
       locationMessage = 'India location selected: ${place.primaryText}';
     });
+  }
+
+  Future<void> _openLiveResults() async {
+    if (openingLiveResults) return;
+    FocusScope.of(context).unfocus();
+    final rawQuery = searchController.text.trim();
+    setState(() => openingLiveResults = true);
+
+    var center = selectedPlace;
+    if (center == null && rawQuery.isNotEmpty) {
+      for (final station in sampleStations) {
+        if (_matchesSearch(station, rawQuery)) {
+          center = PlaceSuggestion(
+            primaryText: station.name,
+            secondaryText: station.formattedAddress,
+            latitude: station.latitude,
+            longitude: station.longitude,
+            type: 'charging_station',
+          );
+          break;
+        }
+      }
+      center ??= placeSearchService.localSuggestions(rawQuery).firstOrNull;
+      if (center == null) {
+        final remoteResults = await placeSearchService.searchIndia(rawQuery);
+        center = remoteResults.firstOrNull;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => openingLiveResults = false);
+    if (rawQuery.isNotEmpty && center == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Choose an India location suggestion so the live map can center accurately.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => LiveChargerMapScreen(
+          query: rawQuery,
+          center: center,
+        ),
+      ),
+    );
   }
 
   Future<void> _usePreviouslyAllowedLocation() async {
@@ -243,11 +366,20 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       if (!mounted) return;
       final displayName = place?.displayName ??
           '${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}, India';
+      final resolvedPlace = place ??
+          PlaceSuggestion(
+            primaryText: 'Current location',
+            secondaryText: displayName,
+            latitude: position.latitude,
+            longitude: position.longitude,
+            type: 'current_location',
+          );
       searchController
         ..text = displayName
         ..selection = TextSelection.collapsed(offset: displayName.length);
       setState(() {
         query = displayName;
+        selectedPlace = resolvedPlace;
         locating = false;
         locationMessage = place == null
             ? 'Using your current coordinates in India'
@@ -269,6 +401,7 @@ class _DiscoveryHero extends StatelessWidget {
     required this.searchController,
     required this.query,
     required this.onSearchChanged,
+    required this.onSearchSubmitted,
     required this.searchService,
     required this.onLocationSelected,
     required this.onUseLocation,
@@ -280,6 +413,7 @@ class _DiscoveryHero extends StatelessWidget {
   final TextEditingController searchController;
   final String query;
   final ValueChanged<String> onSearchChanged;
+  final ValueChanged<String> onSearchSubmitted;
   final PlaceSearchService searchService;
   final ValueChanged<PlaceSuggestion?> onLocationSelected;
   final VoidCallback onUseLocation;
@@ -463,6 +597,7 @@ class _DiscoveryHero extends StatelessWidget {
                         prefixIcon: Icons.search_rounded,
                         searchService: searchService,
                         onChanged: onSearchChanged,
+                        onSubmitted: onSearchSubmitted,
                         onSelected: onLocationSelected,
                         suffixIcon: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -519,13 +654,20 @@ class _DiscoveryHero extends StatelessWidget {
 }
 
 class _NationalCoverageCard extends StatelessWidget {
-  const _NationalCoverageCard({required this.query});
+  const _NationalCoverageCard({
+    required this.query,
+    required this.openingLiveResults,
+    required this.onOpenLiveResults,
+  });
 
   final String query;
+  final bool openingLiveResults;
+  final Future<void> Function() onOpenLiveResults;
 
   @override
   Widget build(BuildContext context) {
     final trimmedQuery = query.trim();
+    final searchLabel = _compactLocationLabel(trimmedQuery);
     final matchingStates = trimmedQuery.isEmpty
         ? const <StateChargerCoverage>[]
         : stateChargerCoverage
@@ -589,10 +731,10 @@ class _NationalCoverageCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   matchingStates.isNotEmpty
-                      ? '${matchingStates.first.state} has ${_withCommas(matchingStates.first.stationCount)} officially reported public stations. Open live results to find individual chargers near “$trimmedQuery”.'
+                      ? '${matchingStates.first.state} has ${_withCommas(matchingStates.first.stationCount)} officially reported public stations. Open live results to find individual chargers near “$searchLabel”.'
                       : trimmedQuery.isEmpty
                           ? 'Verified totals cover every State and Union Territory. VoltMapEV includes 45 detailed demo locations; use live search for individual chargers anywhere in India.'
-                          : 'The bundled detailed catalog may not include “$trimmedQuery”. Open live results to search individual chargers for this PIN or area across India.',
+                          : 'The bundled detailed catalog may not include “$searchLabel”. Open live results to search individual chargers for this PIN or area across India.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -604,13 +746,24 @@ class _NationalCoverageCard extends StatelessWidget {
                   children: [
                     FilledButton.icon(
                       key: const Key('liveNationalSearchButton'),
-                      onPressed: () => _openLiveSearch(context, trimmedQuery),
-                      icon: const Icon(Icons.travel_explore_rounded),
+                      onPressed: openingLiveResults ? null : onOpenLiveResults,
+                      icon: openingLiveResults
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.map_rounded),
                       label: Text(
                         trimmedQuery.isEmpty
-                            ? 'Search all live stations'
-                            : 'Search “$trimmedQuery” live',
+                            ? 'View live stations in app'
+                            : 'View live chargers near $searchLabel',
                       ),
+                    ),
+                    TextButton.icon(
+                      key: const Key('googleLiveSearchButton'),
+                      onPressed: () => _openLiveSearch(context, trimmedQuery),
+                      icon: const Icon(Icons.verified_outlined, size: 18),
+                      label: const Text('Verify on Google Maps'),
                     ),
                     OutlinedButton.icon(
                       key: const Key('allStateTotalsButton'),
@@ -809,6 +962,7 @@ class _ResultsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final searchLabel = _compactLocationLabel(query);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -826,7 +980,7 @@ class _ResultsHeader extends StatelessWidget {
               Text(
                 query.trim().isEmpty
                     ? 'Explore 45 bundled locations with full connector, price, and charging details'
-                    : 'Bundled locations matching “${query.trim()}”; use live national search above for complete results',
+                    : 'Bundled locations matching “$searchLabel”; use the live map above for community results near the area',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -875,6 +1029,15 @@ bool _matchesSearch(ChargingStation station, String rawQuery) {
   ].join(' ').toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
 
   return terms.every(searchableText.contains);
+}
+
+String _compactLocationLabel(String rawQuery) {
+  final trimmed = rawQuery.trim();
+  final pin = RegExp(r'\b\d{6}\b').firstMatch(trimmed)?.group(0);
+  if (pin != null) return 'PIN $pin';
+  final firstSegment = trimmed.split(',').first.trim();
+  if (firstSegment.length <= 40) return firstSegment;
+  return '${firstSegment.substring(0, 37)}…';
 }
 
 class _EmptySearch extends StatelessWidget {

@@ -114,6 +114,21 @@ Completed functionality includes:
 - An About & Contact page publishes `skotla100@gmail.com` and `+919392788714`, with a persistent 2026 copyright footer.
 - `skotla100@gmail.com` alone receives the admin dashboard for browser-local account, activity, charger-report, and demo-payment summaries. Credential hashes and payment credentials are never displayed.
 
+### Pending local release (10 August 2026)
+
+The current working tree contains a tested release that has not yet been pushed or deployed. It adds:
+
+- smoother iOS/macOS bounce physics and touch, trackpad, stylus, and mouse drag support;
+- lazy rendering for the unfiltered 45-card discovery grid, avoiding a full card rebuild during search;
+- a bounded lazy location-suggestions list with drag-to-dismiss keyboard behavior;
+- same-tab live charger results using Open Charge Map on web, Android, and iOS;
+- exact offline centering for PIN `500079` at Karmanghat/Vaishalinagar (`17.3366, 78.5349`);
+- visible Open Charge Map/OpenStreetMap attribution, a community-data warning, and a separate Google Maps verification action;
+- release Android internet permission and consistent VoltMapEV Android/iOS display names;
+- search-engine metadata and crawler files, expanded sandbox payment validation, launch-readiness guidance, and an hourly read-only quality script.
+
+Local validation for this pending release includes clean Flutter analysis, 39 passing automated tests, a successful production web build, and an iPhone-sized browser walkthrough. The walkthrough confirmed that `500079` stays inside VoltMapEV and the embedded map exposes 11 community charger markers in the tested viewport. Run the Android and unsigned iOS GitHub Actions builds after publishing the branch.
+
 ## Validation completed
 
 - `flutter analyze` passed.

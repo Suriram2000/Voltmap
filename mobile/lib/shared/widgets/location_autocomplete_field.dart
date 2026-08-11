@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../models/place_suggestion.dart';
 import '../services/place_search_service.dart';
@@ -92,85 +93,94 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
                 : widget.suffixIcon,
           ),
         ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 180),
-          alignment: Alignment.topCenter,
-          child: canShow
-              ? Container(
-                  key: const Key('locationSuggestions'),
-                  constraints: const BoxConstraints(maxHeight: 310),
-                  margin: const EdgeInsets.only(top: 8),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x16000000),
-                        blurRadius: 18,
-                        offset: Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: ListView(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      children: [
-                        for (final suggestion in _suggestions)
-                          ListTile(
-                            key: ValueKey('place_${suggestion.identity}'),
-                            dense: true,
-                            leading: CircleAvatar(
-                              radius: 18,
-                              child: Icon(
-                                _iconForType(suggestion.type),
-                                size: 18,
+        if (canShow)
+          Container(
+            key: const Key('locationSuggestions'),
+            height: (_suggestions.length * 72 + 44).clamp(116, 332).toDouble(),
+            margin: const EdgeInsets.only(top: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x16000000),
+                  blurRadius: 18,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Material(
+              type: MaterialType.transparency,
+              child: ListView.builder(
+                key: const Key('locationSuggestionsList'),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                scrollCacheExtent: const ScrollCacheExtent.pixels(216),
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                itemCount: _suggestions.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == _suggestions.length) {
+                    return SizedBox(
+                      height: 40,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _searching
+                                  ? Icons.sync_rounded
+                                  : Icons.public_rounded,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                _searching
+                                    ? 'Searching more places across India…'
+                                    : 'India-wide results • OpenStreetMap / Photon',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11),
                               ),
                             ),
-                            title: Text(
-                              suggestion.primaryText,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(
-                              suggestion.secondaryText,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onTap: () => _select(suggestion),
-                          ),
-                        if (_searching)
-                          const Padding(
-                            padding: EdgeInsets.fromLTRB(16, 8, 16, 10),
-                            child: Text(
-                              'Searching more places across India…',
-                              style: TextStyle(fontSize: 11),
-                            ),
-                          )
-                        else
-                          const Padding(
-                            padding: EdgeInsets.fromLTRB(16, 8, 16, 10),
-                            child: Row(
-                              children: [
-                                Icon(Icons.public_rounded, size: 14),
-                                SizedBox(width: 6),
-                                Text(
-                                  'India-wide results • OpenStreetMap / Photon',
-                                  style: TextStyle(fontSize: 11),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  final suggestion = _suggestions[index];
+                  return SizedBox(
+                    height: 72,
+                    child: ListTile(
+                      key: ValueKey('place_${suggestion.identity}'),
+                      leading: CircleAvatar(
+                        radius: 18,
+                        child: Icon(
+                          _iconForType(suggestion.type),
+                          size: 18,
+                        ),
+                      ),
+                      title: Text(
+                        suggestion.primaryText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        suggestion.secondaryText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () => _select(suggestion),
                     ),
-                  ),
-                )
-              : const SizedBox.shrink(),
-        ),
+                  );
+                },
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -215,7 +225,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
     });
     if (query.length < 3) return;
 
-    _debounce = Timer(const Duration(milliseconds: 420), () async {
+    _debounce = Timer(const Duration(milliseconds: 280), () async {
       final results = await widget.searchService.searchIndia(query);
       if (!mounted ||
           requestId != _requestId ||
