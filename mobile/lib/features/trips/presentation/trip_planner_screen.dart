@@ -9,6 +9,7 @@ import '../../../shared/models/saved_trip.dart';
 import '../../../shared/services/place_search_service.dart';
 import '../../../shared/state/app_state.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
+import '../../../shared/widgets/registered_account_gate.dart';
 import '../../discovery/data/sample_stations.dart';
 
 class TripPlannerScreen extends ConsumerStatefulWidget {
@@ -157,7 +158,8 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                 ),
               ],
               const SizedBox(height: 28),
-              Row(
+              if (appState.isRegisteredAccount) ...[
+                Row(
                 children: [
                   Text(
                     'Saved trips',
@@ -171,10 +173,10 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                   const Spacer(),
                   Text('${appState.savedTrips.length}'),
                 ],
-              ),
-              const SizedBox(height: 12),
-              if (appState.savedTrips.isEmpty)
-                const Card(
+                ),
+                const SizedBox(height: 12),
+                if (appState.savedTrips.isEmpty)
+                  const Card(
                   child: Padding(
                     padding: EdgeInsets.all(22),
                     child: Row(
@@ -187,15 +189,26 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                       ],
                     ),
                   ),
-                )
-              else
-                for (final trip in appState.savedTrips) ...[
-                  _SavedTripCard(
-                    trip: trip,
-                    onDelete: () => appState.removeTrip(trip.id),
+                  )
+                else
+                  for (final trip in appState.savedTrips) ...[
+                    _SavedTripCard(
+                      trip: trip,
+                      onDelete: () => appState.removeTrip(trip.id),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+              ] else
+                const Card(
+                  key: Key('publicTripPlannerNotice'),
+                  child: ListTile(
+                    leading: Icon(Icons.lock_open_rounded),
+                    title: Text('Trip planning is public'),
+                    subtitle: Text(
+                      'Plan and inspect routes without an account. Signup is requested only when you save a trip.',
+                    ),
                   ),
-                  const SizedBox(height: 10),
-                ],
+                ),
             ],
           ),
         ),
@@ -461,7 +474,10 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
     }
   }
 
-  void _saveRoute(AppState appState) {
+  Future<void> _saveRoute(AppState appState) async {
+    if (!await requireRegisteredAccount(context, appState, 'Saved trips')) {
+      return;
+    }
     final current = route!;
     final trip = SavedTrip(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -472,7 +488,7 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
       stopStationIds: current.stopStationIds,
       createdAt: DateTime.now(),
     );
-    appState.saveTrip(trip);
+    await appState.saveTrip(trip);
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Trip saved on this device.')));

@@ -17,6 +17,10 @@ final appStateProvider = ChangeNotifierProvider<AppState>((ref) {
 });
 
 class AppState extends ChangeNotifier {
+  static const adminIdentifier = 'skotla100@gmail.com';
+  static const contactEmail = 'skotla100@gmail.com';
+  static const contactPhone = '+919392788714';
+
   static const _favoritesKey = 'voltmap_favorites';
   static const _tripsKey = 'voltmap_saved_trips';
   static const _receiptsKey = 'voltmap_charging_receipts';
@@ -29,6 +33,8 @@ class AppState extends ChangeNotifier {
   static const _signedInKey = 'voltmap_signed_in';
   static const _accountSaltKey = 'voltmap_account_salt';
   static const _accountPasswordHashKey = 'voltmap_account_password_hash';
+  static const _accountCreatedAtKey = 'voltmap_account_created_at';
+  static const _accountLastSignInKey = 'voltmap_account_last_sign_in';
   static const _chargerSubmissionsKey = 'voltmap_charger_submissions';
 
   SharedPreferences? _preferences;
@@ -38,8 +44,8 @@ class AppState extends ChangeNotifier {
   bool hasLocalAccount = false;
   bool darkMode = false;
   bool notificationsEnabled = true;
-  String userName = 'VoltMap Driver';
-  String userEmail = 'driver@example.com';
+  String userName = 'VoltMapEV Driver';
+  String userIdentifier = 'driver@example.com';
   String vehicleName = 'Tata Nexon EV';
   double vehicleRangeKm = 325;
   final Set<String> favoriteStationIds = {};
@@ -50,7 +56,26 @@ class AppState extends ChangeNotifier {
   bool get isDemoAccount =>
       isSignedIn &&
       !hasLocalAccount &&
-      userEmail.toLowerCase() == 'demo@voltmap.in';
+      const {'demo@voltmap.in', 'demo@voltmapev.com'}
+          .contains(userIdentifier.toLowerCase());
+
+  bool get isRegisteredAccount =>
+      isSignedIn && hasLocalAccount && !isDemoAccount;
+
+  bool get isAdminAccount =>
+      isRegisteredAccount &&
+      userIdentifier.toLowerCase() == adminIdentifier;
+
+  List<LocalAccountSummary> get localAccountSummaries => hasLocalAccount
+      ? [
+          LocalAccountSummary(
+            name: userName,
+            identifier: userIdentifier,
+            createdAt: _dateFromPreference(_accountCreatedAtKey),
+            lastSignInAt: _dateFromPreference(_accountLastSignInKey),
+          ),
+        ]
+      : const [];
 
   Future<void> load() async {
     try {
@@ -62,7 +87,7 @@ class AppState extends ChangeNotifier {
       darkMode = preferences.getBool(_darkModeKey) ?? false;
       notificationsEnabled = preferences.getBool(_notificationsKey) ?? true;
       userName = preferences.getString(_nameKey) ?? userName;
-      userEmail = preferences.getString(_emailKey) ?? userEmail;
+      userIdentifier = preferences.getString(_emailKey) ?? userIdentifier;
       vehicleName = preferences.getString(_vehicleKey) ?? vehicleName;
       vehicleRangeKm = preferences.getDouble(_rangeKey) ?? vehicleRangeKm;
       isSignedIn = preferences.getBool(_signedInKey) ?? false;
@@ -117,12 +142,15 @@ class AppState extends ChangeNotifier {
 
   Future<String?> signUp({
     required String name,
-    required String email,
+    required String identifier,
     required String password,
   }) async {
-    final normalizedEmail = email.trim().toLowerCase();
+    final normalizedIdentifier = normalizeAccountIdentifier(identifier);
     if (_preferences == null) {
       return 'Browser storage is unavailable. Please enable it and try again.';
+    }
+    if (normalizedIdentifier == null) {
+      return 'Enter a valid email address or phone number.';
     }
     if (hasLocalAccount) {
       return 'A local account already exists. Sign in or reset this browser data.';
@@ -134,16 +162,19 @@ class AppState extends ChangeNotifier {
     );
     final salt = base64UrlEncode(saltBytes);
     final digest = _passwordDigest(password, salt);
+    final now = DateTime.now().toIso8601String();
 
     userName = name.trim();
-    userEmail = normalizedEmail;
+    userIdentifier = normalizedIdentifier;
     hasLocalAccount = true;
     isSignedIn = true;
     await Future.wait([
       _preferences!.setString(_nameKey, userName),
-      _preferences!.setString(_emailKey, userEmail),
+      _preferences!.setString(_emailKey, userIdentifier),
       _preferences!.setString(_accountSaltKey, salt),
       _preferences!.setString(_accountPasswordHashKey, digest),
+      _preferences!.setString(_accountCreatedAtKey, now),
+      _preferences!.setString(_accountLastSignInKey, now),
       _preferences!.setBool(_signedInKey, true),
     ]);
     notifyListeners();
@@ -151,10 +182,10 @@ class AppState extends ChangeNotifier {
   }
 
   Future<String?> signIn({
-    required String email,
+    required String identifier,
     required String password,
   }) async {
-    final normalizedEmail = email.trim().toLowerCase();
+    final normalizedIdentifier = normalizeAccountIdentifier(identifier);
     if (_preferences == null) {
       return 'Browser storage is unavailable. Please enable it and try again.';
     }
@@ -162,27 +193,34 @@ class AppState extends ChangeNotifier {
     final salt = _preferences!.getString(_accountSaltKey);
     final savedDigest = _preferences!.getString(_accountPasswordHashKey);
     final isValid = hasLocalAccount &&
-        normalizedEmail == userEmail.toLowerCase() &&
+        normalizedIdentifier != null &&
+        normalizedIdentifier == userIdentifier.toLowerCase() &&
         salt != null &&
         savedDigest != null &&
         _passwordDigest(password, salt) == savedDigest;
-    if (!isValid) return 'Email or password is incorrect.';
+    if (!isValid) return 'Email/phone or password is incorrect.';
 
     isSignedIn = true;
-    await _preferences!.setBool(_signedInKey, true);
+    await Future.wait([
+      _preferences!.setBool(_signedInKey, true),
+      _preferences!.setString(
+        _accountLastSignInKey,
+        DateTime.now().toIso8601String(),
+      ),
+    ]);
     notifyListeners();
     return null;
   }
 
   Future<void> enterDemoAccount() async {
-    userName = 'VoltMap Demo Driver';
-    userEmail = 'demo@voltmap.in';
+    userName = 'VoltMapEV Demo Driver';
+    userIdentifier = 'demo@voltmapev.com';
     isSignedIn = true;
     final preferences = _preferences;
     if (preferences != null) {
       await Future.wait([
         preferences.setString(_nameKey, userName),
-        preferences.setString(_emailKey, userEmail),
+        preferences.setString(_emailKey, userIdentifier),
         preferences.setBool(_signedInKey, true),
       ]);
     }
@@ -244,13 +282,15 @@ class AppState extends ChangeNotifier {
 
   Future<void> updateProfile({
     required String name,
-    required String email,
+    required String identifier,
   }) async {
+    final normalizedIdentifier = normalizeAccountIdentifier(identifier);
+    if (normalizedIdentifier == null) return;
     userName = name.trim();
-    userEmail = email.trim();
+    userIdentifier = normalizedIdentifier;
     notifyListeners();
     await _preferences?.setString(_nameKey, userName);
-    await _preferences?.setString(_emailKey, userEmail);
+    await _preferences?.setString(_emailKey, userIdentifier);
   }
 
   Future<void> updateVehicle({
@@ -299,4 +339,45 @@ class AppState extends ChangeNotifier {
   String _passwordDigest(String password, String salt) {
     return sha256.convert(utf8.encode('$salt:$password')).toString();
   }
+
+  DateTime? _dateFromPreference(String key) {
+    final value = _preferences?.getString(key);
+    return value == null ? null : DateTime.tryParse(value);
+  }
+
+  static String? normalizeAccountIdentifier(String input) {
+    final value = input.trim();
+    if (RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value)) {
+      return value.toLowerCase();
+    }
+
+    var digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length == 11 && digits.startsWith('0')) {
+      digits = digits.substring(1);
+    }
+    if (digits.length == 10 && RegExp(r'^[6-9]').hasMatch(digits)) {
+      return '+91$digits';
+    }
+    if (digits.length == 12 && digits.startsWith('91')) {
+      return '+$digits';
+    }
+    if (value.startsWith('+') && digits.length >= 10 && digits.length <= 15) {
+      return '+$digits';
+    }
+    return null;
+  }
+}
+
+class LocalAccountSummary {
+  const LocalAccountSummary({
+    required this.name,
+    required this.identifier,
+    required this.createdAt,
+    required this.lastSignInAt,
+  });
+
+  final String name;
+  final String identifier;
+  final DateTime? createdAt;
+  final DateTime? lastSignInAt;
 }

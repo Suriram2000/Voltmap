@@ -10,6 +10,7 @@ import '../../profile/presentation/profile_screen.dart';
 import '../../trips/presentation/trip_planner_screen.dart';
 import '../../../shared/state/app_state.dart';
 import '../../../shared/widgets/registered_account_gate.dart';
+import '../../../shared/widgets/site_footer.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -48,7 +49,12 @@ class _AppShellState extends ConsumerState<AppShell> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 900;
-        final body = IndexedStack(index: index, children: screens);
+        final body = Column(
+          children: [
+            Expanded(child: IndexedStack(index: index, children: screens)),
+            const SiteFooter(),
+          ],
+        );
         if (wide) {
           return Scaffold(
             body: Row(
@@ -110,7 +116,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   Future<void> _selectDestination(int value) async {
     final appState = ref.read(appStateProvider);
-    final requiresRegisteredAccount = value == 2 || value == 3 || value == 4;
+    final requiresRegisteredAccount = value == 3 || value == 4;
     if (requiresRegisteredAccount &&
         !await requireRegisteredAccount(
           context,
@@ -259,7 +265,7 @@ class _BrandLockup extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'VoltMap',
+              'VoltMapEV',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 21,

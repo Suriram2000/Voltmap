@@ -7,7 +7,7 @@ class ModulesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('VoltMap Modules')),
+      appBar: AppBar(title: const Text('VoltMapEV Modules')),
       body: ListView.builder(
         itemCount: moduleCatalog.length,
         itemBuilder: (context, index) => ListTile(

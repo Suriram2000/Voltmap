@@ -416,7 +416,7 @@ class _DiscoveryHero extends StatelessWidget {
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 620),
                       child: Text(
-                        'Search detailed VoltMap demos, then open live charger results for any PIN code, city, state, or area across India.',
+                        'Search detailed VoltMapEV demos, then open live charger results for any PIN code, city, state, or area across India.',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                               color: const Color(0xFFB8CEC4),
                               fontSize: compact ? 15 : 17,
@@ -591,7 +591,7 @@ class _NationalCoverageCard extends StatelessWidget {
                   matchingStates.isNotEmpty
                       ? '${matchingStates.first.state} has ${_withCommas(matchingStates.first.stationCount)} officially reported public stations. Open live results to find individual chargers near “$trimmedQuery”.'
                       : trimmedQuery.isEmpty
-                          ? 'Verified totals cover every State and Union Territory. VoltMap includes 45 detailed demo locations; use live search for individual chargers anywhere in India.'
+                          ? 'Verified totals cover every State and Union Territory. VoltMapEV includes 45 detailed demo locations; use live search for individual chargers anywhere in India.'
                           : 'The bundled detailed catalog may not include “$trimmedQuery”. Open live results to search individual chargers for this PIN or area across India.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -818,7 +818,7 @@ class _ResultsHeader extends StatelessWidget {
             children: [
               Text(
                 query.trim().isEmpty
-                    ? 'Detailed VoltMap locations'
+                    ? 'Detailed VoltMapEV locations'
                     : 'Detailed demo matches',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),

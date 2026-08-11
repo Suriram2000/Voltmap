@@ -183,7 +183,7 @@ class _ChargingCheckoutScreenState
                         _PaymentMethodTile(
                           key: const Key('paymentMethod_wallet'),
                           icon: Icons.wallet_outlined,
-                          title: 'VoltMap wallet',
+                          title: 'VoltMapEV wallet',
                           subtitle: 'Authorize the sandbox wallet',
                           selected: _paymentOption == PaymentOption.wallet,
                           onTap: () =>
@@ -355,7 +355,7 @@ class _ChargingCheckoutScreenState
               SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'VoltMap demo wallet is ready for authorization. Sandbox balance is unlimited and no real money is used.',
+                  'VoltMapEV demo wallet is ready for authorization. Sandbox balance is unlimited and no real money is used.',
                 ),
               ),
             ],
@@ -414,7 +414,7 @@ class _ChargingCheckoutScreenState
         final digits = _digits(_cardNumberController.text);
         return 'Card ending ${digits.substring(digits.length - 4)}';
       case PaymentOption.wallet:
-        return 'VoltMap demo wallet';
+        return 'VoltMapEV demo wallet';
     }
   }
 

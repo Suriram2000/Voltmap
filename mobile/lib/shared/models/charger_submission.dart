@@ -74,6 +74,6 @@ class ChargerSubmission {
 ${notes.isEmpty ? 'No additional notes supplied.' : notes}
 
 ---
-Submitted from the VoltMap public charger-report form. Please verify this location before adding it to the catalog.
+Submitted from the VoltMapEV public charger-report form. Please verify this location before adding it to the catalog.
 ''';
 }

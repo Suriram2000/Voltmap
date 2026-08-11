@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_theme.dart';
-import '../features/auth/presentation/auth_screen.dart';
 import '../features/shell/presentation/app_shell.dart';
 import '../shared/state/app_state.dart';
 
@@ -12,16 +11,12 @@ class VoltMapApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final appState = ref.watch(appStateProvider);
     return MaterialApp(
-      title: 'VoltMap',
+      title: 'VoltMapEV',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: appState.darkMode ? ThemeMode.dark : ThemeMode.light,
-      home: !appState.isReady
-          ? const _AppLoadingScreen()
-          : appState.isSignedIn
-              ? const AppShell()
-              : const AuthScreen(),
+      home: !appState.isReady ? const _AppLoadingScreen() : const AppShell(),
     );
   }
 }

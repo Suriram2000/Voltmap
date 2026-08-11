@@ -1,6 +1,6 @@
 {
-  "name": "VoltMap",
-  "short_name": "VoltMap",
+  "name": "VoltMapEV",
+  "short_name": "VoltMapEV",
   "start_url": ".",
   "display": "standalone",
   "scope": ".",
