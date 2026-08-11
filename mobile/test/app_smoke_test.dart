@@ -160,6 +160,26 @@ void main() {
     expect(find.text('Sign up'), findsOneWidget);
   });
 
+  testWidgets('guests can open Addstation without a signup gate', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    _useDesktopViewport(tester);
+
+    await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
+    await tester.pumpAndSettle();
+    expect(find.text('Addstation'), findsOneWidget);
+    expect(find.byIcon(Icons.add_location_alt_outlined), findsOneWidget);
+
+    await tester.tap(find.text('Addstation'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('signupRequiredDialog')), findsNothing);
+    expect(find.text('Add a charging station'), findsOneWidget);
+    expect(find.byKey(const Key('publicAddstationNotice')), findsOneWidget);
+    expect(find.text('NO SIGNUP REQUIRED'), findsOneWidget);
+  });
+
   testWidgets('Trip search suggests India-wide places for partial text', (
     tester,
   ) async {
@@ -367,8 +387,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Report saved'), findsOneWidget);
+    expect(find.byKey(const Key('finishChargerReportButton')), findsOneWidget);
+    expect(
+      find.byKey(const Key('openPublicChargerReviewButton')),
+      findsOneWidget,
+    );
     final preferences = await SharedPreferences.getInstance();
     expect(preferences.getString('voltmap_charger_submissions'), isNotNull);
+    await tester.tap(find.byKey(const Key('finishChargerReportButton')));
+    await tester.pumpAndSettle();
+    final stationField = tester.widget<TextFormField>(
+      find.widgetWithText(TextFormField, 'Station name'),
+    );
+    expect(stationField.controller?.text, isEmpty);
   });
 
   testWidgets('compact phone navigation reaches every responsive app section', (
@@ -384,7 +415,8 @@ void main() {
     final navigation = find.byType(NavigationBar);
     expect(navigation, findsOneWidget);
     await tester.tap(
-      find.descendant(of: navigation, matching: find.byIcon(Icons.map_outlined)),
+      find.descendant(
+          of: navigation, matching: find.byIcon(Icons.map_outlined)),
     );
     await tester.pumpAndSettle();
     expect(find.text('India Charger Map'), findsOneWidget);
@@ -411,7 +443,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Add a missing charger'), findsOneWidget);
+    expect(find.text('Add a charging station'), findsOneWidget);
+    expect(find.text('Addstation'), findsOneWidget);
     await tester.tap(
       find.descendant(
         of: navigation,

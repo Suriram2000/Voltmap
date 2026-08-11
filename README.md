@@ -16,7 +16,7 @@ Production site: [https://voltmapev.com](https://voltmapev.com)
 - Validate a sandbox UPI ID, credit/debit card, or VoltMapEV wallet before charging, meter the demo session by actual kWh, and capture the final amount only after charging stops.
 - Use a premium responsive interface with adaptive mobile navigation, lazy station-card rendering, a smooth bounded location-options list, native-feeling iOS scroll physics, and light or dark appearance.
 - Use the interactive offline map without a Google Maps key.
-- Search chargers and plan trips without signing in. Signup with an email address or phone number is required only for favorites, saved trips, charger reports, payments, and personal history.
+- Search chargers, plan trips, and save a missing-station report without signing in. Signup with an email address or phone number is required only for favorites, saved trips, payments, and personal history; sending a saved station report to GitHub for public moderation remains optional.
 - Save favorites, trips, vehicle information, and preferences in browser storage.
 - Open About and Contact information from the site footer. The private admin dashboard is visible only to `skotla100@gmail.com` and reports browser-local users and demo activity without exposing credential hashes or payment credentials.
 - Switch between light and dark themes.

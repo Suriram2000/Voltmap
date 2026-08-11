@@ -56,7 +56,7 @@ class _AddChargerScreenState extends ConsumerState<AddChargerScreen> {
     final appState = ref.watch(appStateProvider);
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Add a missing charger')),
+      appBar: AppBar(title: const Text('Add a charging station')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 900),
@@ -81,6 +81,41 @@ class _AddChargerScreenState extends ConsumerState<AddChargerScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          DecoratedBox(
+                            key: Key('publicAddstationNotice'),
+                            decoration: BoxDecoration(
+                              color: Color(0x2420C77A),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(999)),
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.lock_open_rounded,
+                                    color: AppTheme.brandLime,
+                                    size: 15,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'NO SIGNUP REQUIRED',
+                                    style: TextStyle(
+                                      color: Color(0xFFD8FFE9),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 10),
                           Text(
                             'Help improve India\'s charger map',
                             style: TextStyle(
@@ -91,7 +126,7 @@ class _AddChargerScreenState extends ConsumerState<AddChargerScreen> {
                           ),
                           SizedBox(height: 6),
                           Text(
-                            'Reports are saved as pending and opened for public review. VoltMapEV verifies a charger before adding it to the catalog.',
+                            'Save a missing station report without creating an account. Public moderation is optional and no charger appears in the catalog until it is reviewed.',
                             style: TextStyle(color: Color(0xFFC4D8CF)),
                           ),
                         ],
@@ -110,12 +145,24 @@ class _AddChargerScreenState extends ConsumerState<AddChargerScreen> {
                       '${appState.chargerSubmissions.length} report${appState.chargerSubmissions.length == 1 ? '' : 's'} saved on this device',
                     ),
                     subtitle: const Text(
-                      'Latest status: pending public verification',
+                      'Latest status: saved locally • public review optional',
+                    ),
+                    trailing: IconButton(
+                      key: const Key('openLatestChargerReportButton'),
+                      tooltip: 'Open latest report for public review',
+                      onPressed: _submitting
+                          ? null
+                          : () => _openPublicReview(
+                                appState.chargerSubmissions.first,
+                              ),
+                      icon: const Icon(Icons.rate_review_outlined),
                     ),
                   ),
                 ),
               ],
               const SizedBox(height: 18),
+              const _SubmissionSteps(),
+              const SizedBox(height: 14),
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(22),
@@ -124,8 +171,18 @@ class _AddChargerScreenState extends ConsumerState<AddChargerScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Charger information',
-                            style: Theme.of(context).textTheme.titleLarge),
+                        Text(
+                          'Charger information',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          'Complete the location and connector details. Notes are optional.',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: colors.onSurfaceVariant,
+                                  ),
+                        ),
                         const SizedBox(height: 18),
                         _field(
                           controller: _stationController,
@@ -265,12 +322,12 @@ class _AddChargerScreenState extends ConsumerState<AddChargerScreen> {
                                         strokeWidth: 2),
                                   )
                                 : const Icon(Icons.send_rounded),
-                            label: const Text('Save & submit for review'),
+                            label: const Text('Save station report'),
                           ),
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          'A GitHub sign-in is required to finish the public report. No charger is published until it is reviewed.',
+                          'No VoltMapEV signup is required. The report is saved on this device first; sending it for public GitHub review is optional.',
                           style:
                               Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: colors.onSurfaceVariant,
@@ -320,6 +377,43 @@ class _AddChargerScreenState extends ConsumerState<AddChargerScreen> {
       createdAt: now,
     );
     await ref.read(appStateProvider).saveChargerSubmission(submission);
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(
+          Icons.save_rounded,
+          color: Theme.of(dialogContext).colorScheme.primary,
+        ),
+        title: const Text('Report saved'),
+        content: const Text(
+          'Your station report is saved on this device without signup. You can finish here or optionally open a prefilled GitHub form for public verification.',
+        ),
+        actions: [
+          TextButton(
+            key: const Key('finishChargerReportButton'),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Done'),
+          ),
+          FilledButton.icon(
+            key: const Key('openPublicChargerReviewButton'),
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await _openPublicReview(submission);
+            },
+            icon: const Icon(Icons.rate_review_outlined),
+            label: const Text('Open public review'),
+          ),
+        ],
+      ),
+    );
+    if (mounted) _resetForm();
+  }
+
+  Future<void> _openPublicReview(ChargerSubmission submission) async {
+    if (_submitting) return;
+    setState(() => _submitting = true);
     final issueUri = Uri.https(
       'github.com',
       '/Suriram2000/Voltmap/issues/new',
@@ -340,26 +434,86 @@ class _AddChargerScreenState extends ConsumerState<AddChargerScreen> {
     }
     if (!mounted) return;
     setState(() => _submitting = false);
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        icon: Icon(
-          launched ? Icons.open_in_new_rounded : Icons.save_rounded,
-          color: Theme.of(dialogContext).colorScheme.primary,
-        ),
-        title: Text(launched ? 'Report ready for review' : 'Report saved'),
-        content: Text(
-          launched
-              ? 'Complete the prefilled GitHub form to send this charger for public verification. A pending copy is saved on this device.'
-              : 'A pending copy is saved on this device, but the public review page could not be opened. Please try again when you are online.',
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Done'),
+    if (!launched) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'The public review page could not be opened. Your report is still saved on this device.',
           ),
-        ],
+        ),
+      );
+    }
+  }
+
+  void _resetForm() {
+    _formKey.currentState?.reset();
+    for (final controller in [
+      _stationController,
+      _operatorController,
+      _addressController,
+      _cityController,
+      _stateController,
+      _pinController,
+      _notesController,
+    ]) {
+      controller.clear();
+    }
+    setState(() {
+      _connectors
+        ..clear()
+        ..add('CCS2');
+      _status = 'Working';
+    });
+  }
+}
+
+class _SubmissionSteps extends StatelessWidget {
+  const _SubmissionSteps();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Card(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            _StepBadge(number: '1', label: 'Location'),
+            Icon(Icons.arrow_forward_rounded, size: 17),
+            _StepBadge(number: '2', label: 'Connectors'),
+            Icon(Icons.arrow_forward_rounded, size: 17),
+            _StepBadge(number: '3', label: 'Save report'),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _StepBadge extends StatelessWidget {
+  const _StepBadge({required this.number, required this.label});
+
+  final String number;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircleAvatar(
+          radius: 13,
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          child: Text(
+            number,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+          ),
+        ),
+        const SizedBox(width: 7),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+      ],
     );
   }
 }
