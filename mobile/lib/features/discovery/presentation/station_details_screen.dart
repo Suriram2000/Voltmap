@@ -226,13 +226,13 @@ class StationDetailsScreen extends ConsumerWidget {
                       key: const Key('openCheckoutButton'),
                       onPressed: station.available
                           ? () async {
-                              if (await requireRegisteredAccount(
+                              final canPay = await requireRegisteredAccount(
                                 context,
                                 appState,
                                 'Payments',
-                              )) {
-                                await _startSession(context);
-                              }
+                              );
+                              if (!context.mounted || !canPay) return;
+                              await _startSession(context);
                             }
                           : null,
                       icon: const Icon(Icons.ev_station_rounded),

@@ -33,6 +33,7 @@ Future<bool> requireRegisteredAccount(
       ],
     ),
   );
+  if (!context.mounted) return false;
   if (createAccount == true) {
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(builder: (_) => const AuthScreen()),
