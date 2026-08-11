@@ -261,23 +261,29 @@ class _BrandLockup extends StatelessWidget {
       children: [
         mark,
         const SizedBox(width: 12),
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'VoltMapEV',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 21,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'VoltMapEV',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
               ),
-            ),
-            Text(
-              'Charge forward',
-              style: TextStyle(color: Color(0xFF9FB7AD), fontSize: 11),
-            ),
-          ],
+              Text(
+                'Charge forward',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Color(0xFF9FB7AD), fontSize: 11),
+              ),
+            ],
+          ),
         ),
       ],
     );

@@ -149,7 +149,7 @@ void main() {
     await tester.ensureVisible(find.text('Plan route'));
     await tester.tap(find.text('Plan route'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Save this trip'));
+    await tester.scrollUntilVisible(find.text('Save this trip'), 300);
     await tester.tap(find.text('Save this trip'));
     await tester.pumpAndSettle();
 
