@@ -477,7 +477,7 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
   Future<void> _saveRoute(AppState appState) async {
     final canSave =
         await requireRegisteredAccount(context, appState, 'Saved trips');
-    if (!mounted || !canSave) return;
+    if (!context.mounted || !canSave) return;
     final current = route!;
     final trip = SavedTrip(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
