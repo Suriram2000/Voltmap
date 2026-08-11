@@ -489,6 +489,7 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
       createdAt: DateTime.now(),
     );
     await appState.saveTrip(trip);
+    if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Trip saved on this device.')));
