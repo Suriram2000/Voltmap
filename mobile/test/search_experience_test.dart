@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voltmap/app/voltmap_app.dart';
+import 'package:voltmap/features/discovery/data/official_charger_search_service.dart';
+import 'package:voltmap/features/discovery/data/official_charger_station.dart';
 import 'package:voltmap/features/discovery/data/sample_stations.dart';
 import 'package:voltmap/features/discovery/presentation/discovery_screen.dart';
 import 'package:voltmap/features/discovery/presentation/live_charger_map_screen.dart';
@@ -29,6 +31,61 @@ void main() {
     expect(uri.queryParameters['zoom'], '13');
   });
 
+  test('official charger search keeps exact PIN matches first', () {
+    final center = const PlaceSearchService().localSuggestions('500079').first;
+    final exact = _officialStation(
+      operatorName: 'Exact Energy',
+      latitude: 17.348941,
+      longitude: 78.513976,
+      postcode: '500079',
+    );
+    final nearby = _officialStation(
+      operatorName: 'Nearby Energy',
+      latitude: 17.34,
+      longitude: 78.55,
+      postcode: '500035',
+    );
+    final farAway = _officialStation(
+      operatorName: 'Far Energy',
+      latitude: 18.5,
+      longitude: 79.5,
+      postcode: '500001',
+    );
+
+    final result = searchOfficialChargers(
+      index: OfficialChargerIndex(
+        source: 'BEE',
+        sourceUrl: 'https://example.com',
+        asOf: DateTime(2025, 10, 26),
+        totalStationCount: 3,
+        stations: [nearby, farAway, exact],
+      ),
+      query: '500079',
+      center: center,
+    );
+
+    expect(result.matches.map((match) => match.station.operatorName), [
+      'Exact Energy',
+      'Nearby Energy',
+    ]);
+    expect(result.exactPostcodeCount, 1);
+  });
+
+  testWidgets('bundled BEE data returns in-app 500079 results', (tester) async {
+    final center = const PlaceSearchService().localSuggestions('500079').first;
+    final result = (await tester.runAsync(
+      () => const OfficialChargerSearchService().search(
+        query: '500079',
+        center: center,
+      ),
+    ))!;
+
+    expect(result.exactPostcodeCount, 2);
+    expect(result.matches, hasLength(235));
+    expect(result.matches.first.exactPostcode, isTrue);
+    expect(result.totalStationCount, 29251);
+  });
+
   testWidgets('selecting a PIN opens live charger results immediately', (
     tester,
   ) async {
@@ -44,18 +101,23 @@ void main() {
     );
     await tester.pump();
     await tester.tap(find.text('Karmanghat / Vaishalinagar - 500079'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(
-      find.text('Live chargers near Karmanghat / Vaishalinagar - 500079'),
+      find.text('Chargers near Karmanghat / Vaishalinagar - 500079'),
       findsOneWidget,
     );
+    expect(find.byKey(const Key('officialChargerListTab')), findsOneWidget);
+    expect(find.byKey(const Key('communityChargerMapTab')), findsOneWidget);
+    expect(
+        find.byKey(const Key('verifyLiveResultsOnGoogleButton')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('communityChargerMapTab')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('LIVE COMMUNITY MAP'), findsOneWidget);
     expect(find.byKey(const Key('liveChargerPlatformView')), findsOneWidget);
-    expect(
-      find.byKey(const Key('verifyLiveResultsOnGoogleButton')),
-      findsOneWidget,
-    );
   });
 
   testWidgets('the visible Search action opens live PIN charger results', (
@@ -77,13 +139,14 @@ void main() {
       findsOneWidget,
     );
     await tester.tap(find.byKey(const Key('submitLiveChargerSearchButton')));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(
-      find.text('Live chargers near Karmanghat / Vaishalinagar - 500079'),
+      find.text('Chargers near Karmanghat / Vaishalinagar - 500079'),
       findsOneWidget,
     );
-    expect(find.byKey(const Key('liveChargerPlatformView')), findsOneWidget);
+    expect(find.byKey(const Key('officialChargerListTab')), findsOneWidget);
   });
 
   testWidgets('discovery lazily builds cards and dismisses input on drag', (
@@ -174,6 +237,28 @@ void main() {
       }),
     );
   });
+}
+
+OfficialChargerStation _officialStation({
+  required String operatorName,
+  required double latitude,
+  required double longitude,
+  required String postcode,
+}) {
+  return OfficialChargerStation(
+    operatorName: operatorName,
+    ownership: 'Private',
+    state: 'Telangana',
+    district: 'Hyderabad',
+    city: 'Hyderabad',
+    address: 'Station address $postcode',
+    latitude: latitude,
+    longitude: longitude,
+    postcodes: [postcode],
+    connectors: const [
+      OfficialChargerConnector(type: 'CCS-II', ratingKw: 50, count: 1),
+    ],
+  );
 }
 
 class _ManyPlacesService extends PlaceSearchService {

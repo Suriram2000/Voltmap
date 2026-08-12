@@ -767,15 +767,9 @@ class _NationalCoverageCard extends StatelessWidget {
                           : const Icon(Icons.map_rounded),
                       label: Text(
                         trimmedQuery.isEmpty
-                            ? 'View live stations in app'
-                            : 'View live chargers near $searchLabel',
+                            ? 'View stations in app'
+                            : 'Show chargers near $searchLabel',
                       ),
-                    ),
-                    TextButton.icon(
-                      key: const Key('googleLiveSearchButton'),
-                      onPressed: () => _openLiveSearch(context, trimmedQuery),
-                      icon: const Icon(Icons.verified_outlined, size: 18),
-                      label: const Text('Verify on Google Maps'),
                     ),
                     OutlinedButton.icon(
                       key: const Key('allStateTotalsButton'),
@@ -823,19 +817,6 @@ class _NationalCoverageCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _openLiveSearch(
-    BuildContext context,
-    String location,
-  ) async {
-    final area = location.isEmpty ? 'India' : '$location, India';
-    final url = Uri.https(
-      'www.google.com',
-      '/maps/search/',
-      {'api': '1', 'query': 'EV charging stations near $area'},
-    );
-    await _openUrl(context, url);
   }
 
   Future<void> _openUrl(BuildContext context, Uri url) async {
