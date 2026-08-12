@@ -129,6 +129,10 @@ The deployed release adds:
 
 Validation for this release included clean Flutter analysis, 39 passing automated tests, a successful production web build, Android and unsigned iOS GitHub Actions builds, and an iPhone-sized live-browser walkthrough. The walkthrough confirmed that `500079` stays inside VoltMapEV and the embedded map exposes 11 community charger markers in the tested viewport.
 
+### In-app official charger list (11 August 2026)
+
+The charger search no longer opens or offers a Google Maps verification action. PIN and area searches now open an **Official list** tab inside VoltMapEV first, with a separate **Community map** tab for Open Charge Map. The official list is generated reproducibly from BEE's station-level publication dated 26 October 2025, split into state assets for fast loading, and presents exact PIN matches first followed by all official stations within the displayed search radius. For PIN `500079`, the generated data contains 2 exact-address matches and 235 official stations within 15 km of the selected center. The BEE source is a dated inventory and does not claim live working status, access, or price.
+
 ## Validation completed
 
 - `flutter analyze` passed.
