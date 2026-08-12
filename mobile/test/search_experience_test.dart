@@ -9,7 +9,6 @@ import 'package:voltmap/features/discovery/data/official_charger_search_service.
 import 'package:voltmap/features/discovery/data/official_charger_station.dart';
 import 'package:voltmap/features/discovery/data/sample_stations.dart';
 import 'package:voltmap/features/discovery/presentation/discovery_screen.dart';
-import 'package:voltmap/features/discovery/presentation/live_charger_map_screen.dart';
 import 'package:voltmap/features/discovery/presentation/station_card.dart';
 import 'package:voltmap/shared/models/place_suggestion.dart';
 import 'package:voltmap/shared/services/place_search_service.dart';
@@ -18,17 +17,6 @@ import 'package:voltmap/shared/widgets/location_autocomplete_field.dart';
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
-  });
-
-  test('live charger map centers the 500079 PIN accurately', () {
-    final place = const PlaceSearchService().localSuggestions('500079').first;
-    final uri = buildLiveChargerMapUri(center: place);
-
-    expect(uri.host, 'map.openchargemap.io');
-    expect(uri.queryParameters['mode'], 'embedded');
-    expect(uri.queryParameters['latitude'], '17.336600');
-    expect(uri.queryParameters['longitude'], '78.534900');
-    expect(uri.queryParameters['zoom'], '13');
   });
 
   test('official charger search keeps exact PIN matches first', () {
@@ -86,7 +74,7 @@ void main() {
     expect(result.totalStationCount, 29251);
   });
 
-  testWidgets('selecting a PIN opens live charger results immediately', (
+  testWidgets('selecting a PIN shows official chargers on Discover', (
     tester,
   ) async {
     _useDesktopViewport(tester);
@@ -104,23 +92,22 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
+    expect(find.byType(DiscoveryScreen), findsOneWidget);
     expect(
-      find.text('Chargers near Karmanghat / Vaishalinagar - 500079'),
+      find.byKey(const Key('inlineOfficialChargerResults')),
       findsOneWidget,
     );
-    expect(find.byKey(const Key('officialChargerListTab')), findsOneWidget);
-    expect(find.byKey(const Key('communityChargerMapTab')), findsOneWidget);
+    expect(find.byKey(const Key('communityChargerMapTab')), findsNothing);
+    expect(find.byKey(const Key('liveNationalSearchButton')), findsNothing);
     expect(
-        find.byKey(const Key('verifyLiveResultsOnGoogleButton')), findsNothing);
-
-    await tester.tap(find.byKey(const Key('communityChargerMapTab')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(find.text('LIVE COMMUNITY MAP'), findsOneWidget);
-    expect(find.byKey(const Key('liveChargerPlatformView')), findsOneWidget);
+      Navigator.of(
+        tester.element(find.byType(DiscoveryScreen)),
+      ).canPop(),
+      isFalse,
+    );
   });
 
-  testWidgets('the visible Search action opens live PIN charger results', (
+  testWidgets('the Search action shows PIN charger results inline', (
     tester,
   ) async {
     _useDesktopViewport(tester);
@@ -135,18 +122,18 @@ void main() {
     );
     await tester.pump();
     expect(
-      find.byKey(const Key('submitLiveChargerSearchButton')),
+      find.byKey(const Key('submitChargerSearchButton')),
       findsOneWidget,
     );
-    await tester.tap(find.byKey(const Key('submitLiveChargerSearchButton')));
+    await tester.tap(find.byKey(const Key('submitChargerSearchButton')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(
-      find.text('Chargers near Karmanghat / Vaishalinagar - 500079'),
+      find.byKey(const Key('inlineOfficialChargerResults')),
       findsOneWidget,
     );
-    expect(find.byKey(const Key('officialChargerListTab')), findsOneWidget);
+    expect(find.byKey(const Key('communityChargerMapTab')), findsNothing);
   });
 
   testWidgets('discovery lazily builds cards and dismisses input on drag', (

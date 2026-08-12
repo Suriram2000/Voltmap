@@ -386,7 +386,7 @@ class _AuthStory extends StatelessWidget {
             const _StoryPoint(
               icon: Icons.search_rounded,
               title: 'Search any PIN or area',
-              subtitle: 'Jump into live charger results across India',
+              subtitle: 'Find official charger results across India',
             ),
             const SizedBox(height: 18),
             const _StoryPoint(

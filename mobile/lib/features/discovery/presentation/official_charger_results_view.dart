@@ -10,10 +10,12 @@ class OfficialChargerResultsView extends StatefulWidget {
     super.key,
     required this.query,
     this.center,
+    this.embedded = false,
   });
 
   final String query;
   final PlaceSuggestion? center;
+  final bool embedded;
 
   @override
   State<OfficialChargerResultsView> createState() =>
@@ -24,6 +26,7 @@ class _OfficialChargerResultsViewState
     extends State<OfficialChargerResultsView> {
   final _service = const OfficialChargerSearchService();
   late Future<OfficialChargerSearchResult> _result;
+  int _visibleCount = 25;
 
   @override
   void initState() {
@@ -36,6 +39,7 @@ class _OfficialChargerResultsViewState
     super.didUpdateWidget(oldWidget);
     if (oldWidget.query != widget.query ||
         oldWidget.center?.identity != widget.center?.identity) {
+      _visibleCount = 25;
       _search();
     }
   }
@@ -66,6 +70,37 @@ class _OfficialChargerResultsViewState
         }
 
         final result = snapshot.requireData;
+        if (widget.embedded) {
+          final visibleCount =
+              _visibleCount.clamp(0, result.matches.length).toInt();
+          final remaining = result.matches.length - visibleCount;
+          return Column(
+            key: const Key('embeddedOfficialChargerList'),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _ResultsHeader(result: result),
+              for (var index = 0; index < visibleCount; index++)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: _OfficialStationCard(match: result.matches[index]),
+                ),
+              if (remaining > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16, bottom: 8),
+                  child: OutlinedButton.icon(
+                    key: const Key('showMoreOfficialChargersButton'),
+                    onPressed: () => setState(() {
+                      _visibleCount = (_visibleCount + 25)
+                          .clamp(0, result.matches.length)
+                          .toInt();
+                    }),
+                    icon: const Icon(Icons.expand_more_rounded),
+                    label: Text('Show more chargers ($remaining remaining)'),
+                  ),
+                ),
+            ],
+          );
+        }
         return ListView.builder(
           key: const PageStorageKey('officialChargerResultsList'),
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
