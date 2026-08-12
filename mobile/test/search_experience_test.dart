@@ -9,6 +9,7 @@ import 'package:voltmap/features/discovery/data/official_charger_search_service.
 import 'package:voltmap/features/discovery/data/official_charger_station.dart';
 import 'package:voltmap/features/discovery/data/sample_stations.dart';
 import 'package:voltmap/features/discovery/presentation/discovery_screen.dart';
+import 'package:voltmap/features/discovery/presentation/official_charger_results_view.dart';
 import 'package:voltmap/features/discovery/presentation/station_card.dart';
 import 'package:voltmap/shared/models/place_suggestion.dart';
 import 'package:voltmap/shared/services/place_search_service.dart';
@@ -59,6 +60,22 @@ void main() {
     expect(result.exactPostcodeCount, 1);
   });
 
+  test('Google verification uses the selected PIN area', () {
+    final center = const PlaceSearchService().localSuggestions('500079').first;
+    final uri = buildGoogleChargerVerificationUri(
+      query: '500079',
+      center: center,
+    );
+
+    expect(uri.host, 'www.google.com');
+    expect(uri.path, '/maps/search/');
+    expect(uri.queryParameters['api'], '1');
+    expect(
+      uri.queryParameters['query'],
+      'EV charging stations near Karmanghat / Vaishalinagar - 500079, India',
+    );
+  });
+
   testWidgets('bundled BEE data returns in-app 500079 results', (tester) async {
     final center = const PlaceSearchService().localSuggestions('500079').first;
     final result = (await tester.runAsync(
@@ -90,7 +107,10 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Karmanghat / Vaishalinagar - 500079'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await _pumpUntilFound(
+      tester,
+      find.byKey(const Key('verifyLiveResultsOnGoogleButton')),
+    );
 
     expect(find.byType(DiscoveryScreen), findsOneWidget);
     expect(
@@ -99,6 +119,10 @@ void main() {
     );
     expect(find.byKey(const Key('communityChargerMapTab')), findsNothing);
     expect(find.byKey(const Key('liveNationalSearchButton')), findsNothing);
+    expect(
+      find.byKey(const Key('verifyLiveResultsOnGoogleButton')),
+      findsOneWidget,
+    );
     expect(
       Navigator.of(
         tester.element(find.byType(DiscoveryScreen)),
@@ -127,13 +151,20 @@ void main() {
     );
     await tester.tap(find.byKey(const Key('submitChargerSearchButton')));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await _pumpUntilFound(
+      tester,
+      find.byKey(const Key('verifyLiveResultsOnGoogleButton')),
+    );
 
     expect(
       find.byKey(const Key('inlineOfficialChargerResults')),
       findsOneWidget,
     );
     expect(find.byKey(const Key('communityChargerMapTab')), findsNothing);
+    expect(
+      find.byKey(const Key('verifyLiveResultsOnGoogleButton')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('discovery lazily builds cards and dismisses input on drag', (
@@ -271,4 +302,13 @@ void _useDesktopViewport(WidgetTester tester) {
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
+}
+
+Future<void> _pumpUntilFound(WidgetTester tester, Finder finder) async {
+  for (var attempt = 0; attempt < 30 && finder.evaluate().isEmpty; attempt++) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pump();
+  }
 }
