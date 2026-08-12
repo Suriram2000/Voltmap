@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/place_suggestion.dart';
@@ -78,7 +79,10 @@ class _OfficialChargerResultsViewState
             key: const Key('embeddedOfficialChargerList'),
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _ResultsHeader(result: result),
+              _ResultsHeader(
+                result: result,
+                onVerify: () => _openGoogleMaps(context),
+              ),
               for (var index = 0; index < visibleCount; index++)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
@@ -107,7 +111,12 @@ class _OfficialChargerResultsViewState
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           itemCount: result.matches.length + 1,
           itemBuilder: (context, index) {
-            if (index == 0) return _ResultsHeader(result: result);
+            if (index == 0) {
+              return _ResultsHeader(
+                result: result,
+                onVerify: () => _openGoogleMaps(context),
+              );
+            }
             return Padding(
               padding: const EdgeInsets.only(top: 12),
               child: _OfficialStationCard(match: result.matches[index - 1]),
@@ -117,12 +126,28 @@ class _OfficialChargerResultsViewState
       },
     );
   }
+
+  Future<void> _openGoogleMaps(BuildContext context) async {
+    final opened = await launchUrl(
+      buildGoogleChargerVerificationUri(
+        query: widget.query,
+        center: widget.center,
+      ),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open Google Maps.')),
+      );
+    }
+  }
 }
 
 class _ResultsHeader extends StatelessWidget {
-  const _ResultsHeader({required this.result});
+  const _ResultsHeader({required this.result, required this.onVerify});
 
   final OfficialChargerSearchResult result;
+  final VoidCallback onVerify;
 
   @override
   Widget build(BuildContext context) {
@@ -183,10 +208,38 @@ class _ResultsHeader extends StatelessWidget {
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
           ),
+          const SizedBox(height: 14),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              key: const Key('verifyLiveResultsOnGoogleButton'),
+              onPressed: onVerify,
+              icon: const Icon(Icons.travel_explore_rounded),
+              label: const Text('Verify on Google Maps'),
+            ),
+          ),
         ],
       ),
     );
   }
+}
+
+Uri buildGoogleChargerVerificationUri({
+  required String query,
+  PlaceSuggestion? center,
+}) {
+  final location = center?.primaryText.trim().isNotEmpty == true
+      ? center!.primaryText.trim()
+      : query.trim();
+  return Uri.https(
+    'www.google.com',
+    '/maps/search/',
+    {
+      'api': '1',
+      'query':
+          'EV charging stations near ${location.isEmpty ? 'India' : location}, India',
+    },
+  );
 }
 
 class _OfficialStationCard extends StatelessWidget {

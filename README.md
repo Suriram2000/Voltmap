@@ -9,7 +9,7 @@ Production site: [https://voltmapev.com](https://voltmapev.com)
 - Create a local Login/Signup account with a salted password hash, persisted session, and logout flow, or enter with the one-click demo account.
 - See the Government of India’s official total of 29,277 public charging stations (1 August 2025) with the complete state/UT breakdown.
 - Search the 45 detailed VoltMapEV demo locations by station, locality, city, state, connector, or PIN code, including formatted PINs such as `500-081`.
-- Search an inline BEE Government of India station list for an Indian PIN code or area without leaving Discover, with exact-PIN matches followed by all official records within the displayed radius.
+- Search an inline BEE Government of India station list for an Indian PIN code or area without leaving Discover, with exact-PIN matches followed by all official records within the displayed radius and an optional Google Maps verification link.
 - Search-as-you-type for Trip starting points and destinations across India using OpenStreetMap/Photon place, locality, address, and PIN data, with major-city aliases available offline.
 - Select suggested places for coordinate-based distance and energy estimates, then open the journey in Google Maps for live road directions.
 - Open charger details, directions, amenities, pricing, and connector data.
