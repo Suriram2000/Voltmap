@@ -33,6 +33,9 @@ jobs:
         working-directory: mobile
         run: flutter pub get
 
+      - name: Verify generated search pages
+        run: python tool/generate_seo_city_pages.py --check
+
       - name: Analyze Dart source
         working-directory: mobile
         run: flutter analyze

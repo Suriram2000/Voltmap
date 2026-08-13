@@ -6,6 +6,7 @@ import '../../../shared/state/app_state.dart';
 import '../../about/presentation/about_screen.dart';
 import '../../admin/presentation/admin_dashboard_screen.dart';
 import '../../auth/presentation/auth_screen.dart';
+import '../../install/presentation/install_app_screen.dart';
 import '../../modules/presentation/modules_screen.dart';
 import '../../payments/presentation/payment_history_screen.dart';
 
@@ -278,6 +279,26 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     const Divider(height: 1),
                     ListTile(
+                      key: const Key('installVoltMapEVTile'),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      leading: const Icon(Icons.install_mobile_rounded),
+                      title: const Text('Install VoltMapEV'),
+                      subtitle: const Text(
+                        'Add the app to your iPhone, iPad, or Android home screen',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const InstallAppScreen(),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
                       key: const Key('aboutVoltMapEVTile'),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 20,
@@ -339,7 +360,7 @@ class ProfileScreen extends ConsumerWidget {
                       leading: Icon(Icons.info_outline),
                       title: Text('VoltMapEV demo'),
                       subtitle: Text(
-                        'Android, iOS & browser-ready • Version 1.9.0',
+                        'Android, iOS & browser-ready • Version 1.10.0',
                       ),
                     ),
                   ],
@@ -417,6 +438,24 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                       ),
                     ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Card(
+                child: ListTile(
+                  key: const Key('guestInstallVoltMapEVTile'),
+                  leading: const Icon(Icons.install_mobile_rounded),
+                  title: const Text('Install VoltMapEV'),
+                  subtitle: const Text(
+                    'Add the app to your iPhone, iPad, or Android home screen',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const InstallAppScreen(),
+                    ),
                   ),
                 ),
               ),

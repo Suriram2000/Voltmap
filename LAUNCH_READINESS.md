@@ -12,20 +12,23 @@ Implemented in the website build:
 - `robots.txt` access for Googlebot, Bingbot, OAI-SearchBot, ChatGPT-User, and OAI-AdsBot
 - XML sitemap and `llms.txt`
 - a crawlable India EV charging guide linked to the interactive app
+- a crawlable city-guide hub and ten substantive city pages generated from the dated BEE inventory, with unique metadata, structured data, source disclosures, sample records, and internal links
+- an automated freshness check that blocks deployment when generated city pages or the sitemap are stale
+- an installable Progressive Web App manifest with Android/desktop install prompting, iPhone/iPad Safari home-screen guidance, standalone display mode, and 192 px, 512 px, maskable, and Apple touch icons
 
 Account steps still required:
 
 1. Add and verify `https://voltmapev.com/` as a domain property in Google Search Console.
-2. Submit `https://voltmapev.com/sitemap.xml` and request indexing for the home page and public guide.
+2. Submit `https://voltmapev.com/sitemap.xml` and request indexing for the home page, public guide, and city-guide hub. The sitemap exposes the individual city pages.
 3. Add the site in Bing Webmaster Tools and submit the same sitemap.
 4. Connect a production analytics property and record search, route-plan, live-directions, signup, favorite, charger-report, checkout-start, and checkout-complete events.
-5. Publish useful, original city and corridor guides only when each page has a verified charger feed and a stable URL. Do not create thin keyword pages.
+5. Monitor indexed-page and query reports, correct crawl or content issues, and expand to additional city or corridor guides only when each page has useful, sourced data and a stable URL. Do not create thin keyword pages.
 
 No vendor can guarantee first position. Search ranking is earned over time through useful content, crawlability, performance, reliable data, brand demand, and reputable links.
 
 ## Authoritative charger data
 
-The current national aggregate is sourced from the Government of India answer dated 1 August 2025. The bundled station catalog, prices, availability, route stops, and charging sessions are labelled demonstrations.
+The current national aggregate is sourced from the Government of India answer dated 1 August 2025. VoltMapEV also bundles 29,251 deduplicated, geocoded BEE inventory records dated 26 October 2025. These are dated inventory records, not claims of real-time operation. Prices, live availability, route-stop suitability, and charging sessions must still be verified.
 
 Production station records should require:
 

@@ -1,14 +1,44 @@
 {
   "name": "VoltMapEV",
   "short_name": "VoltMapEV",
-  "start_url": ".",
+  "start_url": "/?source=pwa",
   "display": "standalone",
-  "scope": ".",
-  "id": "./",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "scope": "/",
+  "id": "/",
   "background_color": "#F4F7F2",
   "theme_color": "#071D17",
   "description": "Find EV charging stations across India and plan range-aware trips with route-relevant charger stops.",
   "orientation": "any",
   "categories": ["navigation", "travel", "utilities"],
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Find chargers",
+      "short_name": "Chargers",
+      "description": "Search public EV charging station records across India",
+      "url": "/?source=pwa-shortcut",
+      "icons": [{"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"}]
+    }
+  ]
 }

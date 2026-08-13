@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="VoltMapEV app icon">
+  <rect width="512" height="512" fill="#071d17"/>
+  <circle cx="256" cy="256" r="190" fill="#0b3829"/>
+  <rect x="116" y="116" width="280" height="280" rx="88" fill="#b9f34a"/>
+  <path d="M292 148 184 282h61l-25 82 108-139h-61z" fill="#071d17"/>
+  <circle cx="376" cy="376" r="45" fill="#20c77a" stroke="#071d17" stroke-width="16"/>
+</svg>

@@ -13,6 +13,7 @@ import '../../../shared/widgets/registered_account_gate.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../data/sample_stations.dart';
 import '../data/national_charger_data.dart';
+import '../../install/presentation/install_app_screen.dart';
 import 'official_charger_results_view.dart';
 import 'station_card.dart';
 import 'station_details_screen.dart';
@@ -579,6 +580,42 @@ class _DiscoveryHero extends StatelessWidget {
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                        TextButton.icon(
+                          key: const Key('homeInstallAppButton'),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => const InstallAppScreen(),
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor:
+                                Colors.white.withValues(alpha: 0.08),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 9,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                              side: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.1),
+                              ),
+                            ),
+                          ),
+                          icon: const Icon(
+                            Icons.install_mobile_rounded,
+                            color: AppTheme.brandLime,
+                            size: 17,
+                          ),
+                          label: const Text(
+                            'Install app',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ],
