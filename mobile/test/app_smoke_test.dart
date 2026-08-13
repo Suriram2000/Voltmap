@@ -33,6 +33,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
     await tester.pumpAndSettle();
     expect(find.text('Find the right charger, faster.'), findsOneWidget);
+    expect(find.byKey(const Key('homeInstallAppButton')), findsOneWidget);
     expect(find.textContaining('© 2026 VoltMapEV'), findsOneWidget);
 
     await tester.tap(find.text('Profile'));
@@ -453,6 +454,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Profile & settings'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, -1200));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('installVoltMapEVTile')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

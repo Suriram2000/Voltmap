@@ -4,15 +4,17 @@
 
 Canonical site: https://voltmapev.com/
 Public guide: https://voltmapev.com/ev-charging-stations-india.html
+City charger guides: https://voltmapev.com/charging-stations/
 Contact: skotla100@gmail.com, +91 93927 88714
 
 ## Public features
 
 - Search EV charging stations by PIN code, area, city, or state.
-- Review Government of India aggregate public-charger totals.
-- Plan EV routes and see relevant demonstration chargers near the route.
-- Open current external map results and directions for travel verification.
+- Review 29,251 deduplicated, geocoded BEE inventory records dated 26 October 2025.
+- Browse crawlable city guides for Hyderabad, Bengaluru, Delhi, Mumbai, Chennai, Pune, Ahmedabad, Kolkata, Jaipur, and Kochi.
+- Plan EV routes and see relevant chargers near the route.
+- View matching search results inside VoltMapEV and optionally use Google Maps for verification.
 
 ## Data and payment transparency
 
-The Government of India aggregate total is sourced and dated. Bundled station locations, availability, prices, route stops, and payments are demonstration data and are not a complete live inventory. The current checkout is a sandbox and does not accept or move real money.
+The Government of India aggregate total and BEE station inventory are sourced and dated. Station operation, availability, prices, and route stops are not a complete real-time feed and should be verified before travel. The current checkout is a sandbox and does not accept or move real money.
