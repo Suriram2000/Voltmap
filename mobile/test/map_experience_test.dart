@@ -31,6 +31,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(locationRequests, 1);
+    expect(
+      tester
+          .widget<SwitchListTile>(
+            find.byKey(const Key('mapLocationToggle')),
+          )
+          .value,
+      isTrue,
+    );
     expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
     expect(find.byKey(const Key('nearbyChargerSidebar')), findsOneWidget);
     expect(find.text('2 nearby chargers'), findsOneWidget);
@@ -38,6 +46,43 @@ void main() {
     expect(find.text('Beta Charge - Hyderabad'), findsOneWidget);
     expect(find.textContaining('Official BEE inventory'), findsOneWidget);
     expect(find.byTooltip('Directions in Google Maps'), findsNWidgets(2));
+  });
+
+  testWidgets('Map location can be disabled and re-enabled in place', (
+    tester,
+  ) async {
+    var locationRequests = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MapScreen(
+          locationLoader: () async {
+            locationRequests++;
+            return _fakeLocation();
+          },
+          placeSearchService: const _FakePlaceSearchService(),
+          chargerSearchService: const _FakeChargerSearchService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final toggle = find.byKey(const Key('mapLocationToggle'));
+    expect(locationRequests, 1);
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+    expect(find.byKey(const Key('nearbyChargerLocationOff')), findsOneWidget);
+    expect(find.byKey(const Key('nearbyChargerMap')), findsNothing);
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+
+    expect(locationRequests, 2);
+    expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+    expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
   });
 
   testWidgets('iPhone Map uses a draggable nearby-charger panel', (

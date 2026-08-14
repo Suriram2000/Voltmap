@@ -37,6 +37,7 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   bool _loading = true;
+  bool _locationEnabled = true;
   bool _locationBlocked = false;
   String? _error;
   MapUserLocation? _location;
@@ -71,18 +72,40 @@ class _MapScreenState extends State<MapScreen> {
           IconButton(
             key: const Key('refreshNearbyChargersButton'),
             tooltip: 'Refresh my location',
-            onPressed: _loading ? null : _loadNearbyChargers,
+            onPressed:
+                _loading || !_locationEnabled ? null : _loadNearbyChargers,
             icon: const Icon(Icons.my_location_rounded),
           ),
         ],
       ),
-      body: result != null && _location != null
-          ? _buildNearbyExperience(result, _location!)
-          : _buildStatusBody(),
+      body: Column(
+        children: [
+          _LocationAccessControl(
+            enabled: _locationEnabled,
+            loading: _loading,
+            onChanged: _setLocationEnabled,
+          ),
+          Expanded(
+            child: result != null && _location != null
+                ? _buildNearbyExperience(result, _location!)
+                : _buildStatusBody(),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildStatusBody() {
+    if (!_locationEnabled) {
+      return const _MapStatusCard(
+        key: Key('nearbyChargerLocationOff'),
+        icon: Icons.location_off_rounded,
+        title: 'Location is disabled',
+        message:
+            'Turn on “Use my location” above whenever you want to center the map and see nearby chargers.',
+      );
+    }
+
     if (_loading) {
       return const _MapStatusCard(
         key: Key('nearbyChargerLoading'),
@@ -182,6 +205,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _loadNearbyChargers() async {
+    if (!_locationEnabled) return;
     if (_loading && _requestId > 0) return;
     final requestId = ++_requestId;
     setState(() {
@@ -210,7 +234,7 @@ class _MapScreenState extends State<MapScreen> {
         query: center.displayName,
         center: center,
       );
-      if (!mounted || requestId != _requestId) return;
+      if (!mounted || requestId != _requestId || !_locationEnabled) return;
       setState(() {
         _location = location;
         _place = center;
@@ -219,19 +243,44 @@ class _MapScreenState extends State<MapScreen> {
         _loading = false;
       });
     } on _MapLocationException catch (error) {
-      if (!mounted || requestId != _requestId) return;
+      if (!mounted || requestId != _requestId || !_locationEnabled) return;
       setState(() {
         _loading = false;
         _locationBlocked = error.blocked;
         _error = error.message;
       });
     } catch (_) {
-      if (!mounted || requestId != _requestId) return;
+      if (!mounted || requestId != _requestId || !_locationEnabled) return;
       setState(() {
         _loading = false;
         _error = 'Check location services and your connection, then try again.';
       });
     }
+  }
+
+  void _setLocationEnabled(bool enabled) {
+    if (enabled == _locationEnabled) return;
+
+    if (!enabled) {
+      _requestId++;
+      setState(() {
+        _locationEnabled = false;
+        _loading = false;
+        _locationBlocked = false;
+        _error = null;
+        _location = null;
+        _place = null;
+        _result = null;
+        _selectedIndex = 0;
+      });
+      return;
+    }
+
+    setState(() {
+      _locationEnabled = true;
+      _loading = false;
+    });
+    _loadNearbyChargers();
   }
 
   Future<MapUserLocation> _loadDeviceLocation() async {
@@ -289,6 +338,44 @@ class _MapLocationException implements Exception {
 
   final String message;
   final bool blocked;
+}
+
+class _LocationAccessControl extends StatelessWidget {
+  const _LocationAccessControl({
+    required this.enabled,
+    required this.loading,
+    required this.onChanged,
+  });
+
+  final bool enabled;
+  final bool loading;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final status = !enabled
+        ? 'Off — VoltMapEV is not using your location.'
+        : loading
+            ? 'On — finding chargers near you…'
+            : 'On — showing chargers near your current location.';
+
+    return Material(
+      color: colors.surfaceContainerLow,
+      child: SwitchListTile.adaptive(
+        key: const Key('mapLocationToggle'),
+        value: enabled,
+        onChanged: onChanged,
+        secondary: Icon(
+          enabled ? Icons.location_on_rounded : Icons.location_off_rounded,
+          color: enabled ? colors.primary : colors.onSurfaceVariant,
+        ),
+        title: const Text('Use my location'),
+        subtitle: Text(status),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      ),
+    );
+  }
 }
 
 class _MapStatusCard extends StatelessWidget {
