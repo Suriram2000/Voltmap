@@ -212,6 +212,10 @@ void main() {
           amount: 240.88,
           paymentMethod: 'Card ending 4242',
           createdAt: DateTime.utc(2026, 8, 10, 12),
+          customerPhone: '••••••8714',
+          deliveryMethod: 'Email',
+          deliveryDestination: 'd•••@example.com',
+          deliveryStatus: 'Not sent — provider not connected',
         );
         final restored = ChargingReceipt.fromJson(original.toJson());
 
@@ -222,6 +226,13 @@ void main() {
         expect(restored.paymentMethod, 'Card ending 4242');
         expect(restored.paymentMethod, isNot(contains('4242424242424242')));
         expect(restored.createdAt, original.createdAt);
+        expect(restored.customerPhone, '••••••8714');
+        expect(restored.deliveryMethod, 'Email');
+        expect(restored.deliveryDestination, 'd•••@example.com');
+        expect(
+          restored.deliveryStatus,
+          'Not sent — provider not connected',
+        );
       },
     );
 

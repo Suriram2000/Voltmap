@@ -25,9 +25,10 @@ class OfficialChargerResultsView extends StatefulWidget {
 
 class _OfficialChargerResultsViewState
     extends State<OfficialChargerResultsView> {
+  static const _resultPageSize = 15;
   final _service = const OfficialChargerSearchService();
   late Future<OfficialChargerSearchResult> _result;
-  int _visibleCount = 25;
+  int _visibleCount = _resultPageSize;
 
   @override
   void initState() {
@@ -40,7 +41,7 @@ class _OfficialChargerResultsViewState
     super.didUpdateWidget(oldWidget);
     if (oldWidget.query != widget.query ||
         oldWidget.center?.identity != widget.center?.identity) {
-      _visibleCount = 25;
+      _visibleCount = _resultPageSize;
       _search();
     }
   }
@@ -94,7 +95,7 @@ class _OfficialChargerResultsViewState
                   child: OutlinedButton.icon(
                     key: const Key('showMoreOfficialChargersButton'),
                     onPressed: () => setState(() {
-                      _visibleCount = (_visibleCount + 25)
+                      _visibleCount = (_visibleCount + _resultPageSize)
                           .clamp(0, result.matches.length)
                           .toInt();
                     }),

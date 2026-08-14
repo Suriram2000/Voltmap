@@ -42,6 +42,21 @@ Production station records should require:
 
 Never describe the inventory as complete, live, or verified unless the upstream contracts and freshness checks support that exact claim.
 
+## Phone verification and receipt delivery
+
+The app now uses a compact India `+91` phone flow for protected Favorites and Saved trips actions. The current GitHub Pages release is a static, local preview: it displays a clearly labeled preview OTP and does not claim that an SMS was sent. Payments remain accessible to guests.
+
+Before enabling real phone verification or sending payment receipts by SMS/email:
+
+1. Select a hosted identity provider that supports India phone authentication and abuse controls.
+2. Configure restricted production credentials outside the Flutter bundle.
+3. Enforce OTP expiry, resend throttling, attempt limits, bot protection, and audited account linking on the server/provider.
+4. Store consent and a verified receipt destination separately from payment instrument data.
+5. Send receipts from a server-side transactional SMS/email provider only after a server-verified payment event.
+6. Add delivery status, retry, bounce/failure handling, and a user-accessible receipt fallback.
+
+Never treat the local preview code as production verification or state that a receipt was sent without a provider delivery acknowledgement.
+
 ### In-app live charger lookup
 
 The app currently embeds Open Charge Map's supported community map for PIN-code and area searches on web, Android, and iOS. Search `500079`, choose the Karmanghat/Vaishalinagar suggestion, and the in-app map centers on `17.3366, 78.5349`. The screen visibly attributes Open Charge Map and OpenStreetMap, warns that community data may be incomplete or stale, and provides Google Maps as a separate verification action.

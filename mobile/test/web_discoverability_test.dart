@@ -75,9 +75,27 @@ void main() {
         ),
       );
     }
-    expect(RegExp(r'<loc>').allMatches(sitemap), hasLength(13));
-    expect(RegExp(r'<lastmod>2026-08-12</lastmod>').allMatches(sitemap),
-        hasLength(13));
+    for (final legalPage in [
+      'privacy-policy.html',
+      'terms.html',
+      'refund-policy.html',
+      'account-deletion.html',
+    ]) {
+      expect(
+        sitemap,
+        contains('<loc>https://voltmapev.com/$legalPage</loc>'),
+      );
+      expect(File('web/$legalPage').readAsStringSync(), contains('VoltMapEV'));
+    }
+    expect(RegExp(r'<loc>').allMatches(sitemap), hasLength(17));
+    expect(
+      RegExp(r'<lastmod>2026-08-12</lastmod>').allMatches(sitemap),
+      hasLength(13),
+    );
+    expect(
+      RegExp(r'<lastmod>2026-08-13</lastmod>').allMatches(sitemap),
+      hasLength(4),
+    );
   });
 
   test('city guides are substantive, sourced, and uniquely canonical', () {
@@ -131,6 +149,7 @@ void main() {
     expect(manifest['description'], contains('India'));
     expect(manifest['categories'], contains('navigation'));
     expect(manifest['display'], 'standalone');
+    expect(manifest['background_color'], '#071D17');
     expect(manifest['start_url'], '/?source=pwa');
     final icons = manifest['icons'] as List<dynamic>;
     expect(
@@ -170,6 +189,23 @@ void main() {
     expect(bootstrap, contains('window.voltMapEVPromptInstall'));
     expect(bootstrap, contains("choice.outcome === 'accepted'"));
     expect(bootstrap, contains('voltmapev-pwa-cache-reset-v1'));
+  });
+
+  test('web startup immediately paints a branded shell', () {
+    final index = File('web/index.html').readAsStringSync();
+    final bootstrap = File('web/flutter_bootstrap.js').readAsStringSync();
+
+    expect(index, contains('id="boot-splash"'));
+    expect(index, contains('Opening VoltMapEV'));
+    expect(index, contains('Best EV charging site in India'));
+    expect(index, contains('background: #071D17'));
+    expect(bootstrap, contains('onEntrypointLoaded'));
+    expect(bootstrap, contains("document.getElementById('boot-splash')"));
+    expect(bootstrap, contains('splash.remove()'));
+    expect(
+      bootstrap.indexOf('removeLegacyFlutterWebCache().catch'),
+      lessThan(bootstrap.indexOf('_flutter.loader.load')),
+    );
   });
 
   test('public guide carries source, safety, and contact disclosures', () {

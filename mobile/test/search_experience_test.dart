@@ -104,7 +104,7 @@ void main() {
       find.byKey(const Key('locationField_Search across India')),
       '500079',
     );
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 130));
     await tester.tap(find.text('Karmanghat / Vaishalinagar - 500079'));
     await tester.pump();
     await _pumpUntilFound(
@@ -144,7 +144,7 @@ void main() {
       find.byKey(const Key('locationField_Search across India')),
       '500079',
     );
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 130));
     expect(
       find.byKey(const Key('submitChargerSearchButton')),
       findsOneWidget,
@@ -191,6 +191,26 @@ void main() {
     final builtCards = find.byType(StationCard).evaluate().length;
     expect(builtCards, greaterThan(0));
     expect(builtCards, lessThan(sampleStations.length));
+  });
+
+  testWidgets('discovery debounces full-page filtering while typing', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: DiscoveryScreen())),
+    );
+    await tester.pump();
+
+    await tester.enterText(
+      find.byKey(const Key('locationField_Search across India')),
+      'Hyderabad',
+    );
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(find.text('Detailed VoltMapEV locations'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 70));
+    expect(find.text('Detailed demo matches'), findsOneWidget);
   });
 
   testWidgets('long location options scroll smoothly and remain selectable', (

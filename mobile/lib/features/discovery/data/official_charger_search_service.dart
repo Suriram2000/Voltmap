@@ -12,11 +12,41 @@ const officialChargerManifestAsset = 'assets/data/bee/manifest.json';
 class OfficialChargerSearchService {
   const OfficialChargerSearchService();
 
+  static const _maximumCachedSearches = 8;
   static Future<_OfficialChargerManifest>? _cachedManifest;
   static final Map<String, Future<List<OfficialChargerStation>>>
       _cachedStateStations = {};
+  static final Map<String, Future<OfficialChargerSearchResult>>
+      _cachedSearchResults = {};
 
   Future<OfficialChargerSearchResult> search({
+    required String query,
+    PlaceSuggestion? center,
+  }) async {
+    final cacheKey = '${_normalize(query)}|${center?.identity ?? ''}|'
+        '${center?.type ?? ''}|${_normalize(center?.secondaryText ?? '')}';
+    final cached = _cachedSearchResults.remove(cacheKey);
+    if (cached != null) {
+      _cachedSearchResults[cacheKey] = cached;
+      return cached;
+    }
+
+    final request = _searchUncached(query: query, center: center);
+    _cachedSearchResults[cacheKey] = request;
+    while (_cachedSearchResults.length > _maximumCachedSearches) {
+      _cachedSearchResults.remove(_cachedSearchResults.keys.first);
+    }
+    try {
+      return await request;
+    } catch (_) {
+      if (identical(_cachedSearchResults[cacheKey], request)) {
+        _cachedSearchResults.remove(cacheKey);
+      }
+      rethrow;
+    }
+  }
+
+  Future<OfficialChargerSearchResult> _searchUncached({
     required String query,
     PlaceSuggestion? center,
   }) async {

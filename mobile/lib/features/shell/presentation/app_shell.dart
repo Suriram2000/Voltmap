@@ -1,35 +1,44 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../discovery/presentation/discovery_screen.dart';
 import '../../discovery/presentation/add_charger_screen.dart';
 import '../../favorites/presentation/favorites_screen.dart';
 import '../../map/presentation/map_screen.dart';
+import '../../install/presentation/install_app_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../trips/presentation/trip_planner_screen.dart';
 import '../../../shared/state/app_state.dart';
 import '../../../shared/widgets/registered_account_gate.dart';
 import '../../../shared/widgets/site_footer.dart';
+import '../../../shared/services/install_app_models.dart';
+import '../../../shared/services/install_app_service.dart';
 
 class AppShell extends ConsumerStatefulWidget {
-  const AppShell({super.key});
+  const AppShell({
+    super.key,
+    this.installController = const InstallAppService(),
+  });
+
+  final InstallAppController installController;
 
   @override
   ConsumerState<AppShell> createState() => _AppShellState();
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  int index = 0;
+  static const _installBannerDismissedKey =
+      'voltmapev_install_banner_dismissed';
 
-  static const screens = [
-    DiscoveryScreen(),
-    MapScreen(),
-    TripPlannerScreen(),
-    FavoritesScreen(),
-    AddChargerScreen(),
-    ProfileScreen(),
-  ];
+  int index = 0;
+  late final List<Widget?> screens;
+  Timer? _installBannerTimer;
+  InstallAppStatus? _installStatus;
+  bool _installing = false;
 
   static const destinations = [
     _Destination('Discover', Icons.explore_outlined, Icons.explore),
@@ -45,14 +54,58 @@ class _AppShellState extends ConsumerState<AppShell> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    screens = List<Widget?>.filled(destinations.length, null);
+    screens[0] = const DiscoveryScreen();
+    _installBannerTimer = Timer(
+      const Duration(milliseconds: 1600),
+      _loadInstallBanner,
+    );
+  }
+
+  @override
+  void dispose() {
+    _installBannerTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 900;
-        final body = Column(
+        final body = Stack(
           children: [
-            Expanded(child: IndexedStack(index: index, children: screens)),
-            const SiteFooter(),
+            Column(
+              children: [
+                Expanded(
+                  child: IndexedStack(
+                    index: index,
+                    children: List.generate(
+                      destinations.length,
+                      (screenIndex) =>
+                          screens[screenIndex] ?? const SizedBox.shrink(),
+                      growable: false,
+                    ),
+                  ),
+                ),
+                const SiteFooter(),
+              ],
+            ),
+            if (_installStatus case final status?)
+              if (!status.installed)
+                Positioned(
+                  left: 14,
+                  right: 14,
+                  bottom: 14,
+                  child: _InstallAppBanner(
+                    status: status,
+                    installing: _installing,
+                    onInstall: _installFromBanner,
+                    onDismiss: _dismissInstallBanner,
+                  ),
+                ),
           ],
         );
         if (wide) {
@@ -125,7 +178,145 @@ class _AppShellState extends ConsumerState<AppShell> {
         )) {
       return;
     }
-    if (mounted) setState(() => index = value);
+    if (!mounted) return;
+    setState(() {
+      screens[value] ??= _screenFor(value);
+      index = value;
+    });
+  }
+
+  Widget _screenFor(int value) => switch (value) {
+        0 => const DiscoveryScreen(),
+        1 => const MapScreen(),
+        2 => const TripPlannerScreen(),
+        3 => const FavoritesScreen(),
+        4 => const AddChargerScreen(),
+        5 => const ProfileScreen(),
+        _ => throw RangeError.index(value, destinations),
+      };
+
+  Future<void> _loadInstallBanner() async {
+    final preferences = await SharedPreferences.getInstance();
+    if (preferences.getBool(_installBannerDismissedKey) ?? false) return;
+    final status = await widget.installController.getStatus();
+    if (mounted && !status.installed) setState(() => _installStatus = status);
+  }
+
+  Future<void> _dismissInstallBanner() async {
+    setState(() => _installStatus = null);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_installBannerDismissedKey, true);
+  }
+
+  Future<void> _installFromBanner() async {
+    final status = _installStatus;
+    if (status == null || _installing) return;
+    if (!status.canPrompt) {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => InstallAppScreen(
+            controller: widget.installController,
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _installing = true);
+    final result = await widget.installController.promptInstall();
+    if (!mounted) return;
+    setState(() => _installing = false);
+    if (result == InstallActionResult.accepted) {
+      setState(() => _installStatus = null);
+    }
+  }
+}
+
+class _InstallAppBanner extends StatelessWidget {
+  const _InstallAppBanner({
+    required this.status,
+    required this.installing,
+    required this.onInstall,
+    required this.onDismiss,
+  });
+
+  final InstallAppStatus status;
+  final bool installing;
+  final VoidCallback onInstall;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final isIos = status.platform == InstallAppPlatform.ios;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 620),
+        child: Material(
+          key: const Key('installAppBottomBanner'),
+          color: AppTheme.brandNavy,
+          elevation: 12,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: AppTheme.brandLime,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.install_mobile_rounded,
+                    color: AppTheme.brandNavy,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Install VoltMapEV',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Faster access from your home screen',
+                        style: TextStyle(
+                          color: Color(0xFFB8CEC4),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  key: const Key('installAppBottomButton'),
+                  onPressed: installing ? null : onInstall,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.brandLime,
+                  ),
+                  child: Text(isIos ? 'Show me' : 'Install'),
+                ),
+                IconButton(
+                  key: const Key('dismissInstallAppBanner'),
+                  tooltip: 'Dismiss install suggestion',
+                  onPressed: onDismiss,
+                  color: const Color(0xFFB8CEC4),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

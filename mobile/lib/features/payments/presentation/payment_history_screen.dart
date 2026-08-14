@@ -102,6 +102,18 @@ class _ReceiptCard extends StatelessWidget {
                     '${receipt.energyKwh.toStringAsFixed(2)} kWh • ${receipt.connectorType} • paid after charging',
                   ),
                   Text(receipt.paymentMethod),
+                  if (receipt.customerPhone != null)
+                    Text('Payment mobile: ${receipt.customerPhone}'),
+                  if (receipt.deliveryDestination != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '${receipt.deliveryMethod}: ${receipt.deliveryDestination}',
+                    ),
+                    Text(
+                      receipt.deliveryStatus,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Text(
                     '${_formatDate(receipt.createdAt)} • ${receipt.id}',

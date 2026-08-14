@@ -117,6 +117,53 @@ class AboutScreen extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 18),
+              Text(
+                'Legal & privacy',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+              const SizedBox(height: 10),
+              Card(
+                child: Column(
+                  children: [
+                    _WebLinkTile(
+                      key: const Key('privacyPolicyTile'),
+                      icon: Icons.privacy_tip_outlined,
+                      title: 'Privacy policy',
+                      uri: Uri.parse(
+                        'https://voltmapev.com/privacy-policy.html',
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    _WebLinkTile(
+                      key: const Key('termsTile'),
+                      icon: Icons.gavel_outlined,
+                      title: 'Terms of use',
+                      uri: Uri.parse('https://voltmapev.com/terms.html'),
+                    ),
+                    const Divider(height: 1),
+                    _WebLinkTile(
+                      key: const Key('refundPolicyTile'),
+                      icon: Icons.currency_rupee_outlined,
+                      title: 'Refund & cancellation policy',
+                      uri: Uri.parse(
+                        'https://voltmapev.com/refund-policy.html',
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    _WebLinkTile(
+                      key: const Key('accountDeletionTile'),
+                      icon: Icons.delete_outline_rounded,
+                      title: 'Account deletion instructions',
+                      uri: Uri.parse(
+                        'https://voltmapev.com/account-deletion.html',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 28),
               Text(
                 '© 2026 VoltMapEV. All rights reserved.',
@@ -134,6 +181,29 @@ class AboutScreen extends StatelessWidget {
 
   static Future<void> _open(Uri uri) async {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
+
+class _WebLinkTile extends StatelessWidget {
+  const _WebLinkTile({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.uri,
+  });
+
+  final IconData icon;
+  final String title;
+  final Uri uri;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      trailing: const Icon(Icons.open_in_new_rounded),
+      onTap: () => launchUrl(uri, mode: LaunchMode.externalApplication),
+    );
   }
 }
 

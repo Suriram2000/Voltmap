@@ -159,9 +159,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               keyboardType: TextInputType.text,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
-                labelText: 'Email or phone number',
-                hintText: 'name@example.com or +91 93927 88714',
+                labelText: 'Email or 10-digit mobile number',
+                hintText: 'name@example.com or 9392788714',
                 prefixIcon: Icon(Icons.contact_mail_outlined),
+                helperText:
+                    'For mobile signup, enter 10 digits only. No country code is needed.',
               ),
               validator: (value) {
                 return AppState.normalizeAccountIdentifier(value ?? '') != null

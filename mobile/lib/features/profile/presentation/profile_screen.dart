@@ -352,6 +352,29 @@ class ProfileScreen extends ConsumerWidget {
                       onTap: () => _confirmSignOut(context, appState),
                     ),
                     const Divider(height: 1),
+                    ListTile(
+                      key: const Key('deleteAccountTile'),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      leading: Icon(
+                        Icons.delete_forever_outlined,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      title: Text(
+                        'Delete account & local data',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Permanently removes this device’s profile, favorites, trips, receipts, and reports',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => _confirmDeleteAccount(context, appState),
+                    ),
+                    const Divider(height: 1),
                     const ListTile(
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 20,
@@ -360,7 +383,7 @@ class ProfileScreen extends ConsumerWidget {
                       leading: Icon(Icons.info_outline),
                       title: Text('VoltMapEV demo'),
                       subtitle: Text(
-                        'Android, iOS & browser-ready • Version 1.10.0',
+                        'Android, iOS & browser-ready • Version 1.11.0',
                       ),
                     ),
                   ],
@@ -636,6 +659,45 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
     if (shouldSignOut ?? false) await appState.signOut();
+  }
+
+  Future<void> _confirmDeleteAccount(
+    BuildContext context,
+    AppState appState,
+  ) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(
+          Icons.warning_amber_rounded,
+          color: Theme.of(dialogContext).colorScheme.error,
+        ),
+        title: const Text('Delete account and all local data?'),
+        content: const Text(
+          'This permanently removes your VoltMapEV profile, favorites, saved trips, receipts, charger reports, and preferences from this device. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const Key('confirmDeleteAccountButton'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete permanently'),
+          ),
+        ],
+      ),
+    );
+    if (!(shouldDelete ?? false)) return;
+    await appState.deleteLocalAccountAndData();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Account and local data deleted.')),
+    );
   }
 }
 

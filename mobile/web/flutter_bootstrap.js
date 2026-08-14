@@ -65,12 +65,21 @@ async function removeLegacyFlutterWebCache() {
   window.localStorage.setItem(resetKey, 'done');
 }
 
-(async () => {
-  try {
-    await removeLegacyFlutterWebCache();
-  } catch (error) {
-    console.warn('Unable to remove the legacy Flutter web cache.', error);
-  }
+removeLegacyFlutterWebCache().catch((error) => {
+  console.warn('Unable to remove the legacy Flutter web cache.', error);
+});
 
-  await _flutter.loader.load();
-})();
+_flutter.loader.load({
+  onEntrypointLoaded: async (engineInitializer) => {
+    const appRunner = await engineInitializer.initializeEngine();
+    await appRunner.runApp();
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const splash = document.getElementById('boot-splash');
+        if (splash === null) return;
+        splash.classList.add('is-ready');
+        window.setTimeout(() => splash.remove(), 180);
+      });
+    });
+  },
+});

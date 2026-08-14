@@ -6,7 +6,7 @@
   "display_override": ["window-controls-overlay", "standalone"],
   "scope": "/",
   "id": "/",
-  "background_color": "#F4F7F2",
+  "background_color": "#071D17",
   "theme_color": "#071D17",
   "description": "Find EV charging stations across India and plan range-aware trips with route-relevant charger stops.",
   "orientation": "any",

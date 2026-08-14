@@ -6,8 +6,11 @@ import 'package:voltmap/app/voltmap_app.dart';
 import 'package:voltmap/features/discovery/data/sample_stations.dart';
 import 'package:voltmap/features/discovery/data/national_charger_data.dart';
 import 'package:voltmap/features/discovery/presentation/add_charger_screen.dart';
+import 'package:voltmap/features/discovery/presentation/discovery_screen.dart';
 import 'package:voltmap/features/discovery/presentation/station_details_screen.dart';
+import 'package:voltmap/features/map/presentation/map_screen.dart';
 import 'package:voltmap/features/payments/presentation/charging_checkout_screen.dart';
+import 'package:voltmap/features/shell/presentation/app_shell.dart';
 import 'package:voltmap/features/trips/presentation/trip_planner_screen.dart';
 import 'package:voltmap/shared/models/place_suggestion.dart';
 import 'package:voltmap/shared/services/place_search_service.dart';
@@ -86,6 +89,32 @@ void main() {
     expect(find.text('Priya Sharma'), findsOneWidget);
   });
 
+  test('account deletion removes the local profile and personal data',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState();
+    await state.load();
+    expect(
+      await state.signUp(
+        name: 'Delete Me',
+        identifier: 'delete@example.com',
+        password: 'DeleteMe123!',
+      ),
+      isNull,
+    );
+    await state.toggleFavorite('station-1');
+
+    await state.deleteLocalAccountAndData();
+
+    expect(state.hasLocalAccount, isFalse);
+    expect(state.isSignedIn, isFalse);
+    expect(state.favoriteStationIds, isEmpty);
+    expect(state.savedTrips, isEmpty);
+    expect(state.chargingReceipts, isEmpty);
+    expect(state.chargerSubmissions, isEmpty);
+    expect(state.userName, 'VoltMapEV Driver');
+  });
+
   test('account identifiers accept email and Indian phone formats', () {
     expect(
       AppState.normalizeAccountIdentifier('Driver@Example.com'),
@@ -130,7 +159,7 @@ void main() {
     expect(stateChargerCoverage, hasLength(36));
   });
 
-  testWidgets('guests can plan trips and are asked to sign up only to save', (
+  testWidgets('guests verify an India phone with OTP before saving a trip', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -141,7 +170,7 @@ void main() {
     await tester.tap(find.text('Trips'));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('signupRequiredDialog')), findsNothing);
+    expect(find.byKey(const Key('phoneVerificationScreen')), findsNothing);
     expect(find.byKey(const Key('publicTripPlannerNotice')), findsOneWidget);
     await tester.enterText(
       find.widgetWithText(TextField, 'Destination'),
@@ -153,12 +182,44 @@ void main() {
     await tester.tap(find.byTooltip('Save trip'));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('signupRequiredDialog')), findsOneWidget);
-    expect(find.text('Sign up to use Saved trips'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('goToSignupButton')));
+    expect(find.byKey(const Key('phoneVerificationScreen')), findsOneWidget);
+    expect(find.text('Continue with phone'), findsOneWidget);
+    expect(find.textContaining('Saved trips'), findsOneWidget);
+    expect(find.textContaining('+91'), findsNothing);
+
+    await tester.enterText(
+        find.byKey(const Key('otpPhoneField')), '9392788714');
+    await tester.tap(find.byKey(const Key('sendOtpButton')));
     await tester.pumpAndSettle();
-    expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('Sign up'), findsOneWidget);
+    expect(find.byKey(const Key('previewOtpNotice')), findsOneWidget);
+    expect(find.textContaining('Preview code: 123456'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('otpCodeField')), '654321');
+    await tester.tap(find.byKey(const Key('verifyOtpButton')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('That OTP is incorrect. Check the code and try again.'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(find.byKey(const Key('otpCodeField')), '123456');
+    await tester.tap(find.byKey(const Key('verifyOtpButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('phoneVerificationScreen')), findsNothing);
+    expect(find.text('Trip saved on this device.'), findsOneWidget);
+  });
+
+  test('India phone normalization is limited to valid mobile numbers', () {
+    expect(
+      AppState.normalizeIndianMobile('93927 88714'),
+      '+919392788714',
+    );
+    expect(
+      AppState.normalizeIndianMobile('+91 93927 88714'),
+      '+919392788714',
+    );
+    expect(AppState.normalizeIndianMobile('1234567890'), isNull);
+    expect(AppState.normalizeIndianMobile('93927'), isNull);
   });
 
   testWidgets('guests can open Addstation without a signup gate', (
@@ -179,6 +240,36 @@ void main() {
     expect(find.text('Add a charging station'), findsOneWidget);
     expect(find.byKey(const Key('publicAddstationNotice')), findsOneWidget);
     expect(find.text('NO SIGNUP REQUIRED'), findsOneWidget);
+  });
+
+  testWidgets('navigation tabs load on demand and preserve visited tabs', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: AppShell())),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byType(DiscoveryScreen, skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(find.byType(MapScreen, skipOffstage: false), findsNothing);
+    expect(find.byType(TripPlannerScreen, skipOffstage: false), findsNothing);
+
+    await tester.tap(find.text('Map'));
+    await tester.pumpAndSettle();
+    expect(find.byType(MapScreen, skipOffstage: false), findsOneWidget);
+
+    await tester.tap(find.text('Discover'));
+    await tester.pumpAndSettle();
+    expect(find.byType(MapScreen, skipOffstage: false), findsOneWidget);
+    expect(
+      find.byType(DiscoveryScreen, skipOffstage: false),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Trip search suggests India-wide places for partial text', (
@@ -477,8 +568,20 @@ void main() {
     await tester.tap(find.byKey(const Key('openCheckoutButton')));
     await tester.pumpAndSettle();
     expect(find.text('Set up charging'), findsOneWidget);
+    final cardOption = find.byKey(const Key('paymentMethod_card'));
+    await tester.scrollUntilVisible(
+      cardOption,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Credit / debit card'), findsOneWidget);
     expect(find.text('VoltMapEV wallet'), findsOneWidget);
+    expect(find.textContaining('+91'), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const Key('paymentPhoneField')),
+      '9392788714',
+    );
 
     await tester.enterText(find.byKey(const Key('upiIdField')), 'fake@upi');
     await tester.tap(find.byKey(const Key('authorizeButton')));
@@ -489,6 +592,22 @@ void main() {
     );
 
     await tester.enterText(find.byKey(const Key('upiIdField')), 'driver@upi');
+    final emailReceiptOption = find.byKey(
+      const Key('receiptDelivery_email'),
+    );
+    await tester.scrollUntilVisible(
+      emailReceiptOption,
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
+    await tester.tap(emailReceiptOption);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('receiptEmailField')),
+      'driver@example.com',
+    );
     await tester.tap(find.byKey(const Key('authorizeButton')));
     await tester.pump();
     expect(find.text('Validating securely…'), findsOneWidget);
@@ -501,6 +620,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('UPI dr••@upi'), findsOneWidget);
+    expect(find.text('Email • d•••@example.com'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 700));
     await tester.tap(find.byKey(const Key('stopChargingButton')));
     await tester.pump();
@@ -515,11 +635,97 @@ void main() {
     );
     expect(find.text('₹28.13'), findsWidgets);
     expect(find.textContaining('VM-'), findsOneWidget);
+    expect(
+      find.text('Not sent — provider not connected'),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const Key('chargingDoneButton')));
     await tester.pumpAndSettle();
     expect(find.text('Charging session complete'), findsOneWidget);
     expect(find.textContaining('Final payment: ₹28.13'), findsOneWidget);
+  });
+
+  testWidgets('guest users can open payment checkout without signup', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    _useDesktopViewport(tester);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: StationDetailsScreen(station: sampleStations.first),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('openCheckoutButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Set up charging'), findsOneWidget);
+    expect(find.byKey(const Key('phoneVerificationScreen')), findsNothing);
+    expect(find.byKey(const Key('paymentPhoneField')), findsOneWidget);
+    expect(find.text('Guest checkout — no signup required'), findsOneWidget);
+    expect(find.textContaining('+91'), findsNothing);
+  });
+
+  testWidgets('payment phone is required and reused for SMS receipts', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: ChargingCheckoutScreen(station: sampleStations.first),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('paymentPhoneField')), '12345');
+    await tester.tap(find.byKey(const Key('authorizeButton')));
+    await tester.pump();
+    expect(
+      find.text('Enter a valid 10-digit Indian mobile number'),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      find.byKey(const Key('paymentPhoneField')),
+      '9392788714',
+    );
+
+    final emailOption = find.byKey(const Key('receiptDelivery_email'));
+    await tester.scrollUntilVisible(
+      emailOption,
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
+    await tester.tap(emailOption);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('receiptEmailField')),
+      'not-an-email',
+    );
+    await tester.tap(find.byKey(const Key('authorizeButton')));
+    await tester.pump();
+    expect(find.text('Enter a valid email address'), findsOneWidget);
+
+    final smsOption = find.byKey(const Key('receiptDelivery_sms'));
+    await tester.ensureVisible(smsOption);
+    await tester.tap(smsOption);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('receiptPhoneField')), findsNothing);
+    expect(find.byKey(const Key('receiptSmsMessage')), findsOneWidget);
+    expect(
+      find.textContaining(
+        'receipt will use the 10-digit mobile number entered for this payment',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('+91'), findsNothing);
   });
 
   testWidgets('card authorization rejects declined cards before charging', (
@@ -535,8 +741,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.enterText(
+      find.byKey(const Key('paymentPhoneField')),
+      '9392788714',
+    );
     final cardOption = find.byKey(const Key('paymentMethod_card'));
-    await tester.ensureVisible(cardOption);
+    await tester.scrollUntilVisible(
+      cardOption,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(cardOption);
     await tester.pumpAndSettle();
@@ -599,12 +813,28 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.enterText(
+      find.byKey(const Key('paymentPhoneField')),
+      '9392788714',
+    );
     final walletOption = find.byKey(const Key('paymentMethod_wallet'));
-    await tester.ensureVisible(walletOption);
+    await tester.scrollUntilVisible(
+      walletOption,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(walletOption);
     await tester.pumpAndSettle();
     expect(find.textContaining('Sandbox balance is unlimited'), findsOneWidget);
+    final smsOption = find.byKey(const Key('receiptDelivery_sms'));
+    await tester.scrollUntilVisible(
+      smsOption,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(smsOption);
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('authorizeButton')));
     await tester.pump(const Duration(milliseconds: 800));
     await tester.pump();
@@ -614,6 +844,10 @@ void main() {
       find.text('Payment method verified. ₹0.00 was charged upfront.'),
       findsOneWidget,
     );
+    expect(find.text('Mobile number'), findsOneWidget);
+    expect(find.text('••••••8714'), findsWidgets);
+    expect(find.text('SMS • ••••••8714'), findsOneWidget);
+    expect(find.textContaining('+91'), findsNothing);
     await tester.pump(const Duration(milliseconds: 700));
     await tester.tap(find.byKey(const Key('stopChargingButton')));
     await tester.pump(const Duration(milliseconds: 800));
@@ -634,6 +868,8 @@ void main() {
             connectorType: 'CCS2',
             energyLimitKwh: 1.25,
             paymentMethod: 'VoltMapEV demo wallet',
+            customerPhone: '9392788714',
+            receiptDeliveryMethod: 'In app',
           ),
         ),
       ),
