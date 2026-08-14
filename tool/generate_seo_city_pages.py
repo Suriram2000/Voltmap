@@ -25,6 +25,13 @@ WEB_DIRECTORY = ROOT / "mobile" / "web"
 CITY_DIRECTORY = WEB_DIRECTORY / "charging-stations"
 SITE = "https://voltmapev.com"
 LAST_MODIFIED = "2026-08-12"
+LEGAL_LAST_MODIFIED = "2026-08-13"
+LEGAL_PAGES = (
+    "privacy-policy.html",
+    "terms.html",
+    "refund-policy.html",
+    "account-deletion.html",
+)
 
 
 @dataclass(frozen=True)
@@ -434,22 +441,36 @@ def _hub_page(city_counts: list[tuple[City, int]], manifest: dict) -> str:
 
 def _sitemap(city_counts: list[tuple[City, int]]) -> str:
     entries = [
-        (f"{SITE}/", "weekly", "1.0"),
-        (f"{SITE}/ev-charging-stations-india.html", "monthly", "0.9"),
-        (f"{SITE}/charging-stations/", "monthly", "0.9"),
+        (f"{SITE}/", LAST_MODIFIED, "weekly", "1.0"),
+        (
+            f"{SITE}/ev-charging-stations-india.html",
+            LAST_MODIFIED,
+            "monthly",
+            "0.9",
+        ),
+        (f"{SITE}/charging-stations/", LAST_MODIFIED, "monthly", "0.9"),
         *(
-            (f"{SITE}/charging-stations/{city.slug}.html", "monthly", "0.8")
+            (
+                f"{SITE}/charging-stations/{city.slug}.html",
+                LAST_MODIFIED,
+                "monthly",
+                "0.8",
+            )
             for city, _ in city_counts
+        ),
+        *(
+            (f"{SITE}/{page}", LEGAL_LAST_MODIFIED, "yearly", "0.4")
+            for page in LEGAL_PAGES
         ),
     ]
     urls = "\n".join(
         f"""  <url>
     <loc>{url}</loc>
-    <lastmod>{LAST_MODIFIED}</lastmod>
+    <lastmod>{last_modified}</lastmod>
     <changefreq>{frequency}</changefreq>
     <priority>{priority}</priority>
   </url>"""
-        for url, frequency, priority in entries
+        for url, last_modified, frequency, priority in entries
     )
     return f'''<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
