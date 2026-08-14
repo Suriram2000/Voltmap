@@ -172,4 +172,3 @@ jobs:
           printf '%s' "$API_KEY_BASE64" | base64 -D > "$HOME/.appstoreconnect/private_keys/AuthKey_$API_KEY_ID.p8"
           IPA_PATH=$(find build/ios/ipa -name '*.ipa' -print -quit)
           xcrun altool --upload-app -f "$IPA_PATH" -t ios --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER_ID"
-
