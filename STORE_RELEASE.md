@@ -1,0 +1,106 @@
+# VoltMapEV App Store and Google Play release
+
+Prepared: 13 August 2026
+
+## Package identity
+
+- App name: VoltMapEV
+- Android application ID: `in.voltmap.voltmap`
+- Apple bundle ID: `in.voltmap.voltmap`
+- Minimum iOS version: `15.0`
+- Version: `1.11.0` (`14`)
+- Website: `https://voltmapev.com/`
+- Support: `skotla100@gmail.com`, `+91 93927 88714`
+- Privacy: `https://voltmapev.com/privacy-policy.html`
+- Privacy choices/deletion: `https://voltmapev.com/account-deletion.html`
+- Terms: `https://voltmapev.com/terms.html`
+- Refund policy: `https://voltmapev.com/refund-policy.html`
+
+## Store listing draft
+
+**Name:** VoltMapEV
+
+**Apple subtitle:** EV chargers & trip planner
+
+**Google Play short description:** Find EV chargers across India and plan trips with route-relevant stops.
+
+**Description:**
+
+VoltMapEV helps EV drivers search public charging-station records across India
+by PIN code, area, city, or state. Plan a route and inspect charging options
+near the journey instead of browsing an unrelated nationwide list.
+
+- Search thousands of dated public charging-station inventory records
+- View connector types, charging power, operator, address, and source details
+- Plan range-aware trips with route-relevant charging stops
+- Use current location only when you choose
+- Verify important stations and directions before travel
+- Save favorites and trips after phone verification
+- Submit charger corrections or additions for review
+
+Station availability, tariffs, connector status, and route estimates can
+change. Confirm important charging stops with the station operator before
+travel. The current payment flow is a clearly marked sandbox and does not move
+real money.
+
+## Google Play owner actions
+
+1. Create and verify a Google Play Console developer account.
+2. Reserve the package `in.voltmap.voltmap`; it cannot be changed after the
+   first production upload.
+3. Create a dedicated upload keystore and enroll in Play App Signing.
+4. Add the four Android signing values documented in the release workflow as
+   encrypted GitHub Actions secrets.
+5. Complete App access, Ads, Content rating, Target audience, Data safety,
+   Account deletion, News, Health, Financial features, and Government-app
+   declarations accurately.
+6. Upload the signed `.aab` first to Internal testing. Test installation,
+   permissions, search, routes, login, account deletion, and all external
+   links on real devices before a production rollout.
+7. Add phone and tablet screenshots, a 512 px icon, and a 1024×500 feature
+   graphic. Do not claim complete/live charger data or real payments.
+
+Current Flutter targets Android API 36, meeting the announced Google Play
+requirement for new apps and updates from 31 August 2026.
+
+## Apple owner actions
+
+App Store uploads now require Xcode 26 or later and the iOS 26 SDK. The release
+workflow verifies both before signing so an outdated runner cannot produce an
+upload that Apple will reject.
+
+1. Enroll in the Apple Developer Program and complete identity verification,
+   agreements, tax, banking, and trader-status declarations that apply.
+2. Register `in.voltmap.voltmap` and create the App Store Connect app record.
+3. Create an Apple Distribution certificate, App Store provisioning profile,
+   and App Store Connect API key. Store them only as encrypted Actions secrets.
+4. Complete App Privacy using the real release behavior and third-party
+   services. Use the privacy and deletion URLs above.
+5. Upload to TestFlight, test on iPhone and iPad, then provide screenshots,
+   review notes, contact details, category, age rating, export-compliance
+   answers, and any demo credentials required by App Review.
+6. The Account Holder must select the processed build and submit it for review.
+
+## Encrypted GitHub Actions secrets
+
+Android:
+
+- `ANDROID_UPLOAD_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+
+iOS:
+
+- `IOS_DISTRIBUTION_CERTIFICATE_BASE64`
+- `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD`
+- `IOS_PROVISIONING_PROFILE_BASE64`
+- `IOS_PROVISIONING_PROFILE_NAME`
+- `IOS_KEYCHAIN_PASSWORD`
+- `APPLE_TEAM_ID`
+- `APP_STORE_CONNECT_API_KEY_ID`
+- `APP_STORE_CONNECT_ISSUER_ID`
+- `APP_STORE_CONNECT_API_KEY_BASE64`
+
+Never commit signing files, passwords, API keys, service-account JSON, KYC
+documents, or banking information.

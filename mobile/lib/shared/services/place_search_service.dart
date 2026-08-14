@@ -7,7 +7,12 @@ import '../models/place_suggestion.dart';
 class PlaceSearchService {
   const PlaceSearchService();
 
+  static final http.Client _client = http.Client();
   static final Map<String, List<PlaceSuggestion>> _cache = {};
+  static final Map<String, Future<List<PlaceSuggestion>>> _activeSearches = {};
+  static final Map<String, PlaceSuggestion?> _reverseCache = {};
+  static final Map<String, Future<PlaceSuggestion?>> _activeReverseSearches =
+      {};
 
   List<PlaceSuggestion> localSuggestions(String rawQuery) {
     final query = rawQuery.trim();
@@ -27,6 +32,29 @@ class PlaceSearchService {
     final cached = _cache[cacheKey];
     if (cached != null) return cached;
 
+    final active = _activeSearches[cacheKey];
+    if (active != null) return active;
+
+    final request = _searchRemote(
+      query: query,
+      local: local,
+      cacheKey: cacheKey,
+    );
+    _activeSearches[cacheKey] = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_activeSearches[cacheKey], request)) {
+        _activeSearches.remove(cacheKey);
+      }
+    }
+  }
+
+  Future<List<PlaceSuggestion>> _searchRemote({
+    required String query,
+    required List<PlaceSuggestion> local,
+    required String cacheKey,
+  }) async {
     try {
       final url = Uri.https('photon.komoot.io', '/api/', {
         'q': query,
@@ -34,7 +62,8 @@ class PlaceSearchService {
         'lang': 'en',
         'bbox': '68.0,6.0,97.5,37.5',
       });
-      final response = await http.get(url).timeout(const Duration(seconds: 8));
+      final response =
+          await _client.get(url).timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) return local;
 
       final payload = jsonDecode(response.body) as Map<String, dynamic>;
@@ -63,13 +92,44 @@ class PlaceSearchService {
     required double latitude,
     required double longitude,
   }) async {
+    final cacheKey =
+        '${latitude.toStringAsFixed(4)},${longitude.toStringAsFixed(4)}';
+    if (_reverseCache.containsKey(cacheKey)) return _reverseCache[cacheKey];
+
+    final active = _activeReverseSearches[cacheKey];
+    if (active != null) return active;
+
+    final request = _reverseUncached(
+      latitude: latitude,
+      longitude: longitude,
+    );
+    _activeReverseSearches[cacheKey] = request;
+    try {
+      final result = await request;
+      if (_reverseCache.length >= 20) {
+        _reverseCache.remove(_reverseCache.keys.first);
+      }
+      _reverseCache[cacheKey] = result;
+      return result;
+    } finally {
+      if (identical(_activeReverseSearches[cacheKey], request)) {
+        _activeReverseSearches.remove(cacheKey);
+      }
+    }
+  }
+
+  Future<PlaceSuggestion?> _reverseUncached({
+    required double latitude,
+    required double longitude,
+  }) async {
     try {
       final url = Uri.https('photon.komoot.io', '/reverse', {
         'lat': latitude.toStringAsFixed(6),
         'lon': longitude.toStringAsFixed(6),
         'lang': 'en',
       });
-      final response = await http.get(url).timeout(const Duration(seconds: 8));
+      final response =
+          await _client.get(url).timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) return null;
       final payload = jsonDecode(response.body) as Map<String, dynamic>;
       final features = payload['features'] as List<dynamic>? ?? const [];

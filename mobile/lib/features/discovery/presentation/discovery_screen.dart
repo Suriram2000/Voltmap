@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,8 +28,16 @@ class DiscoveryScreen extends ConsumerStatefulWidget {
 }
 
 class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
+  static const _filterDebounceDuration = Duration(milliseconds: 80);
+
   final searchController = TextEditingController();
   final placeSearchService = const PlaceSearchService();
+  Timer? _filterDebounce;
+  int _chargerSearchRequestId = 0;
+  String _cachedFilterQuery = '';
+  bool _cachedAvailableOnly = false;
+  bool _cachedFastOnly = false;
+  List<ChargingStation> _cachedFilteredStations = sampleStations;
   String query = '';
   bool availableOnly = false;
   bool fastOnly = false;
@@ -39,20 +49,19 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   PlaceSuggestion? officialResultsCenter;
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _usePreviouslyAllowedLocation();
-    });
-  }
-
-  @override
   void dispose() {
+    _filterDebounce?.cancel();
     searchController.dispose();
     super.dispose();
   }
 
   List<ChargingStation> get filteredStations {
+    if (query == _cachedFilterQuery &&
+        availableOnly == _cachedAvailableOnly &&
+        fastOnly == _cachedFastOnly) {
+      return _cachedFilteredStations;
+    }
+
     final matches = sampleStations.where((station) {
       return _matchesSearch(station, query) &&
           (!availableOnly || station.available) &&
@@ -65,12 +74,16 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
         return pinComparison != 0 ? pinComparison : a.name.compareTo(b.name);
       });
     }
-    return matches;
+    _cachedFilterQuery = query;
+    _cachedAvailableOnly = availableOnly;
+    _cachedFastOnly = fastOnly;
+    return _cachedFilteredStations = matches;
   }
 
   @override
   Widget build(BuildContext context) {
-    final appState = ref.watch(appStateProvider);
+    ref.watch(appStateProvider.select((state) => state.favoritesRevision));
+    final appState = ref.read(appStateProvider);
     final stations = filteredStations;
     Widget buildStationCard(ChargingStation station) => RepaintBoundary(
           child: StationCard(
@@ -237,34 +250,53 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   void _clearSearch() {
+    _cancelPendingSearchWork();
     searchController.clear();
     setState(() {
       query = '';
       selectedPlace = null;
       locationMessage = null;
+      resolvingChargerResults = false;
       officialResultsQuery = null;
       officialResultsCenter = null;
     });
   }
 
   void _resetFilters() {
+    _cancelPendingSearchWork();
     searchController.clear();
     setState(() {
       query = '';
       selectedPlace = null;
       availableOnly = false;
       fastOnly = false;
+      resolvingChargerResults = false;
       officialResultsQuery = null;
       officialResultsCenter = null;
     });
   }
 
   void _handleSearchChanged(String value) {
-    setState(() {
-      selectedPlace = null;
-      query = value;
-      officialResultsQuery = null;
-      officialResultsCenter = null;
+    _filterDebounce?.cancel();
+    _chargerSearchRequestId++;
+    selectedPlace = null;
+
+    final mustClearResultsNow = resolvingChargerResults ||
+        officialResultsQuery != null ||
+        officialResultsCenter != null;
+    if (mustClearResultsNow) {
+      setState(() {
+        query = value;
+        resolvingChargerResults = false;
+        officialResultsQuery = null;
+        officialResultsCenter = null;
+      });
+      return;
+    }
+
+    _filterDebounce = Timer(_filterDebounceDuration, () {
+      if (!mounted || searchController.text != value) return;
+      setState(() => query = value);
     });
   }
 
@@ -281,6 +313,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       selectedPlace = null;
       return;
     }
+    _filterDebounce?.cancel();
     setState(() {
       query = place.displayName;
       selectedPlace = place;
@@ -292,6 +325,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   Future<void> _showChargerResults({PlaceSuggestion? preferredCenter}) async {
     if (resolvingChargerResults) return;
     FocusScope.of(context).unfocus();
+    _filterDebounce?.cancel();
     final rawQuery = searchController.text.trim();
     if (rawQuery.isEmpty && preferredCenter == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -301,7 +335,11 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       );
       return;
     }
-    setState(() => resolvingChargerResults = true);
+    final requestId = ++_chargerSearchRequestId;
+    setState(() {
+      query = rawQuery;
+      resolvingChargerResults = true;
+    });
 
     var center = preferredCenter ?? selectedPlace;
     if (center == null && rawQuery.isNotEmpty) {
@@ -324,7 +362,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       }
     }
 
-    if (!mounted) return;
+    if (!mounted || requestId != _chargerSearchRequestId) return;
     setState(() => resolvingChargerResults = false);
     if (rawQuery.isNotEmpty && center == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -345,16 +383,9 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     });
   }
 
-  Future<void> _usePreviouslyAllowedLocation() async {
-    try {
-      final permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.always ||
-          permission == LocationPermission.whileInUse) {
-        await _resolveCurrentLocation(requestPermission: false);
-      }
-    } catch (_) {
-      // Search remains fully usable when geolocation is unsupported.
-    }
+  void _cancelPendingSearchWork() {
+    _filterDebounce?.cancel();
+    _chargerSearchRequestId++;
   }
 
   Future<void> _resolveCurrentLocation({

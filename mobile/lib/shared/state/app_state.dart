@@ -35,6 +35,7 @@ class AppState extends ChangeNotifier {
   static const _accountPasswordHashKey = 'voltmap_account_password_hash';
   static const _accountCreatedAtKey = 'voltmap_account_created_at';
   static const _accountLastSignInKey = 'voltmap_account_last_sign_in';
+  static const _phoneVerifiedKey = 'voltmap_phone_verified';
   static const _chargerSubmissionsKey = 'voltmap_charger_submissions';
 
   SharedPreferences? _preferences;
@@ -49,6 +50,7 @@ class AppState extends ChangeNotifier {
   String vehicleName = 'Tata Nexon EV';
   double vehicleRangeKm = 325;
   final Set<String> favoriteStationIds = {};
+  int _favoritesRevision = 0;
   final List<SavedTrip> savedTrips = [];
   final List<ChargingReceipt> chargingReceipts = [];
   final List<ChargerSubmission> chargerSubmissions = [];
@@ -63,8 +65,9 @@ class AppState extends ChangeNotifier {
       isSignedIn && hasLocalAccount && !isDemoAccount;
 
   bool get isAdminAccount =>
-      isRegisteredAccount &&
-      userIdentifier.toLowerCase() == adminIdentifier;
+      isRegisteredAccount && userIdentifier.toLowerCase() == adminIdentifier;
+
+  int get favoritesRevision => _favoritesRevision;
 
   List<LocalAccountSummary> get localAccountSummaries => hasLocalAccount
       ? [
@@ -84,6 +87,7 @@ class AppState extends ChangeNotifier {
       favoriteStationIds
         ..clear()
         ..addAll(preferences.getStringList(_favoritesKey) ?? const []);
+      _favoritesRevision++;
       darkMode = preferences.getBool(_darkModeKey) ?? false;
       notificationsEnabled = preferences.getBool(_notificationsKey) ?? true;
       userName = preferences.getString(_nameKey) ?? userName;
@@ -91,7 +95,8 @@ class AppState extends ChangeNotifier {
       vehicleName = preferences.getString(_vehicleKey) ?? vehicleName;
       vehicleRangeKm = preferences.getDouble(_rangeKey) ?? vehicleRangeKm;
       isSignedIn = preferences.getBool(_signedInKey) ?? false;
-      hasLocalAccount = preferences.containsKey(_accountPasswordHashKey);
+      hasLocalAccount = preferences.containsKey(_accountPasswordHashKey) ||
+          (preferences.getBool(_phoneVerifiedKey) ?? false);
 
       final savedTripJson = preferences.getString(_tripsKey);
       if (savedTripJson != null) {
@@ -227,9 +232,76 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<String?> completePhoneVerification(String phoneNumber) async {
+    final normalizedPhone = normalizeIndianMobile(phoneNumber);
+    if (_preferences == null) {
+      return 'Browser storage is unavailable. Please enable it and try again.';
+    }
+    if (normalizedPhone == null) {
+      return 'Enter a valid India mobile number.';
+    }
+
+    final now = DateTime.now().toIso8601String();
+    userName = 'VoltMapEV Driver';
+    userIdentifier = normalizedPhone;
+    hasLocalAccount = true;
+    isSignedIn = true;
+    await Future.wait([
+      _preferences!.setString(_nameKey, userName),
+      _preferences!.setString(_emailKey, userIdentifier),
+      _preferences!.setBool(_phoneVerifiedKey, true),
+      _preferences!.setBool(_signedInKey, true),
+      if (!_preferences!.containsKey(_accountCreatedAtKey))
+        _preferences!.setString(_accountCreatedAtKey, now),
+      _preferences!.setString(_accountLastSignInKey, now),
+    ]);
+    notifyListeners();
+    return null;
+  }
+
   Future<void> signOut() async {
     isSignedIn = false;
     await _preferences?.setBool(_signedInKey, false);
+    notifyListeners();
+  }
+
+  Future<void> deleteLocalAccountAndData() async {
+    const personalDataKeys = [
+      _favoritesKey,
+      _tripsKey,
+      _receiptsKey,
+      _darkModeKey,
+      _notificationsKey,
+      _nameKey,
+      _emailKey,
+      _vehicleKey,
+      _rangeKey,
+      _signedInKey,
+      _accountSaltKey,
+      _accountPasswordHashKey,
+      _accountCreatedAtKey,
+      _accountLastSignInKey,
+      _phoneVerifiedKey,
+      _chargerSubmissionsKey,
+    ];
+    final preferences = _preferences;
+    if (preferences != null) {
+      await Future.wait(personalDataKeys.map(preferences.remove));
+    }
+
+    isSignedIn = false;
+    hasLocalAccount = false;
+    darkMode = false;
+    notificationsEnabled = true;
+    userName = 'VoltMapEV Driver';
+    userIdentifier = 'driver@example.com';
+    vehicleName = 'Tata Nexon EV';
+    vehicleRangeKm = 325;
+    favoriteStationIds.clear();
+    _favoritesRevision++;
+    savedTrips.clear();
+    chargingReceipts.clear();
+    chargerSubmissions.clear();
     notifyListeners();
   }
 
@@ -237,6 +309,7 @@ class AppState extends ChangeNotifier {
     if (!favoriteStationIds.add(stationId)) {
       favoriteStationIds.remove(stationId);
     }
+    _favoritesRevision++;
     notifyListeners();
     await _preferences?.setStringList(
       _favoritesKey,
@@ -365,6 +438,19 @@ class AppState extends ChangeNotifier {
       return '+$digits';
     }
     return null;
+  }
+
+  static String? normalizeIndianMobile(String input) {
+    var digits = input.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length == 12 && digits.startsWith('91')) {
+      digits = digits.substring(2);
+    }
+    if (digits.length == 11 && digits.startsWith('0')) {
+      digits = digits.substring(1);
+    }
+    return digits.length == 10 && RegExp(r'^[6-9]').hasMatch(digits)
+        ? '+91$digits'
+        : null;
   }
 }
 

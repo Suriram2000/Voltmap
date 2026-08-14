@@ -74,12 +74,86 @@
       overflow: hidden;
       overscroll-behavior: none;
       -webkit-tap-highlight-color: transparent;
+      background: #071D17;
+    }
+    #boot-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: radial-gradient(circle at 50% 35%, #0d3d2d 0%, #071d17 55%, #04110d 100%);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      transition: opacity 160ms ease;
+    }
+    #boot-splash.is-ready {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .boot-content {
+      display: grid;
+      justify-items: center;
+      gap: 14px;
+    }
+    .boot-mark {
+      width: 72px;
+      height: 72px;
+      display: grid;
+      place-items: center;
+      border-radius: 22px;
+      color: #071d17;
+      background: linear-gradient(135deg, #c8f45b, #20c77a);
+      box-shadow: 0 18px 46px rgba(32, 199, 122, .28);
+      font-size: 46px;
+      font-weight: 900;
+    }
+    .boot-name {
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: -.6px;
+    }
+    .boot-tagline {
+      margin-top: -8px;
+      color: #c8f45b;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .2px;
+    }
+    .boot-progress {
+      width: 132px;
+      height: 4px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: rgba(255,255,255,.14);
+    }
+    .boot-progress::after {
+      content: "";
+      display: block;
+      width: 44%;
+      height: 100%;
+      border-radius: inherit;
+      background: #c8f45b;
+      animation: boot-slide 900ms ease-in-out infinite alternate;
+    }
+    @keyframes boot-slide {
+      from { transform: translateX(0); }
+      to { transform: translateX(128%); }
     }
   </style>
   <title>EV Charging Stations in India & Trip Planner | VoltMapEV</title>
 </head>
 <body>
+  <div id="boot-splash" role="status" aria-label="Opening VoltMapEV, the best EV charging site in India">
+    <div class="boot-content">
+      <div class="boot-mark" aria-hidden="true">&#9889;</div>
+      <div class="boot-name">VoltMapEV</div>
+      <div class="boot-tagline">Best EV charging site in India</div>
+      <div class="boot-progress" aria-hidden="true"></div>
+    </div>
+  </div>
   <noscript>
+    <style>#boot-splash { display: none; }</style>
     <main>
       <h1>Find EV charging stations in India with VoltMapEV</h1>
       <p>Search by PIN code, city, state, or area and plan EV trips with relevant charger stops along the route.</p>

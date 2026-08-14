@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voltmap/features/install/presentation/install_app_screen.dart';
+import 'package:voltmap/features/shell/presentation/app_shell.dart';
 import 'package:voltmap/shared/services/install_app_models.dart';
 import 'package:voltmap/shared/services/install_app_service.dart';
 
@@ -80,6 +83,37 @@ void main() {
       find.byKey(const Key('checkInstallAvailabilityButton')),
       findsNothing,
     );
+  });
+
+  testWidgets('install suggestion appears at the bottom after startup', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final controller = _FakeInstallController(
+      const InstallAppStatus(
+        platform: InstallAppPlatform.android,
+        installed: false,
+        canPrompt: true,
+      ),
+      result: InstallActionResult.accepted,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(home: AppShell(installController: controller)),
+      ),
+    );
+    expect(find.byKey(const Key('installAppBottomBanner')), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 1700));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('installAppBottomBanner')), findsOneWidget);
+    expect(find.text('Faster access from your home screen'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('installAppBottomButton')));
+    await tester.pumpAndSettle();
+    expect(controller.promptCount, 1);
+    expect(find.byKey(const Key('installAppBottomBanner')), findsNothing);
   });
 }
 

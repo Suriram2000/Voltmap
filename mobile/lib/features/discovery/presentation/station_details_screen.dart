@@ -225,15 +225,7 @@ class StationDetailsScreen extends ConsumerWidget {
                     child: FilledButton.icon(
                       key: const Key('openCheckoutButton'),
                       onPressed: station.available
-                          ? () async {
-                              final canPay = await requireRegisteredAccount(
-                                context,
-                                appState,
-                                'Payments',
-                              );
-                              if (!context.mounted || !canPay) return;
-                              await _startSession(context);
-                            }
+                          ? () => _startSession(context)
                           : null,
                       icon: const Icon(Icons.ev_station_rounded),
                       label: Text(
@@ -280,7 +272,9 @@ class StationDetailsScreen extends ConsumerWidget {
           '${receipt.energyKwh.toStringAsFixed(2)} kWh was delivered through '
           '${receipt.connectorType} at ${station.name}.\n\n'
           'Final payment: ₹${receipt.amount.toStringAsFixed(2)}\n'
-          'Method: ${receipt.paymentMethod}\nReceipt: ${receipt.id}',
+          'Method: ${receipt.paymentMethod}\n'
+          'Receipt: ${receipt.id}\n'
+          'Delivery: ${receipt.deliveryStatus}',
         ),
         actions: [
           FilledButton(

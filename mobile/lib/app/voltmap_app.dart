@@ -12,15 +12,19 @@ class VoltMapApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final appState = ref.watch(appStateProvider);
+    final settings = ref.watch(
+      appStateProvider.select(
+        (state) => (isReady: state.isReady, darkMode: state.darkMode),
+      ),
+    );
     return MaterialApp(
       title: 'VoltMapEV',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: appState.darkMode ? ThemeMode.dark : ThemeMode.light,
+      themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.light,
       scrollBehavior: const VoltMapScrollBehavior(),
-      home: !appState.isReady ? const _AppLoadingScreen() : const AppShell(),
+      home: !settings.isReady ? const _AppLoadingScreen() : const AppShell(),
     );
   }
 }
@@ -54,10 +58,52 @@ class _AppLoadingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
+      backgroundColor: AppTheme.brandNavy,
       body: Center(
-        child: SizedBox.square(
-          dimension: 34,
-          child: CircularProgressIndicator(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppTheme.brandLime,
+                borderRadius: BorderRadius.all(Radius.circular(22)),
+              ),
+              child: SizedBox.square(
+                dimension: 72,
+                child: Icon(
+                  Icons.bolt_rounded,
+                  color: AppTheme.brandNavy,
+                  size: 44,
+                ),
+              ),
+            ),
+            SizedBox(height: 18),
+            Text(
+              'VoltMapEV',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            SizedBox(height: 6),
+            Text(
+              'Best EV charging site in India',
+              style: TextStyle(
+                color: AppTheme.brandLime,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            SizedBox(height: 18),
+            SizedBox(
+              width: 130,
+              child: LinearProgressIndicator(
+                color: AppTheme.brandLime,
+                backgroundColor: Color(0x3344D99A),
+              ),
+            ),
+          ],
         ),
       ),
     );
