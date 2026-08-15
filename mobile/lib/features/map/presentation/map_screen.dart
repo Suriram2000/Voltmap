@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -14,6 +15,14 @@ import '../../discovery/data/official_charger_search_service.dart';
 import '../../discovery/data/official_charger_station.dart';
 
 typedef MapLocationLoader = Future<MapUserLocation> Function();
+
+@visibleForTesting
+bool canOpenMapAppSettings({
+  required bool isWeb,
+  required bool permissionFailure,
+  required bool blocked,
+}) =>
+    !isWeb && permissionFailure && blocked;
 
 enum _MapFailureType { permission, offline, service }
 
@@ -133,6 +142,11 @@ class _MapScreenState extends State<MapScreen> {
 
     final offline = _failureType == _MapFailureType.offline;
     final permission = _failureType == _MapFailureType.permission;
+    final canOpenSettings = canOpenMapAppSettings(
+      isWeb: kIsWeb,
+      permissionFailure: permission,
+      blocked: _locationBlocked,
+    );
     return _MapStatusCard(
       key: const Key('nearbyChargerError'),
       icon: permission
@@ -148,9 +162,8 @@ class _MapScreenState extends State<MapScreen> {
       message: _error ?? 'Try again to show nearby chargers.',
       primaryLabel: 'Try again',
       onPrimary: _loadNearbyChargers,
-      secondaryLabel: permission && _locationBlocked ? 'Open settings' : null,
-      onSecondary:
-          permission && _locationBlocked ? Geolocator.openAppSettings : null,
+      secondaryLabel: canOpenSettings ? 'Open settings' : null,
+      onSecondary: canOpenSettings ? Geolocator.openAppSettings : null,
     );
   }
 
@@ -560,8 +573,10 @@ class _MapScreenState extends State<MapScreen> {
       permission = await Geolocator.requestPermission();
     }
     if (permission == LocationPermission.deniedForever) {
-      throw const _MapLocationException(
-        'Location access is blocked for VoltMapEV. Open settings and allow access while using the app.',
+      throw _MapLocationException(
+        kIsWeb
+            ? 'Location access is blocked for VoltMapEV. Allow it in your browser site settings, then try again.'
+            : 'Location access is blocked for VoltMapEV. Open settings and allow access while using the app.',
         blocked: true,
       );
     }
