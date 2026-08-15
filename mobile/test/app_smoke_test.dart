@@ -347,7 +347,7 @@ void main() {
 
     await tester.tap(find.text('Map'));
     await tester.pumpAndSettle();
-    expect(find.text('India Charger Map'), findsOneWidget);
+    expect(find.text('Find chargers near you'), findsOneWidget);
 
     await tester.tap(find.text('Trips'));
     await tester.pumpAndSettle();
@@ -439,6 +439,37 @@ void main() {
     expect(button.onPressed, isNull);
   });
 
+  testWidgets('station details disclose data limits and support corrections', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: StationDetailsScreen(station: sampleStations.first),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('stationDataTransparencyBanner')),
+      findsOneWidget,
+    );
+    expect(find.text('Check live details before travel'), findsOneWidget);
+    expect(find.text('Estimated price'), findsOneWidget);
+    expect(find.text('Listed ports'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('reportStationCorrectionButton')),
+      350,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(
+      find.byKey(const Key('reportStationCorrectionButton')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('public charger reports validate and remain saved for review', (
     tester,
   ) async {
@@ -511,7 +542,7 @@ void main() {
           of: navigation, matching: find.byIcon(Icons.map_outlined)),
     );
     await tester.pumpAndSettle();
-    expect(find.text('India Charger Map'), findsOneWidget);
+    expect(find.text('Find chargers near you'), findsOneWidget);
     await tester.tap(
       find.descendant(
         of: navigation,
@@ -567,7 +598,8 @@ void main() {
 
     await tester.tap(find.byKey(const Key('openCheckoutButton')));
     await tester.pumpAndSettle();
-    expect(find.text('Set up charging'), findsOneWidget);
+    expect(find.text('Charge & pay'), findsOneWidget);
+    expect(find.byKey(const Key('chargePayJourneyHeader')), findsOneWidget);
     final cardOption = find.byKey(const Key('paymentMethod_card'));
     await tester.scrollUntilVisible(
       cardOption,
@@ -636,14 +668,33 @@ void main() {
     expect(find.text('₹28.13'), findsWidgets);
     expect(find.textContaining('VM-'), findsOneWidget);
     expect(
-      find.text('Not sent — provider not connected'),
+      find.text('Not sent — sandbox contact is not verified'),
       findsOneWidget,
     );
 
     await tester.tap(find.byKey(const Key('chargingDoneButton')));
     await tester.pumpAndSettle();
-    expect(find.text('Charging session complete'), findsOneWidget);
-    expect(find.textContaining('Final payment: ₹28.13'), findsOneWidget);
+    expect(find.byKey(const Key('chargingReceiptScreen')), findsOneWidget);
+    expect(find.text('Session completed'), findsOneWidget);
+    expect(find.text('₹28.13'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Not sent — sandbox contact is not verified'),
+      450,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(
+      find.text('Not sent — sandbox contact is not verified'),
+      findsOneWidget,
+    );
+    await tester.scrollUntilVisible(
+      find.text('Sandbox receipt — no real payment was collected'),
+      350,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(
+      find.text('Sandbox receipt — no real payment was collected'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('guest users can open payment checkout without signup', (
@@ -663,8 +714,9 @@ void main() {
 
     await tester.tap(find.byKey(const Key('openCheckoutButton')));
     await tester.pumpAndSettle();
-    expect(find.text('Set up charging'), findsOneWidget);
+    expect(find.text('Charge & pay'), findsOneWidget);
     expect(find.byKey(const Key('phoneVerificationScreen')), findsNothing);
+    await _scrollToPaymentPhone(tester);
     expect(find.byKey(const Key('paymentPhoneField')), findsOneWidget);
     expect(find.text('Guest checkout — no signup required'), findsOneWidget);
     expect(find.textContaining('+91'), findsNothing);
@@ -683,6 +735,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _scrollToPaymentPhone(tester);
     await tester.enterText(find.byKey(const Key('paymentPhoneField')), '12345');
     await tester.tap(find.byKey(const Key('authorizeButton')));
     await tester.pump();
@@ -741,6 +794,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _scrollToPaymentPhone(tester);
     await tester.enterText(
       find.byKey(const Key('paymentPhoneField')),
       '9392788714',
@@ -813,6 +867,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _scrollToPaymentPhone(tester);
     await tester.enterText(
       find.byKey(const Key('paymentPhoneField')),
       '9392788714',
@@ -905,4 +960,13 @@ void _useDesktopViewport(WidgetTester tester) {
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
+}
+
+Future<void> _scrollToPaymentPhone(WidgetTester tester) async {
+  await tester.scrollUntilVisible(
+    find.byKey(const Key('paymentPhoneField')),
+    360,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.pumpAndSettle();
 }

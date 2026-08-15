@@ -66,14 +66,14 @@ class AboutScreen extends StatelessWidget {
                 icon: Icons.lock_outline_rounded,
                 title: 'What needs an account',
                 text:
-                    'Signup is required only to save favorites or trips, add a charger report, start a demo payment, and view personal history.',
+                    'Signup is required only to save favorites or trips and view personal history. Searching, trip planning, station corrections, and guest checkout where supported remain public.',
               ),
               const SizedBox(height: 12),
               const _InfoCard(
                 icon: Icons.verified_outlined,
                 title: 'Data transparency',
                 text:
-                    'Government totals are aggregate reference data. Individual charger availability, prices, route stops, and payments in this release are demonstration data and should be verified before travel.',
+                    'Official search results show their government source and data date. Bundled station availability, prices, ratings, route stops, and payments are demonstration data and are clearly labelled for verification before travel.',
               ),
               const SizedBox(height: 24),
               Text(

@@ -66,6 +66,19 @@
     ]
   }
   </script>
+  <script>
+    window.voltMapEVDownloadTextFile = function(filename, content) {
+      const blob = new Blob([content], {type: 'text/plain;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+  </script>
   <style>
     html, body {
       width: 100%;
@@ -144,11 +157,11 @@
   <title>EV Charging Stations in India & Trip Planner | VoltMapEV</title>
 </head>
 <body>
-  <div id="boot-splash" role="status" aria-label="Opening VoltMapEV, the best EV charging site in India">
+  <div id="boot-splash" role="status" aria-label="Opening VoltMapEV – The Best EV Charging Station Finder">
     <div class="boot-content">
       <div class="boot-mark" aria-hidden="true">&#9889;</div>
       <div class="boot-name">VoltMapEV</div>
-      <div class="boot-tagline">Best EV charging site in India</div>
+      <div class="boot-tagline">VoltMapEV – The Best EV Charging Station Finder</div>
       <div class="boot-progress" aria-hidden="true"></div>
     </div>
   </div>

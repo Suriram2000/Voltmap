@@ -197,7 +197,10 @@ void main() {
 
     expect(index, contains('id="boot-splash"'));
     expect(index, contains('Opening VoltMapEV'));
-    expect(index, contains('Best EV charging site in India'));
+    expect(
+      index,
+      contains('VoltMapEV – The Best EV Charging Station Finder'),
+    );
     expect(index, contains('background: #071D17'));
     expect(bootstrap, contains('onEntrypointLoaded'));
     expect(bootstrap, contains("document.getElementById('boot-splash')"));

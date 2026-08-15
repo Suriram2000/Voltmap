@@ -65,8 +65,9 @@ Required console configuration:
 Platform inputs:
 
 - Android: production release keystore, keystore alias, and SHA-1/SHA-256
-  fingerprints. The current Android release configuration uses the debug
-  signing key and must be replaced before an app-store release.
+  fingerprints. Release builds fail closed when `key.properties` is absent and
+  never fall back to the debug signing key. Configure the ignored upload key
+  locally or the encrypted GitHub Actions signing secrets before Play upload.
 - iOS: Apple Developer Team ID, APNs authentication key (`.p8`), APNs Key ID,
   and permission to configure the bundle ID. Enable Push Notifications and
   Background Modes/remote notifications.

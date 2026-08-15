@@ -1,16 +1,21 @@
 import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/place_suggestion.dart';
 import '../../../shared/services/place_search_service.dart';
+import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../discovery/data/official_charger_search_service.dart';
 import '../../discovery/data/official_charger_station.dart';
 
 typedef MapLocationLoader = Future<MapUserLocation> Function();
+
+enum _MapFailureType { permission, offline, service }
 
 class MapUserLocation {
   const MapUserLocation({required this.latitude, required this.longitude});
@@ -36,15 +41,18 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
+  final TextEditingController _mapSearchController = TextEditingController();
   bool _loading = true;
   bool _locationEnabled = true;
   bool _locationBlocked = false;
+  _MapFailureType? _failureType;
   String? _error;
   MapUserLocation? _location;
   PlaceSuggestion? _place;
   OfficialChargerSearchResult? _result;
   int _selectedIndex = 0;
   int _requestId = 0;
+  String _connectorFilter = 'All';
 
   @override
   void initState() {
@@ -53,11 +61,17 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   @override
+  void dispose() {
+    _mapSearchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final result = _result;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('India Charger Map'),
+        title: const Text('Find chargers near you'),
         actions: [
           if (_loading && result != null)
             const Padding(
@@ -102,7 +116,7 @@ class _MapScreenState extends State<MapScreen> {
         icon: Icons.location_off_rounded,
         title: 'Location is disabled',
         message:
-            'Turn on “Use my location” above whenever you want to center the map and see nearby chargers.',
+            'Turn on location sharing above whenever you want to center the map and see nearby chargers. VoltMapEV does not track your location in the background.',
       );
     }
 
@@ -117,19 +131,26 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
+    final offline = _failureType == _MapFailureType.offline;
+    final permission = _failureType == _MapFailureType.permission;
     return _MapStatusCard(
       key: const Key('nearbyChargerError'),
-      icon: _locationBlocked
+      icon: permission
           ? Icons.location_disabled_rounded
-          : Icons.location_searching_rounded,
-      title: _locationBlocked
+          : offline
+              ? Icons.cloud_off_rounded
+              : Icons.sync_problem_rounded,
+      title: permission
           ? 'Location access is off'
-          : 'Your location could not be loaded',
+          : offline
+              ? 'You appear to be offline'
+              : 'Charger service is unavailable',
       message: _error ?? 'Try again to show nearby chargers.',
       primaryLabel: 'Try again',
       onPrimary: _loadNearbyChargers,
-      secondaryLabel: _locationBlocked ? 'Open settings' : null,
-      onSecondary: _locationBlocked ? Geolocator.openAppSettings : null,
+      secondaryLabel: permission && _locationBlocked ? 'Open settings' : null,
+      onSecondary:
+          permission && _locationBlocked ? Geolocator.openAppSettings : null,
     );
   }
 
@@ -137,22 +158,46 @@ class _MapScreenState extends State<MapScreen> {
     OfficialChargerSearchResult result,
     MapUserLocation location,
   ) {
+    if (result.matches.isEmpty) {
+      return _MapStatusCard(
+        key: const Key('nearbyChargerNoResults'),
+        icon: Icons.ev_station_outlined,
+        title: 'No nearby chargers found',
+        message:
+            'No stations in the dated BEE inventory were found near ${_place?.primaryText ?? 'your location'} within ${result.radiusKm.toStringAsFixed(0)} km. Try again later or search another area in the Chargers tab.',
+        primaryLabel: 'Refresh nearby chargers',
+        onPrimary: _loadNearbyChargers,
+      );
+    }
+    final filteredMatches = result.matches
+        .where((match) => _matchesConnectorFilter(match, _connectorFilter))
+        .toList(growable: false);
+    final visibleResult = OfficialChargerSearchResult(
+      source: result.source,
+      sourceUrl: result.sourceUrl,
+      asOf: result.asOf,
+      totalStationCount: result.totalStationCount,
+      radiusKm: result.radiusKm,
+      matches: filteredMatches,
+    );
     return LayoutBuilder(
       builder: (context, constraints) {
-        final selectedIndex = result.matches.isEmpty
+        final selectedIndex = visibleResult.matches.isEmpty
             ? -1
-            : _selectedIndex.clamp(0, result.matches.length - 1);
+            : _selectedIndex.clamp(0, visibleResult.matches.length - 1);
         final map = _NearbyMapCanvas(
           key: const Key('nearbyChargerMap'),
           location: location,
-          matches: result.matches,
-          radiusKm: result.radiusKm,
+          locationLabel: _place?.primaryText ?? 'Current location',
+          matches: visibleResult.matches,
+          radiusKm: visibleResult.radiusKm,
           selectedIndex: selectedIndex,
           onSelected: (index) => setState(() => _selectedIndex = index),
         );
         final panel = _NearbyChargerPanel(
-          result: result,
+          result: visibleResult,
           locationLabel: _place?.primaryText ?? 'Current location',
+          activeFilter: _connectorFilter,
           selectedIndex: selectedIndex,
           onSelected: (index) => setState(() => _selectedIndex = index),
           onDirections: _openDirections,
@@ -161,7 +206,7 @@ class _MapScreenState extends State<MapScreen> {
         if (constraints.maxWidth >= 900) {
           return Row(
             children: [
-              Expanded(child: map),
+              Expanded(child: _buildMapLayer(map)),
               SizedBox(
                 key: const Key('nearbyChargerSidebar'),
                 width: math.min(420, constraints.maxWidth * 0.38),
@@ -173,7 +218,7 @@ class _MapScreenState extends State<MapScreen> {
 
         return Stack(
           children: [
-            Positioned.fill(child: map),
+            Positioned.fill(child: _buildMapLayer(map)),
             DraggableScrollableSheet(
               key: const Key('nearbyChargerBottomSheet'),
               initialChildSize: 0.4,
@@ -188,8 +233,9 @@ class _MapScreenState extends State<MapScreen> {
                     const BorderRadius.vertical(top: Radius.circular(26)),
                 clipBehavior: Clip.antiAlias,
                 child: _NearbyChargerPanel(
-                  result: result,
+                  result: visibleResult,
                   locationLabel: _place?.primaryText ?? 'Current location',
+                  activeFilter: _connectorFilter,
                   selectedIndex: selectedIndex,
                   onSelected: (index) => setState(() => _selectedIndex = index),
                   onDirections: _openDirections,
@@ -204,13 +250,56 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  Widget _buildMapLayer(Widget map) {
+    return Stack(
+      children: [
+        Positioned.fill(child: map),
+        Positioned(
+          top: 14,
+          left: 14,
+          right: 14,
+          child: _MapSearchOverlay(
+            controller: _mapSearchController,
+            locationLabel: _place?.primaryText ?? 'your area',
+            searchService: widget.placeSearchService,
+            loading: _loading,
+            activeFilter: _connectorFilter,
+            onSelected: (place) {
+              if (place != null) _loadSelectedPlace(place);
+            },
+            onSubmitted: _submitPlaceSearch,
+            onFilterPressed: _showConnectorFilters,
+          ),
+        ),
+        Positioned(
+          top: 88,
+          right: 16,
+          child: FloatingActionButton.small(
+            key: const Key('mapRecenterButton'),
+            heroTag: 'mapRecenter',
+            tooltip: 'Center on my location',
+            onPressed: _loading ? null : _loadNearbyChargers,
+            child: _loading
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.my_location_rounded),
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _loadNearbyChargers() async {
     if (!_locationEnabled) return;
     if (_loading && _requestId > 0) return;
+    _mapSearchController.clear();
     final requestId = ++_requestId;
     setState(() {
       _loading = true;
       _locationBlocked = false;
+      _failureType = null;
       _error = null;
     });
 
@@ -240,6 +329,7 @@ class _MapScreenState extends State<MapScreen> {
         _place = center;
         _result = result;
         _selectedIndex = 0;
+        _connectorFilter = 'All';
         _loading = false;
       });
     } on _MapLocationException catch (error) {
@@ -247,15 +337,187 @@ class _MapScreenState extends State<MapScreen> {
       setState(() {
         _loading = false;
         _locationBlocked = error.blocked;
+        _failureType = _MapFailureType.permission;
         _error = error.message;
+      });
+    } on TimeoutException {
+      if (!mounted || requestId != _requestId || !_locationEnabled) return;
+      setState(() {
+        _loading = false;
+        _failureType = _MapFailureType.offline;
+        _error = 'The request timed out. Check your connection and try again.';
+      });
+    } on http.ClientException {
+      if (!mounted || requestId != _requestId || !_locationEnabled) return;
+      setState(() {
+        _loading = false;
+        _failureType = _MapFailureType.offline;
+        _error = 'Connect to the internet to load nearby charger records.';
       });
     } catch (_) {
       if (!mounted || requestId != _requestId || !_locationEnabled) return;
       setState(() {
         _loading = false;
-        _error = 'Check location services and your connection, then try again.';
+        _failureType = _MapFailureType.service;
+        _error =
+            'VoltMapEV could not load charger data. The map is hidden until data is available; try again shortly.';
       });
     }
+  }
+
+  Future<void> _loadSelectedPlace(PlaceSuggestion place) async {
+    if (!_locationEnabled) return;
+    final requestId = ++_requestId;
+    setState(() {
+      _loading = true;
+      _failureType = null;
+      _error = null;
+      _selectedIndex = 0;
+      _connectorFilter = 'All';
+    });
+    try {
+      final result = await widget.chargerSearchService.search(
+        query: place.displayName,
+        center: place,
+      );
+      if (!mounted || requestId != _requestId || !_locationEnabled) return;
+      setState(() {
+        _location = MapUserLocation(
+          latitude: place.latitude,
+          longitude: place.longitude,
+        );
+        _place = place;
+        _result = result;
+        _loading = false;
+      });
+    } on TimeoutException {
+      _showPlaceSearchError(
+        requestId,
+        'The area search timed out. Check your connection and try again.',
+        _MapFailureType.offline,
+      );
+    } on http.ClientException {
+      _showPlaceSearchError(
+        requestId,
+        'Connect to the internet to search another area.',
+        _MapFailureType.offline,
+      );
+    } catch (_) {
+      _showPlaceSearchError(
+        requestId,
+        'VoltMapEV could not load chargers for that area. Try again shortly.',
+        _MapFailureType.service,
+      );
+    }
+  }
+
+  void _showPlaceSearchError(
+    int requestId,
+    String message,
+    _MapFailureType failureType,
+  ) {
+    if (!mounted || requestId != _requestId || !_locationEnabled) return;
+    setState(() {
+      _loading = false;
+      _failureType = failureType;
+      _error = message;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> _submitPlaceSearch(String value) async {
+    final query = value.trim();
+    if (query.length < 2 || _loading) return;
+    final places = await widget.placeSearchService.searchIndia(query);
+    if (!mounted) return;
+    if (places.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Choose an India area, city, or PIN suggestion.'),
+        ),
+      );
+      return;
+    }
+    final place = places.first;
+    _mapSearchController
+      ..text = place.displayName
+      ..selection = TextSelection.collapsed(offset: place.displayName.length);
+    await _loadSelectedPlace(place);
+  }
+
+  Future<void> _showConnectorFilters() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Filter nearby chargers',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Filter the station list and map markers by connector or published charging speed.',
+              ),
+              const SizedBox(height: 14),
+              RadioGroup<String>(
+                groupValue: _connectorFilter,
+                onChanged: (value) => Navigator.pop(context, value),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final option in const [
+                      'All',
+                      'CCS2',
+                      'Type 2',
+                      'Fast 50+ kW',
+                    ])
+                      RadioListTile<String>(
+                        key: ValueKey('mapFilter_$option'),
+                        value: option,
+                        title: Text(option),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || selected == null || selected == _connectorFilter) return;
+    setState(() {
+      _connectorFilter = selected;
+      _selectedIndex = 0;
+    });
+  }
+
+  bool _matchesConnectorFilter(
+    OfficialChargerMatch match,
+    String filter,
+  ) {
+    if (filter == 'All') return true;
+    final connectors = match.station.connectors;
+    return switch (filter) {
+      'CCS2' => connectors.any(
+          (connector) => connector.type.toLowerCase().contains('ccs'),
+        ),
+      'Type 2' => connectors.any((connector) {
+          final type = connector.type.toLowerCase();
+          return type.contains('type-ii') || type.contains('type 2');
+        }),
+      'Fast 50+ kW' => connectors.any(
+          (connector) => (connector.ratingKw ?? 0) >= 50,
+        ),
+      _ => true,
+    };
   }
 
   void _setLocationEnabled(bool enabled) {
@@ -267,12 +529,15 @@ class _MapScreenState extends State<MapScreen> {
         _locationEnabled = false;
         _loading = false;
         _locationBlocked = false;
+        _failureType = null;
         _error = null;
         _location = null;
         _place = null;
         _result = null;
         _selectedIndex = 0;
+        _connectorFilter = 'All';
       });
+      _mapSearchController.clear();
       return;
     }
 
@@ -340,6 +605,91 @@ class _MapLocationException implements Exception {
   final bool blocked;
 }
 
+class _MapSearchOverlay extends StatelessWidget {
+  const _MapSearchOverlay({
+    required this.controller,
+    required this.locationLabel,
+    required this.searchService,
+    required this.loading,
+    required this.activeFilter,
+    required this.onSelected,
+    required this.onSubmitted,
+    required this.onFilterPressed,
+  });
+
+  final TextEditingController controller;
+  final String locationLabel;
+  final PlaceSearchService searchService;
+  final bool loading;
+  final String activeFilter;
+  final ValueChanged<PlaceSuggestion?> onSelected;
+  final ValueChanged<String> onSubmitted;
+  final VoidCallback onFilterPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.surface.withValues(alpha: 0.98),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x22000000),
+                  blurRadius: 20,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            ),
+            child: LocationAutocompleteField(
+              key: const Key('mapLocationSearch'),
+              controller: controller,
+              label: 'Search map',
+              hint: 'Area, city or PIN near $locationLabel',
+              prefixIcon: Icons.search_rounded,
+              searchService: searchService,
+              onSelected: onSelected,
+              onSubmitted: onSubmitted,
+              textInputAction: TextInputAction.search,
+              suffixIcon: loading
+                  ? const Padding(
+                      padding: EdgeInsets.all(15),
+                      child: SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : null,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Badge(
+          isLabelVisible: activeFilter != 'All',
+          child: Material(
+            color: colors.surface.withValues(alpha: 0.98),
+            elevation: 3,
+            shadowColor: Colors.black26,
+            shape: const CircleBorder(),
+            child: IconButton.filledTonal(
+              key: const Key('mapFilterButton'),
+              tooltip: activeFilter == 'All'
+                  ? 'Filter chargers'
+                  : 'Filter: $activeFilter',
+              onPressed: onFilterPressed,
+              icon: const Icon(Icons.tune_rounded),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _LocationAccessControl extends StatelessWidget {
   const _LocationAccessControl({
     required this.enabled,
@@ -355,24 +705,44 @@ class _LocationAccessControl extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final status = !enabled
-        ? 'Off — VoltMapEV is not using your location.'
+        ? 'Off — your location is not being used.'
         : loading
             ? 'On — finding chargers near you…'
-            : 'On — showing chargers near your current location.';
+            : 'On — map centered near your location.';
 
-    return Material(
-      color: colors.surfaceContainerLow,
-      child: SwitchListTile.adaptive(
-        key: const Key('mapLocationToggle'),
-        value: enabled,
-        onChanged: onChanged,
-        secondary: Icon(
-          enabled ? Icons.location_on_rounded : Icons.location_off_rounded,
-          color: enabled ? colors.primary : colors.onSurfaceVariant,
+    return ColoredBox(
+      color: colors.surface,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
+        child: Material(
+          color: enabled
+              ? colors.primaryContainer.withValues(alpha: 0.64)
+              : colors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(18),
+          clipBehavior: Clip.antiAlias,
+          child: SwitchListTile.adaptive(
+            key: const Key('mapLocationToggle'),
+            value: enabled,
+            onChanged: onChanged,
+            secondary: CircleAvatar(
+              backgroundColor:
+                  enabled ? colors.primary : colors.surfaceContainerHighest,
+              foregroundColor:
+                  enabled ? colors.onPrimary : colors.onSurfaceVariant,
+              child: Icon(
+                enabled ? Icons.near_me_rounded : Icons.location_off_rounded,
+                size: 20,
+              ),
+            ),
+            title: Text(
+              enabled ? 'Location sharing enabled' : 'Location sharing off',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            subtitle: Text(status),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          ),
         ),
-        title: const Text('Use my location'),
-        subtitle: Text(status),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       ),
     );
   }
@@ -453,6 +823,7 @@ class _NearbyMapCanvas extends StatelessWidget {
   const _NearbyMapCanvas({
     super.key,
     required this.location,
+    required this.locationLabel,
     required this.matches,
     required this.radiusKm,
     required this.selectedIndex,
@@ -460,6 +831,7 @@ class _NearbyMapCanvas extends StatelessWidget {
   });
 
   final MapUserLocation location;
+  final String locationLabel;
   final List<OfficialChargerMatch> matches;
   final double radiusKm;
   final int selectedIndex;
@@ -511,6 +883,7 @@ class _NearbyMapCanvas extends StatelessWidget {
                         matches: matches,
                         selectedIndex: selectedIndex,
                         colorScheme: colors,
+                        locationLabel: locationLabel,
                       ),
                     ),
                   ),
@@ -601,37 +974,87 @@ class _NearbyMapPainter extends CustomPainter {
     required this.matches,
     required this.selectedIndex,
     required this.colorScheme,
+    required this.locationLabel,
   });
 
   final _MapProjection projection;
   final List<OfficialChargerMatch> matches;
   final int selectedIndex;
   final ColorScheme colorScheme;
+  final String locationLabel;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final isLight = colorScheme.brightness == Brightness.light;
     canvas.drawRect(
       Offset.zero & size,
-      Paint()..color = colorScheme.surfaceContainerLowest,
+      Paint()
+        ..color = isLight ? const Color(0xFFF1F6F8) : const Color(0xFF101C1B),
     );
 
-    final gridPaint = Paint()
-      ..color = colorScheme.outlineVariant.withValues(alpha: 0.7)
-      ..strokeWidth = 1;
-    const spacing = 52.0;
-    for (var x = 0.0; x < size.width; x += spacing) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
-    }
-    for (var y = 0.0; y < size.height; y += spacing) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
-    }
+    final water = Path()
+      ..moveTo(size.width * 0.84, -20)
+      ..cubicTo(
+        size.width * 0.73,
+        size.height * 0.2,
+        size.width * 1.03,
+        size.height * 0.38,
+        size.width * 0.88,
+        size.height * 0.58,
+      )
+      ..lineTo(size.width + 20, size.height * 0.64)
+      ..lineTo(size.width + 20, -20)
+      ..close();
+    canvas.drawPath(
+      water,
+      Paint()
+        ..color = isLight ? const Color(0xFFDCEFF7) : const Color(0xFF17333A),
+    );
 
-    final roadPaint = Paint()
-      ..color = colorScheme.surfaceContainerHighest
+    final parkPaint = Paint()
+      ..color = isLight ? const Color(0xFFDDEEDC) : const Color(0xFF173127);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          size.width * 0.08,
+          size.height * 0.16,
+          size.width * 0.22,
+          size.height * 0.13,
+        ),
+        const Radius.circular(32),
+      ),
+      parkPaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          size.width * 0.63,
+          size.height * 0.58,
+          size.width * 0.2,
+          size.height * 0.15,
+        ),
+        const Radius.circular(26),
+      ),
+      parkPaint,
+    );
+
+    final minorRoad = Paint()
+      ..color = isLight ? Colors.white : const Color(0xFF263631)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 12
+      ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;
-    final road = Path()
+    final roadOutline = Paint()
+      ..color = isLight ? const Color(0xFFD5E0E7) : const Color(0xFF344943)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 9
+      ..strokeCap = StrokeCap.round;
+    final majorRoad = Paint()
+      ..color = isLight ? const Color(0xFFF8FCFE) : const Color(0xFF2A3A35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round;
+
+    final diagonal = Path()
       ..moveTo(-20, size.height * 0.72)
       ..cubicTo(
         size.width * 0.25,
@@ -641,36 +1064,58 @@ class _NearbyMapPainter extends CustomPainter {
         size.width + 20,
         size.height * 0.34,
       );
-    canvas.drawPath(road, roadPaint);
+    canvas.drawPath(diagonal, roadOutline);
+    canvas.drawPath(diagonal, majorRoad);
 
-    final chargerPaint = Paint()..color = AppTheme.brandGreen;
-    for (var index = 0; index < matches.length; index++) {
-      if (index == selectedIndex) continue;
-      final station = matches[index].station;
-      final point = projection.project(station.latitude, station.longitude);
-      canvas.drawCircle(point, 5, chargerPaint);
-      canvas.drawCircle(
-        point,
-        5,
-        Paint()
-          ..color = colorScheme.surface
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2,
-      );
+    for (var index = 0; index < 7; index++) {
+      final fraction = (index + 1) / 8;
+      final vertical = Path()
+        ..moveTo(size.width * fraction - 40, -20)
+        ..cubicTo(
+          size.width * (fraction + 0.08),
+          size.height * 0.32,
+          size.width * (fraction - 0.08),
+          size.height * 0.68,
+          size.width * fraction + 45,
+          size.height + 20,
+        );
+      canvas.drawPath(vertical, minorRoad);
+    }
+    for (var index = 0; index < 6; index++) {
+      final fraction = (index + 1) / 7;
+      final horizontal = Path()
+        ..moveTo(-20, size.height * fraction + 25)
+        ..cubicTo(
+          size.width * 0.3,
+          size.height * (fraction - 0.07),
+          size.width * 0.68,
+          size.height * (fraction + 0.07),
+          size.width + 20,
+          size.height * fraction - 25,
+        );
+      canvas.drawPath(horizontal, minorRoad);
     }
 
-    if (selectedIndex >= 0 && selectedIndex < matches.length) {
-      final station = matches[selectedIndex].station;
+    _drawMapLabel(
+      canvas,
+      locationLabel.split('/').first.trim(),
+      Offset(size.width * 0.5, size.height * 0.56),
+      colorScheme.onSurface.withValues(alpha: 0.76),
+      20,
+      FontWeight.w800,
+    );
+
+    for (var index = 0; index < matches.length; index++) {
+      final station = matches[index].station;
       final point = projection.project(station.latitude, station.longitude);
-      canvas.drawCircle(point, 13, Paint()..color = AppTheme.brandLime);
-      canvas.drawCircle(point, 8, Paint()..color = AppTheme.brandGreen);
-      canvas.drawCircle(
+      _drawChargerPin(
+        canvas,
         point,
-        8,
-        Paint()
-          ..color = colorScheme.surface
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5,
+        selected: index == selectedIndex,
+        connectorCount: station.connectors.fold<int>(
+          0,
+          (sum, connector) => sum + (connector.count ?? 1),
+        ),
       );
     }
 
@@ -680,17 +1125,117 @@ class _NearbyMapPainter extends CustomPainter {
     );
     canvas.drawCircle(
       userPoint,
-      15,
+      30,
       Paint()..color = const Color(0x331A73E8),
     );
-    canvas.drawCircle(userPoint, 8, Paint()..color = const Color(0xFF1A73E8));
     canvas.drawCircle(
       userPoint,
-      8,
+      17,
+      Paint()..color = const Color(0x221A73E8),
+    );
+    canvas.drawCircle(userPoint, 10, Paint()..color = const Color(0xFF1A73E8));
+    canvas.drawCircle(
+      userPoint,
+      10,
       Paint()
         ..color = Colors.white
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3,
+    );
+  }
+
+  void _drawChargerPin(
+    Canvas canvas,
+    Offset point, {
+    required bool selected,
+    required int connectorCount,
+  }) {
+    final center = point.translate(0, -22);
+    final radius = selected ? 23.0 : 19.0;
+    if (selected) {
+      canvas.drawCircle(
+        center,
+        radius + 7,
+        Paint()..color = AppTheme.brandLime.withValues(alpha: 0.5),
+      );
+    }
+    final pointer = Path()
+      ..moveTo(point.dx, point.dy)
+      ..lineTo(center.dx - 10, center.dy + 10)
+      ..lineTo(center.dx + 10, center.dy + 10)
+      ..close();
+    canvas.drawPath(pointer, Paint()..color = AppTheme.brandGreen);
+    canvas.drawCircle(center, radius, Paint()..color = AppTheme.brandGreen);
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = selected ? 3 : 2,
+    );
+
+    final bolt = Path()
+      ..moveTo(center.dx + 3, center.dy - 13)
+      ..lineTo(center.dx - 8, center.dy + 1)
+      ..lineTo(center.dx - 1, center.dy + 1)
+      ..lineTo(center.dx - 5, center.dy + 13)
+      ..lineTo(center.dx + 10, center.dy - 4)
+      ..lineTo(center.dx + 3, center.dy - 4)
+      ..close();
+    canvas.drawPath(bolt, Paint()..color = Colors.white);
+
+    final countText = connectorCount > 99 ? '99+' : '$connectorCount';
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: countText,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final badgeRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: point.translate(0, -2),
+        width: math.max(26, textPainter.width + 12),
+        height: 18,
+      ),
+      const Radius.circular(9),
+    );
+    canvas.drawRRect(badgeRect, Paint()..color = const Color(0xFF12201B));
+    textPainter.paint(
+      canvas,
+      Offset(
+        badgeRect.center.dx - textPainter.width / 2,
+        badgeRect.center.dy - textPainter.height / 2,
+      ),
+    );
+  }
+
+  void _drawMapLabel(
+    Canvas canvas,
+    String text,
+    Offset center,
+    Color color,
+    double size,
+    FontWeight weight,
+  ) {
+    if (text.isEmpty) return;
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(color: color, fontSize: size, fontWeight: weight),
+      ),
+      maxLines: 1,
+      ellipsis: '…',
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: 220);
+    painter.paint(
+      canvas,
+      Offset(center.dx - painter.width / 2, center.dy - painter.height / 2),
     );
   }
 
@@ -699,6 +1244,7 @@ class _NearbyMapPainter extends CustomPainter {
       oldDelegate.matches != matches ||
       oldDelegate.selectedIndex != selectedIndex ||
       oldDelegate.colorScheme != colorScheme ||
+      oldDelegate.locationLabel != locationLabel ||
       oldDelegate.projection.size != projection.size ||
       oldDelegate.projection.center.latitude != projection.center.latitude ||
       oldDelegate.projection.center.longitude != projection.center.longitude;
@@ -708,6 +1254,7 @@ class _NearbyChargerPanel extends StatelessWidget {
   const _NearbyChargerPanel({
     required this.result,
     required this.locationLabel,
+    required this.activeFilter,
     required this.selectedIndex,
     required this.onSelected,
     required this.onDirections,
@@ -717,6 +1264,7 @@ class _NearbyChargerPanel extends StatelessWidget {
 
   final OfficialChargerSearchResult result;
   final String locationLabel;
+  final String activeFilter;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
   final ValueChanged<OfficialChargerStation> onDirections;
@@ -745,6 +1293,7 @@ class _NearbyChargerPanel extends StatelessWidget {
             return _NearbyPanelHeader(
               result: result,
               locationLabel: locationLabel,
+              activeFilter: activeFilter,
               showDragHandle: showDragHandle,
             );
           }
@@ -769,11 +1318,13 @@ class _NearbyPanelHeader extends StatelessWidget {
   const _NearbyPanelHeader({
     required this.result,
     required this.locationLabel,
+    required this.activeFilter,
     required this.showDragHandle,
   });
 
   final OfficialChargerSearchResult result;
   final String locationLabel;
+  final String activeFilter;
   final bool showDragHandle;
 
   @override
@@ -795,26 +1346,40 @@ class _NearbyPanelHeader extends StatelessWidget {
           ),
         Row(
           children: [
-            const Icon(Icons.ev_station_rounded, color: AppTheme.brandGreen),
-            const SizedBox(width: 9),
             Expanded(
               child: Text(
-                '${result.matches.length} nearby chargers',
+                'Nearby Chargers',
                 key: const Key('nearbyChargerCount'),
                 style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                child: Text(
+                  '${result.matches.length} shown',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
               ),
             ),
           ],
         ),
         const SizedBox(height: 4),
         Text(
-          'Near $locationLabel • within ${result.radiusKm.toStringAsFixed(0)} km',
+          'Near $locationLabel • within ${result.radiusKm.toStringAsFixed(0)} km${activeFilter == 'All' ? '' : ' • $activeFilter'}',
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 8),
         Text(
-          'Official BEE inventory, not live availability. All nearby records are listed by distance; verify access before travel.',
+          'List and markers cover the same map area. Official BEE inventory is not live; availability and prices must be verified before travel.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -844,6 +1409,11 @@ class _NearbyStationTile extends StatelessWidget {
         .take(3)
         .map((connector) => connector.label)
         .join(' • ');
+    final speedRatings = station.connectors
+        .map((connector) => connector.ratingKw)
+        .whereType<double>();
+    final maxSpeed =
+        speedRatings.isEmpty ? null : speedRatings.reduce(math.max);
     return Material(
       key: ValueKey(
         'nearby_${station.latitude}_${station.longitude}_${station.operatorName}',
@@ -902,6 +1472,18 @@ class _NearbyStationTile extends StatelessWidget {
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
                     ],
+                    const SizedBox(height: 5),
+                    Text(
+                      'Availability: Not published • Price: Not published',
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      maxSpeed == null
+                          ? 'Charging speed: Not published'
+                          : 'Charging speed: up to ${maxSpeed % 1 == 0 ? maxSpeed.toStringAsFixed(0) : maxSpeed.toStringAsFixed(1)} kW',
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
                     if (match.distanceKm != null) ...[
                       const SizedBox(height: 5),
                       Text(

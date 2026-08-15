@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="voltmap_launch_background">#071D17</color>
+    <color name="voltmap_icon_background">#071D17</color>
+    <color name="voltmap_icon_foreground">#C8F45B</color>
 </resources>

@@ -185,7 +185,7 @@ class StationCard extends StatelessWidget {
                       child: _Metric(
                         icon: Icons.currency_rupee_rounded,
                         value: station.pricePerKwh.toStringAsFixed(1),
-                        label: 'per kWh',
+                        label: station.pricingIsLive ? 'per kWh' : 'est. / kWh',
                       ),
                     ),
                     Expanded(
@@ -230,7 +230,9 @@ class _AvailabilityBadge extends StatelessWidget {
       ),
       child: Text(
         station.available
-            ? '${station.availableConnectors} available'
+            ? station.availabilityIsLive
+                ? '${station.availableConnectors} available'
+                : '${station.availableConnectors}/${station.totalConnectors} listed • not live'
             : 'NOT WORKING / UNAVAILABLE',
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: station.available

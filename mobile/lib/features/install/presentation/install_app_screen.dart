@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/services/install_app_models.dart';
@@ -17,6 +18,13 @@ class InstallAppScreen extends StatefulWidget {
 }
 
 class _InstallAppScreenState extends State<InstallAppScreen> {
+  static final _appStoreUrl = Uri.parse(
+    'https://apps.apple.com/app/id6801616483',
+  );
+  static final _playStoreUrl = Uri.parse(
+    'https://play.google.com/store/apps/details?id=in.voltmap.voltmap',
+  );
+
   InstallAppStatus? status;
   bool installing = false;
 
@@ -55,6 +63,15 @@ class _InstallAppScreenState extends State<InstallAppScreen> {
           ),
         );
         await _refresh();
+    }
+  }
+
+  Future<void> _openStore(Uri uri, String storeName) async {
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open $storeName. Try again later.')),
+      );
     }
   }
 
@@ -117,7 +134,8 @@ class _InstallAppScreenState extends State<InstallAppScreen> {
                     ] else if (current.installed) ...[
                       const SizedBox(height: 20),
                       const _InstalledBadge(),
-                    ] else if (current.canPrompt) ...[
+                    ] else if (current.canPrompt &&
+                        current.platform != InstallAppPlatform.ios) ...[
                       const SizedBox(height: 20),
                       FilledButton.icon(
                         key: const Key('installVoltMapEVButton'),
@@ -155,9 +173,9 @@ class _InstallAppScreenState extends State<InstallAppScreen> {
                         color: Theme.of(context).colorScheme.primary,
                       ),
                       const SizedBox(width: 14),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'This installs the secure VoltMapEV website from voltmapev.com. It does not install an unrelated app, request payment, or require signup. Browser support and menu wording can vary by device.',
+                          _installationDisclosure(current?.platform),
                         ),
                       ),
                     ],
@@ -184,38 +202,40 @@ class _InstallAppScreenState extends State<InstallAppScreen> {
 
   List<Widget> _instructionsFor(InstallAppPlatform platform) {
     return switch (platform) {
-      InstallAppPlatform.ios => const [
-          _InstructionHeader(
+      InstallAppPlatform.ios => [
+          const _InstructionHeader(
             icon: Icons.apple,
-            title: 'Install on iPhone or iPad',
-            text: 'Use Safari for the standard iOS home-screen installation.',
+            title: 'Get VoltMapEV for iPhone or iPad',
+            text:
+                'Open the official VoltMapEV Apple App Store listing. This button is shown only for Apple devices.',
           ),
-          _InstallStep(number: '1', text: 'Open voltmapev.com in Safari.'),
-          _InstallStep(
-            number: '2',
-            text: 'Tap the Share button (the square with an upward arrow).',
-          ),
-          _InstallStep(
-            number: '3',
-            text: 'Choose Add to Home Screen and turn on Open as Web App.',
-          ),
-          _InstallStep(
-            number: '4',
-            text: 'Tap Add. The VoltMapEV icon will appear on Home Screen.',
+          _StoreButton(
+            key: const Key('openAppleAppStoreButton'),
+            icon: Icons.apple,
+            label: 'Open Apple App Store',
+            onPressed: () => _openStore(_appStoreUrl, 'Apple App Store'),
           ),
         ],
-      InstallAppPlatform.android => const [
-          _InstructionHeader(
+      InstallAppPlatform.android => [
+          const _InstructionHeader(
             icon: Icons.android_rounded,
-            title: 'Install on Android',
-            text: 'Chrome can add VoltMapEV to your apps and home screen.',
+            title: 'Get VoltMapEV for Android',
+            text:
+                'Use Google Play, or keep the existing secure web-app installation when Chrome offers it.',
           ),
-          _InstallStep(number: '1', text: 'Open voltmapev.com in Chrome.'),
-          _InstallStep(
+          _StoreButton(
+            key: const Key('openGooglePlayButton'),
+            icon: Icons.shop_rounded,
+            label: 'Open Google Play',
+            onPressed: () => _openStore(_playStoreUrl, 'Google Play'),
+          ),
+          const _InstallStep(
+              number: '1', text: 'Open voltmapev.com in Chrome.'),
+          const _InstallStep(
             number: '2',
             text: 'Tap Install above, or open the Chrome menu (⋮).',
           ),
-          _InstallStep(
+          const _InstallStep(
             number: '3',
             text: 'Choose Install app or Add to Home screen and confirm.',
           ),
@@ -235,15 +255,65 @@ class _InstallAppScreenState extends State<InstallAppScreen> {
             text: 'Or open the browser menu and choose Install VoltMapEV.',
           ),
         ],
-      _ => const [
-          _InstructionHeader(
+      _ => [
+          const _InstructionHeader(
             icon: Icons.install_mobile_rounded,
-            title: 'Install from a supported browser',
-            text: 'Use Safari on iPhone/iPad or Chrome on Android.',
+            title: 'Choose the correct app store',
+            text:
+                'VoltMapEV will not claim that an iOS app can be installed on Android. Select the store for your device.',
+          ),
+          _StoreButton(
+            key: const Key('unsupportedAppleAppStoreButton'),
+            icon: Icons.apple,
+            label: 'Apple App Store',
+            onPressed: () => _openStore(_appStoreUrl, 'Apple App Store'),
+          ),
+          _StoreButton(
+            key: const Key('unsupportedGooglePlayButton'),
+            icon: Icons.shop_rounded,
+            label: 'Google Play',
+            onPressed: () => _openStore(_playStoreUrl, 'Google Play'),
           ),
         ],
     };
   }
+
+  String _installationDisclosure(InstallAppPlatform? platform) {
+    return switch (platform) {
+      InstallAppPlatform.ios =>
+        'The Apple button opens only the official VoltMapEV App Store listing. It never redirects to an Android installer.',
+      InstallAppPlatform.android =>
+        'The Google Play button opens only the VoltMapEV Android package. Chrome may also install the secure website from voltmapev.com.',
+      _ =>
+        'Choose the store that matches your device. Store installation never requests a payment or VoltMapEV signup from this page.',
+    };
+  }
+}
+
+class _StoreButton extends StatelessWidget {
+  const _StoreButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: onPressed,
+            icon: Icon(icon),
+            label: Text(label),
+          ),
+        ),
+      );
 }
 
 class _InstalledBadge extends StatelessWidget {

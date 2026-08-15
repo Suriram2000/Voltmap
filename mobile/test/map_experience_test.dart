@@ -41,10 +41,21 @@ void main() {
     );
     expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
     expect(find.byKey(const Key('nearbyChargerSidebar')), findsOneWidget);
-    expect(find.text('2 nearby chargers'), findsOneWidget);
+    expect(find.text('Location sharing enabled'), findsOneWidget);
+    expect(find.byKey(const Key('mapLocationSearch')), findsOneWidget);
+    expect(find.byKey(const Key('mapFilterButton')), findsOneWidget);
+    expect(find.byKey(const Key('mapRecenterButton')), findsOneWidget);
+    expect(find.text('Nearby Chargers'), findsOneWidget);
+    expect(find.text('2 shown'), findsOneWidget);
     expect(find.text('Alpha Charge - Hyderabad'), findsOneWidget);
     expect(find.text('Beta Charge - Hyderabad'), findsOneWidget);
     expect(find.textContaining('Official BEE inventory'), findsOneWidget);
+    expect(
+      find.text('Availability: Not published • Price: Not published'),
+      findsNWidgets(2),
+    );
+    expect(find.text('Charging speed: up to 60 kW'), findsOneWidget);
+    expect(find.text('Charging speed: up to 22 kW'), findsOneWidget);
     expect(find.byTooltip('Directions in Google Maps'), findsNWidgets(2));
   });
 
@@ -106,8 +117,34 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('nearbyChargerPanel')), findsOneWidget);
-    expect(find.text('2 nearby chargers'), findsOneWidget);
+    expect(find.text('Nearby Chargers'), findsOneWidget);
+    expect(find.text('2 shown'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Map filters markers and nearby list together', (tester) async {
+    _useViewport(tester, const Size(1200, 900));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MapScreen(
+          locationLoader: _fakeLocation,
+          placeSearchService: _FakePlaceSearchService(),
+          chargerSearchService: _FakeChargerSearchService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('mapFilterButton')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('mapFilter_Fast 50+ kW')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 shown'), findsOneWidget);
+    expect(find.text('Alpha Charge - Hyderabad'), findsOneWidget);
+    expect(find.text('Beta Charge - Hyderabad'), findsNothing);
+    expect(find.byTooltip('Filter: Fast 50+ kW'), findsOneWidget);
   });
 
   testWidgets('Map explains location failures and offers retry', (
@@ -125,8 +162,25 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('nearbyChargerError')), findsOneWidget);
-    expect(find.text('Your location could not be loaded'), findsOneWidget);
+    expect(find.text('Charger service is unavailable'), findsOneWidget);
     expect(find.text('Try again'), findsOneWidget);
+  });
+
+  testWidgets('Map explains a valid empty nearby result', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MapScreen(
+          locationLoader: _fakeLocation,
+          placeSearchService: _FakePlaceSearchService(),
+          chargerSearchService: _EmptyChargerSearchService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('nearbyChargerNoResults')), findsOneWidget);
+    expect(find.text('No nearby chargers found'), findsOneWidget);
+    expect(find.byKey(const Key('nearbyChargerMap')), findsNothing);
   });
 }
 
@@ -215,6 +269,24 @@ class _FakeChargerSearchService extends OfficialChargerSearchService {
       ],
     );
   }
+}
+
+class _EmptyChargerSearchService extends OfficialChargerSearchService {
+  const _EmptyChargerSearchService();
+
+  @override
+  Future<OfficialChargerSearchResult> search({
+    required String query,
+    PlaceSuggestion? center,
+  }) async =>
+      OfficialChargerSearchResult(
+        source: 'BEE',
+        sourceUrl: 'https://example.com',
+        asOf: DateTime.utc(2026, 8, 1),
+        totalStationCount: 0,
+        radiusKm: 25,
+        matches: const [],
+      );
 }
 
 void _useViewport(WidgetTester tester, Size size) {

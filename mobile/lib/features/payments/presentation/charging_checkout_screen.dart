@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/app_environment.dart';
 import '../../../shared/models/charging_receipt.dart';
 import '../../../shared/models/charging_station.dart';
+import '../../../shared/services/charging_billing.dart';
 import '../../../shared/services/sandbox_payment_validator.dart';
 import '../../../shared/state/app_state.dart';
 
@@ -66,10 +68,13 @@ class _ChargingCheckoutScreenState
 
   @override
   Widget build(BuildContext context) {
+    if (!AppRuntimeConfig.isSandbox) {
+      return _ProductionPaymentGate(station: widget.station);
+    }
     return PopScope(
       canPop: !_processing,
       child: Scaffold(
-        appBar: AppBar(title: const Text('Set up charging')),
+        appBar: AppBar(title: const Text('Charge & pay')),
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 760),
@@ -78,6 +83,8 @@ class _ChargingCheckoutScreenState
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 132),
                 children: [
+                  const _CheckoutJourneyHeader(),
+                  const SizedBox(height: 14),
                   _DemoNotice(),
                   const SizedBox(height: 14),
                   _CheckoutSection(
@@ -783,6 +790,10 @@ class _ChargingSessionScreenState extends ConsumerState<ChargingSessionScreen> {
                           ),
                         ),
                         const _ReceiptRow(
+                          label: 'Taxes',
+                          value: '₹0.00',
+                        ),
+                        const _ReceiptRow(
                           label: 'Platform fee',
                           value: '₹5.00',
                         ),
@@ -796,6 +807,14 @@ class _ChargingSessionScreenState extends ConsumerState<ChargingSessionScreen> {
                         ),
                         if (_complete) ...[
                           _ReceiptRow(label: 'Receipt', value: _receipt!.id),
+                          _ReceiptRow(
+                            label: 'Charging session',
+                            value: _receipt!.chargingSessionId,
+                          ),
+                          _ReceiptRow(
+                            label: 'Payment reference',
+                            value: _receipt!.paymentReference,
+                          ),
                           _ReceiptRow(
                             label: 'Delivery status',
                             value: _receipt!.deliveryStatus,
@@ -876,31 +895,63 @@ class _ChargingSessionScreenState extends ConsumerState<ChargingSessionScreen> {
     if (!mounted) return;
 
     final billedEnergy = double.parse(_energyDelivered.toStringAsFixed(2));
-    final amount = double.parse(
-      (billedEnergy * widget.station.pricePerKwh + _platformFee)
-          .toStringAsFixed(2),
+    final bill = ChargingBilling.calculate(
+      confirmedUnitsKwh: billedEnergy,
+      ratePerKwh: widget.station.pricePerKwh,
+      taxRate: 0,
+      serviceFee: _platformFee,
     );
     final now = DateTime.now();
+    final sessionId =
+        'SANDBOX-SESSION-${now.microsecondsSinceEpoch.toRadixString(36).toUpperCase()}';
+    final paymentReference =
+        'SANDBOX-PAY-${now.millisecondsSinceEpoch.toRadixString(36).toUpperCase()}';
     final deliveryDestination = _maskReceiptDestination(
       widget.receiptDeliveryMethod,
       widget.receiptDeliveryDestination,
     );
     final deliveryStatus = widget.receiptDeliveryMethod == 'In app'
         ? 'Saved in app'
-        : 'Not sent — provider not connected';
+        : 'Not sent — sandbox contact is not verified';
+    final deliveryAttempts = widget.receiptDeliveryMethod == 'In app'
+        ? const <ReceiptDeliveryAttempt>[]
+        : <ReceiptDeliveryAttempt>[
+            ReceiptDeliveryAttempt(
+              channel: widget.receiptDeliveryMethod.toLowerCase(),
+              destination: deliveryDestination ?? 'masked',
+              status: 'blocked_unverified',
+              attemptedAt: now,
+              attemptNumber: 1,
+              errorCode: 'contact_not_verified',
+            ),
+          ];
     final receipt = ChargingReceipt(
       id: 'VM-${now.millisecondsSinceEpoch.toRadixString(36).toUpperCase()}',
       stationId: widget.station.id,
       stationName: widget.station.name,
       connectorType: widget.connectorType,
       energyKwh: billedEnergy,
-      amount: amount,
+      ratePerKwh: bill.ratePerKwh,
+      energySubtotal: bill.energySubtotal,
+      taxAmount: bill.taxAmount,
+      serviceFee: bill.serviceFee,
+      amount: bill.total,
       paymentMethod: widget.paymentMethod,
+      paymentReference: paymentReference,
+      chargingSessionId: sessionId,
+      paymentVerified: true,
+      meterReadingConfirmed: true,
+      environment: 'sandbox',
       customerPhone: _maskPhone(widget.customerPhone),
+      customerEmail:
+          widget.receiptDeliveryMethod == 'Email' ? deliveryDestination : null,
+      phoneVerified: false,
+      emailVerified: false,
       createdAt: now,
       deliveryMethod: widget.receiptDeliveryMethod,
       deliveryDestination: deliveryDestination,
       deliveryStatus: deliveryStatus,
+      deliveryAttempts: deliveryAttempts,
     );
     await ref.read(appStateProvider).saveChargingReceipt(receipt);
     if (!mounted) return;
@@ -924,7 +975,7 @@ class _ChargingSessionScreenState extends ConsumerState<ChargingSessionScreen> {
     if (widget.receiptDeliveryMethod == 'In app') {
       return 'The receipt is saved under Profile → Payments & receipts. No full UPI ID, card number, expiry, or CVV was stored.';
     }
-    return 'The receipt is saved under Profile → Payments & receipts. ${widget.receiptDeliveryMethod} was not sent because the production messaging provider is not connected yet.';
+    return 'The receipt is saved under Profile → Payments & receipts. Sandbox contacts are not verified, so no ${widget.receiptDeliveryMethod} message was sent.';
   }
 
   static String? _maskReceiptDestination(
@@ -950,6 +1001,232 @@ class _ChargingSessionScreenState extends ConsumerState<ChargingSessionScreen> {
   }
 }
 
+class _ProductionPaymentGate extends StatelessWidget {
+  const _ProductionPaymentGate({required this.station});
+
+  final ChargingStation station;
+
+  @override
+  Widget build(BuildContext context) {
+    final backendConfigured = AppRuntimeConfig.hasSecurePaymentBackend;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Secure charging payment')),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(26),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 31,
+                      child: Icon(
+                        backendConfigured
+                            ? Icons.ev_station_rounded
+                            : Icons.lock_clock_outlined,
+                        size: 31,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      backendConfigured
+                          ? 'Charging is not enabled at this station'
+                          : 'Payments are temporarily unavailable',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      backendConfigured
+                          ? '${station.name} does not yet have a verified live charger-session integration. No payment was created.'
+                          : 'The secure production payment and meter-verification service is not configured. No payment details were requested and no charge was attempted.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 18),
+                    const _ProductionSafetyItem(
+                      icon: Icons.credit_card_off_outlined,
+                      text:
+                          'VoltMapEV never collects card numbers, CVVs, UPI PINs or banking credentials.',
+                    ),
+                    const _ProductionSafetyItem(
+                      icon: Icons.verified_user_outlined,
+                      text:
+                          'A payment becomes successful only after a provider-signed server webhook and confirmed meter reading.',
+                    ),
+                    const _ProductionSafetyItem(
+                      icon: Icons.receipt_long_outlined,
+                      text:
+                          'Receipts are created only for verified payments and verified contact destinations.',
+                    ),
+                    const SizedBox(height: 14),
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: const Text('Back to station'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductionSafetyItem extends StatelessWidget {
+  const _ProductionSafetyItem({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 21, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 11),
+            Expanded(child: Text(text)),
+          ],
+        ),
+      );
+}
+
+class _CheckoutJourneyHeader extends StatelessWidget {
+  const _CheckoutJourneyHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('chargePayJourneyHeader'),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF073D34), Color(0xFF061B31)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Charge. Pay. Get your receipt.',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 21,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Confirm the charger and spending limit before the session starts.',
+            style: TextStyle(color: Color(0xFFB8CED6)),
+          ),
+          SizedBox(height: 18),
+          Row(
+            children: [
+              _JourneyStep(
+                icon: Icons.check_rounded,
+                label: 'Charger',
+                active: false,
+                complete: true,
+              ),
+              _JourneyLine(active: true),
+              _JourneyStep(
+                icon: Icons.bolt_rounded,
+                label: 'Charge',
+                active: true,
+                complete: false,
+              ),
+              _JourneyLine(active: false),
+              _JourneyStep(
+                icon: Icons.receipt_long_outlined,
+                label: 'Receipt',
+                active: false,
+                complete: false,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _JourneyStep extends StatelessWidget {
+  const _JourneyStep({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.complete,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool active;
+  final bool complete;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: active || complete
+                  ? const Color(0xFF57DE80)
+                  : Colors.white.withValues(alpha: 0.1),
+              border: Border.all(
+                color: active || complete
+                    ? const Color(0xFF57DE80)
+                    : Colors.white38,
+              ),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color:
+                  active || complete ? const Color(0xFF05271D) : Colors.white70,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: active || complete ? Colors.white : Colors.white70,
+              fontSize: 11,
+              fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+}
+
+class _JourneyLine extends StatelessWidget {
+  const _JourneyLine({required this.active});
+
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Container(
+          height: 2,
+          margin: const EdgeInsets.fromLTRB(8, 0, 8, 20),
+          color: active ? const Color(0xFF57DE80) : Colors.white24,
+        ),
+      );
+}
+
 class _DemoNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -966,7 +1243,7 @@ class _DemoNotice extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Postpaid demo — no money is collected before charging. Only the approved sandbox UPI ID, card, or wallet can authorize a session; never enter real payment credentials.',
+              'SANDBOX BUILD — test data only. No money is collected. driver@upi and the test card work only here; never enter real payment credentials.',
             ),
           ),
         ],

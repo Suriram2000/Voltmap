@@ -18,6 +18,10 @@ class ChargingStation {
     required this.rating,
     required this.amenities,
     this.searchAliases = const [],
+    this.dataSource = 'VoltMapEV demonstration catalog',
+    this.dataUpdatedLabel = 'Demonstration data — not live',
+    this.availabilityIsLive = false,
+    this.pricingIsLive = false,
   });
 
   final String id;
@@ -38,6 +42,10 @@ class ChargingStation {
   final double rating;
   final List<String> amenities;
   final List<String> searchAliases;
+  final String dataSource;
+  final String dataUpdatedLabel;
+  final bool availabilityIsLive;
+  final bool pricingIsLive;
 
   bool get available => availableConnectors > 0;
   bool get isFast => powerKw >= 100;
