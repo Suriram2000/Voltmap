@@ -16,6 +16,9 @@ class OfficialChargerStation {
     this.pricePerKwh,
     this.currency = 'INR',
     this.liveStatusUpdatedAt,
+    this.sourceNames = const [],
+    this.operatorVerified = false,
+    this.liveDataIsFresh = false,
   });
 
   factory OfficialChargerStation.fromCompactJson(Map<String, dynamic> json) {
@@ -38,6 +41,7 @@ class OfficialChargerStation {
             ),
           )
           .toList(growable: false),
+      sourceNames: const ['BEE national inventory'],
     );
   }
 
@@ -57,13 +61,26 @@ class OfficialChargerStation {
   final double? pricePerKwh;
   final String currency;
   final DateTime? liveStatusUpdatedAt;
+  final List<String> sourceNames;
+  final bool operatorVerified;
+  final bool liveDataIsFresh;
 
   bool get hasLiveAvailability =>
       availableConnectors != null &&
       totalConnectors != null &&
-      liveStatusUpdatedAt != null;
+      liveStatusUpdatedAt != null &&
+      liveDataIsFresh;
 
-  bool get hasLivePrice => pricePerKwh != null && liveStatusUpdatedAt != null;
+  bool get hasLivePrice =>
+      pricePerKwh != null && liveStatusUpdatedAt != null && liveDataIsFresh;
+
+  String get feedbackStationId => providerStationId?.isNotEmpty == true
+      ? providerStationId!
+      : 'inventory:${latitude.toStringAsFixed(5)},${longitude.toStringAsFixed(5)}:$operatorName';
+
+  String get sourceLabel => sourceNames.isEmpty
+      ? (operatorVerified ? 'Verified operator feed' : 'Published inventory')
+      : sourceNames.toSet().join(' + ');
 
   String get displayName =>
       city.isEmpty ? operatorName : '$operatorName - $city';

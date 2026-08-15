@@ -15,6 +15,7 @@ import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../discovery/data/official_charger_search_service.dart';
 import '../../discovery/data/official_charger_station.dart';
 import '../../discovery/data/realtime_charger_search_service.dart';
+import '../../discovery/presentation/station_feedback_dialog.dart';
 
 typedef MapLocationLoader = Future<MapUserLocation> Function();
 
@@ -270,6 +271,7 @@ class _MapScreenState extends State<MapScreen> {
           selectedIndex: selectedIndex,
           onSelected: (index) => setState(() => _selectedIndex = index),
           onDirections: _openDirections,
+          onReport: _reportStation,
         );
 
         if (constraints.maxWidth >= 900) {
@@ -308,6 +310,7 @@ class _MapScreenState extends State<MapScreen> {
                   selectedIndex: selectedIndex,
                   onSelected: (index) => setState(() => _selectedIndex = index),
                   onDirections: _openDirections,
+                  onReport: _reportStation,
                   scrollController: scrollController,
                   showDragHandle: true,
                 ),
@@ -665,6 +668,19 @@ class _MapScreenState extends State<MapScreen> {
         const SnackBar(content: Text('Could not open Google Maps.')),
       );
     }
+  }
+
+  Future<void> _reportStation(OfficialChargerStation station) {
+    return showStationFeedbackDialog(
+      context: context,
+      stationId: station.feedbackStationId,
+      stationName: station.displayName,
+      operatorName: station.operatorName,
+      address: station.address,
+      latitude: station.latitude,
+      longitude: station.longitude,
+      sourceNames: station.sourceNames,
+    );
   }
 }
 
@@ -1328,6 +1344,7 @@ class _NearbyChargerPanel extends StatelessWidget {
     required this.selectedIndex,
     required this.onSelected,
     required this.onDirections,
+    required this.onReport,
     this.scrollController,
     this.showDragHandle = false,
   });
@@ -1338,6 +1355,7 @@ class _NearbyChargerPanel extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelected;
   final ValueChanged<OfficialChargerStation> onDirections;
+  final ValueChanged<OfficialChargerStation> onReport;
   final ScrollController? scrollController;
   final bool showDragHandle;
 
@@ -1376,6 +1394,7 @@ class _NearbyChargerPanel extends StatelessWidget {
               selected: matchIndex == selectedIndex,
               onTap: () => onSelected(matchIndex),
               onDirections: () => onDirections(match.station),
+              onReport: () => onReport(match.station),
             ),
           );
         },
@@ -1468,12 +1487,14 @@ class _NearbyStationTile extends StatelessWidget {
     required this.selected,
     required this.onTap,
     required this.onDirections,
+    required this.onReport,
   });
 
   final OfficialChargerMatch match;
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback onDirections;
+  final VoidCallback onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -1570,13 +1591,34 @@ class _NearbyStationTile extends StatelessWidget {
                                 ),
                       ),
                     ],
+                    const SizedBox(height: 5),
+                    Text(
+                      'Source: ${station.sourceLabel}${station.operatorVerified ? ' • operator verified' : ' • inventory record'}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
                   ],
                 ),
               ),
-              IconButton(
-                tooltip: 'Directions in Google Maps',
-                onPressed: onDirections,
-                icon: const Icon(Icons.directions_rounded),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'Directions in Google Maps',
+                    onPressed: onDirections,
+                    icon: const Icon(Icons.directions_rounded),
+                  ),
+                  IconButton(
+                    key: const Key('reportNearbyStationButton'),
+                    tooltip: 'Report station information privately',
+                    onPressed: onReport,
+                    icon: const Icon(Icons.outlined_flag_rounded),
+                  ),
+                ],
               ),
             ],
           ),

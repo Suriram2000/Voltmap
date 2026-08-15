@@ -468,9 +468,15 @@ void main() {
       find.byKey(const Key('reportStationCorrectionButton')),
       findsOneWidget,
     );
+    await tester.tap(find.byKey(const Key('reportStationCorrectionButton')));
+    await tester.pumpAndSettle();
+    expect(
+        find.byKey(const Key('privateStationFeedbackDialog')), findsOneWidget);
+    expect(find.text('Send private station feedback'), findsOneWidget);
+    expect(find.textContaining('never posted to GitHub'), findsOneWidget);
   });
 
-  testWidgets('public charger reports validate and remain saved for review', (
+  testWidgets('charger reports remain local with private admin delivery', (
     tester,
   ) async {
     _useDesktopViewport(tester);
@@ -512,7 +518,7 @@ void main() {
     expect(find.text('Report saved'), findsOneWidget);
     expect(find.byKey(const Key('finishChargerReportButton')), findsOneWidget);
     expect(
-      find.byKey(const Key('openPublicChargerReviewButton')),
+      find.byKey(const Key('openPrivateChargerReviewButton')),
       findsOneWidget,
     );
     final preferences = await SharedPreferences.getInstance();

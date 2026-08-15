@@ -93,6 +93,18 @@ class AdminDashboardScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 24),
+              const Card(
+                key: Key('privateStationFeedbackInboxCard'),
+                child: ListTile(
+                  leading: Icon(Icons.mark_email_unread_outlined),
+                  title: Text('Private station feedback inbox'),
+                  subtitle: Text(
+                    'Station corrections and missing-station reports are addressed only to skotla100@gmail.com. They are no longer sent to public GitHub issues. Review evidence before changing the published catalog.',
+                  ),
+                  trailing: Chip(label: Text('ADMIN ONLY')),
+                ),
+              ),
+              const SizedBox(height: 20),
               Text(
                 'Registered users on this browser',
                 style: Theme.of(context)

@@ -145,14 +145,14 @@ class _AddChargerScreenState extends ConsumerState<AddChargerScreen> {
                       '${appState.chargerSubmissions.length} report${appState.chargerSubmissions.length == 1 ? '' : 's'} saved on this device',
                     ),
                     subtitle: const Text(
-                      'Latest status: saved locally • public review optional',
+                      'Latest status: saved locally • private admin email optional',
                     ),
                     trailing: IconButton(
                       key: const Key('openLatestChargerReportButton'),
-                      tooltip: 'Open latest report for public review',
+                      tooltip: 'Email latest report privately to admin',
                       onPressed: _submitting
                           ? null
-                          : () => _openPublicReview(
+                          : () => _openPrivateAdminReview(
                                 appState.chargerSubmissions.first,
                               ),
                       icon: const Icon(Icons.rate_review_outlined),
@@ -388,7 +388,7 @@ class _AddChargerScreenState extends ConsumerState<AddChargerScreen> {
         ),
         title: const Text('Report saved'),
         content: const Text(
-          'Your station report is saved on this device without signup. You can finish here or optionally open a prefilled GitHub form for public verification.',
+          'Your station report is saved on this device without signup. You can finish here or open a private email addressed only to the VoltMapEV administrator. It will not be posted publicly.',
         ),
         actions: [
           TextButton(
@@ -397,13 +397,13 @@ class _AddChargerScreenState extends ConsumerState<AddChargerScreen> {
             child: const Text('Done'),
           ),
           FilledButton.icon(
-            key: const Key('openPublicChargerReviewButton'),
+            key: const Key('openPrivateChargerReviewButton'),
             onPressed: () async {
               Navigator.pop(dialogContext);
-              await _openPublicReview(submission);
+              await _openPrivateAdminReview(submission);
             },
-            icon: const Icon(Icons.rate_review_outlined),
-            label: const Text('Open public review'),
+            icon: const Icon(Icons.lock_rounded),
+            label: const Text('Email admin privately'),
           ),
         ],
       ),
@@ -411,26 +411,18 @@ class _AddChargerScreenState extends ConsumerState<AddChargerScreen> {
     if (mounted) _resetForm();
   }
 
-  Future<void> _openPublicReview(ChargerSubmission submission) async {
+  Future<void> _openPrivateAdminReview(ChargerSubmission submission) async {
     if (_submitting) return;
     setState(() => _submitting = true);
-    final issueUri = Uri.https(
-      'github.com',
-      '/Suriram2000/Voltmap/issues/new',
-      {
-        'title':
-            '[Charger report] ${submission.stationName} - ${submission.postalCode}',
-        'body': submission.issueBody,
-      },
-    );
+    final emailUri = submission.privateAdminEmailUri(AppState.adminIdentifier);
     var launched = false;
     try {
       launched = await launchUrl(
-        issueUri,
+        emailUri,
         mode: LaunchMode.externalApplication,
       ).timeout(const Duration(seconds: 3), onTimeout: () => false);
     } catch (_) {
-      // The pending report remains saved if the browser cannot open GitHub.
+      // The pending report remains saved if an email app cannot be opened.
     }
     if (!mounted) return;
     setState(() => _submitting = false);
@@ -438,7 +430,7 @@ class _AddChargerScreenState extends ConsumerState<AddChargerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'The public review page could not be opened. Your report is still saved on this device.',
+            'A private email could not be opened. Your report is still saved on this device; send it to skotla100@gmail.com when ready.',
           ),
         ),
       );

@@ -1,5 +1,8 @@
 # VoltMapEV production payment, receipt, map, and release contract
 
+See `CHARGER_DATA_STRATEGY.md` for the charger-source hierarchy, freshness and
+deduplication rules, ingestion contract, and private station-correction flow.
+
 ## Release environments
 
 - Release builds default to `production`. They never display sandbox UPI IDs,
