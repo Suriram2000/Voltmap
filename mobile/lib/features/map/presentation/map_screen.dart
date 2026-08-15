@@ -120,23 +120,27 @@ class _MapScreenState extends State<MapScreen> {
 
   Widget _buildStatusBody() {
     if (!_locationEnabled) {
-      return const _MapStatusCard(
-        key: Key('nearbyChargerLocationOff'),
-        icon: Icons.location_off_rounded,
-        title: 'Location is disabled',
-        message:
-            'Turn on location sharing above whenever you want to center the map and see nearby chargers. VoltMapEV does not track your location in the background.',
+      return _buildSearchableStatus(
+        status: const _MapStatusCard(
+          key: Key('nearbyChargerLocationOff'),
+          icon: Icons.location_off_rounded,
+          title: 'Location sharing is off',
+          message:
+              'Search an area or PIN above to use the charger map without sharing your device location. Turn location sharing on whenever you want automatic nearby results.',
+        ),
       );
     }
 
     if (_loading) {
-      return const _MapStatusCard(
-        key: Key('nearbyChargerLoading'),
-        icon: Icons.my_location_rounded,
-        title: 'Finding chargers near you',
-        message:
-            'Allow location access to center the map and load nearby official charging stations.',
-        loading: true,
+      return _buildSearchableStatus(
+        status: const _MapStatusCard(
+          key: Key('nearbyChargerLoading'),
+          icon: Icons.my_location_rounded,
+          title: 'Finding chargers near you',
+          message:
+              'Allow location access to center the map, or search an area or PIN above instead.',
+          loading: true,
+        ),
       );
     }
 
@@ -147,23 +151,72 @@ class _MapScreenState extends State<MapScreen> {
       permissionFailure: permission,
       blocked: _locationBlocked,
     );
-    return _MapStatusCard(
-      key: const Key('nearbyChargerError'),
-      icon: permission
-          ? Icons.location_disabled_rounded
-          : offline
-              ? Icons.cloud_off_rounded
-              : Icons.sync_problem_rounded,
-      title: permission
-          ? 'Location access is off'
-          : offline
-              ? 'You appear to be offline'
-              : 'Charger service is unavailable',
-      message: _error ?? 'Try again to show nearby chargers.',
-      primaryLabel: 'Try again',
-      onPrimary: _loadNearbyChargers,
-      secondaryLabel: canOpenSettings ? 'Open settings' : null,
-      onSecondary: canOpenSettings ? Geolocator.openAppSettings : null,
+    return _buildSearchableStatus(
+      status: _MapStatusCard(
+        key: const Key('nearbyChargerError'),
+        icon: permission
+            ? Icons.location_disabled_rounded
+            : offline
+                ? Icons.cloud_off_rounded
+                : Icons.sync_problem_rounded,
+        title: permission
+            ? 'Location access is off'
+            : offline
+                ? 'You appear to be offline'
+                : 'Charger service is unavailable',
+        message: permission
+            ? '${_error ?? 'Location permission is unavailable.'} You can still search any area or PIN above.'
+            : _error ?? 'Try again to show nearby chargers.',
+        primaryLabel: 'Try again',
+        onPrimary: _loadNearbyChargers,
+        secondaryLabel: canOpenSettings ? 'Open settings' : null,
+        onSecondary: canOpenSettings ? Geolocator.openAppSettings : null,
+      ),
+    );
+  }
+
+  Widget _buildSearchableStatus({required Widget status}) {
+    return Column(
+      key: const Key('mapSearchableStatus'),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Card(
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: LocationAutocompleteField(
+                    key: const Key('mapLocationSearch'),
+                    controller: _mapSearchController,
+                    label: 'Search chargers by area or PIN',
+                    hint: 'Try 500079, Hyderabad, or Bengaluru',
+                    prefixIcon: Icons.search_rounded,
+                    searchService: widget.placeSearchService,
+                    onSelected: (place) {
+                      if (place != null) _loadSelectedPlace(place);
+                    },
+                    onSubmitted: _submitPlaceSearch,
+                    textInputAction: TextInputAction.search,
+                    suffixIcon: _loading
+                        ? const Padding(
+                            padding: EdgeInsets.all(15),
+                            child: SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Expanded(child: status),
+      ],
     );
   }
 
@@ -172,14 +225,16 @@ class _MapScreenState extends State<MapScreen> {
     MapUserLocation location,
   ) {
     if (result.matches.isEmpty) {
-      return _MapStatusCard(
-        key: const Key('nearbyChargerNoResults'),
-        icon: Icons.ev_station_outlined,
-        title: 'No nearby chargers found',
-        message:
-            'No stations in the dated BEE inventory were found near ${_place?.primaryText ?? 'your location'} within ${result.radiusKm.toStringAsFixed(0)} km. Try again later or search another area in the Chargers tab.',
-        primaryLabel: 'Refresh nearby chargers',
-        onPrimary: _loadNearbyChargers,
+      return _buildSearchableStatus(
+        status: _MapStatusCard(
+          key: const Key('nearbyChargerNoResults'),
+          icon: Icons.ev_station_outlined,
+          title: 'No nearby chargers found',
+          message:
+              'No stations in the dated BEE inventory were found near ${_place?.primaryText ?? 'your location'} within ${result.radiusKm.toStringAsFixed(0)} km. Search another area or PIN above.',
+          primaryLabel: _locationEnabled ? 'Refresh nearby chargers' : null,
+          onPrimary: _locationEnabled ? _loadNearbyChargers : null,
+        ),
       );
     }
     final filteredMatches = result.matches
@@ -379,7 +434,6 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _loadSelectedPlace(PlaceSuggestion place) async {
-    if (!_locationEnabled) return;
     final requestId = ++_requestId;
     setState(() {
       _loading = true;
@@ -393,7 +447,7 @@ class _MapScreenState extends State<MapScreen> {
         query: place.displayName,
         center: place,
       );
-      if (!mounted || requestId != _requestId || !_locationEnabled) return;
+      if (!mounted || requestId != _requestId) return;
       setState(() {
         _location = MapUserLocation(
           latitude: place.latitude,
@@ -429,7 +483,7 @@ class _MapScreenState extends State<MapScreen> {
     String message,
     _MapFailureType failureType,
   ) {
-    if (!mounted || requestId != _requestId || !_locationEnabled) return;
+    if (!mounted || requestId != _requestId) return;
     setState(() {
       _loading = false;
       _failureType = failureType;
@@ -442,7 +496,7 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _submitPlaceSearch(String value) async {
     final query = value.trim();
-    if (query.length < 2 || _loading) return;
+    if (query.length < 2) return;
     final places = await widget.placeSearchService.searchIndia(query);
     if (!mounted) return;
     if (places.isEmpty) {

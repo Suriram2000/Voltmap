@@ -45,7 +45,7 @@ window.voltMapEVPromptInstall = async () => {
 };
 
 async function removeLegacyFlutterWebCache() {
-  const resetKey = 'voltmapev-pwa-cache-reset-v1';
+  const resetKey = 'voltmapev-pwa-cache-reset-v2';
   if (window.localStorage.getItem(resetKey) === 'done') return;
   if ('serviceWorker' in navigator) {
     const registrations = await navigator.serviceWorker.getRegistrations();

@@ -183,6 +183,36 @@ void main() {
     expect(find.byKey(const Key('nearbyChargerError')), findsOneWidget);
     expect(find.text('Charger service is unavailable'), findsOneWidget);
     expect(find.text('Try again'), findsOneWidget);
+    expect(find.byKey(const Key('mapLocationSearch')), findsOneWidget);
+  });
+
+  testWidgets('Map area search works when device location is unavailable', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MapScreen(
+          locationLoader: () async => throw Exception('location unavailable'),
+          placeSearchService: const _ManualPlaceSearchService(),
+          chargerSearchService: const _FakeChargerSearchService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('nearbyChargerError')), findsOneWidget);
+    final searchField = find.byKey(
+      const ValueKey('locationField_Search chargers by area or PIN'),
+    );
+    expect(searchField, findsOneWidget);
+
+    await tester.enterText(searchField, '500079');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
+    expect(find.byKey(const Key('nearbyChargerPanel')), findsOneWidget);
+    expect(find.text('Alpha Charge - Hyderabad'), findsOneWidget);
   });
 
   testWidgets('Map explains a valid empty nearby result', (tester) async {
@@ -224,6 +254,21 @@ class _FakePlaceSearchService extends PlaceSearchService {
       type: 'city',
     );
   }
+}
+
+class _ManualPlaceSearchService extends _FakePlaceSearchService {
+  const _ManualPlaceSearchService();
+
+  @override
+  Future<List<PlaceSuggestion>> searchIndia(String rawQuery) async => const [
+        PlaceSuggestion(
+          primaryText: 'Karmanghat / Vaishalinagar - 500079',
+          secondaryText: 'Saroornagar, Hyderabad, Telangana, India',
+          latitude: 17.3366,
+          longitude: 78.5349,
+          type: 'postcode',
+        ),
+      ];
 }
 
 class _FakeChargerSearchService extends OfficialChargerSearchService {
