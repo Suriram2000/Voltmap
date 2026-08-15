@@ -573,7 +573,7 @@ class _MapScreenState extends State<MapScreen> {
       permission = await Geolocator.requestPermission();
     }
     if (permission == LocationPermission.deniedForever) {
-      throw _MapLocationException(
+      throw const _MapLocationException(
         kIsWeb
             ? 'Location access is blocked for VoltMapEV. Allow it in your browser site settings, then try again.'
             : 'Location access is blocked for VoltMapEV. Open settings and allow access while using the app.',
