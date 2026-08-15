@@ -143,6 +143,14 @@ void main() {
           );
           expect(station.pricePerKwh, greaterThan(0), reason: station.id);
           expect(station.rating, inInclusiveRange(0, 5), reason: station.id);
+          expect(station.dataSource.trim(), isNotEmpty, reason: station.id);
+          expect(
+            station.dataUpdatedLabel,
+            contains('not live'),
+            reason: station.id,
+          );
+          expect(station.availabilityIsLive, isFalse, reason: station.id);
+          expect(station.pricingIsLive, isFalse, reason: station.id);
         }
       },
     );

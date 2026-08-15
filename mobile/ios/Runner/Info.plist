@@ -29,7 +29,9 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>VoltMapEV uses your location to load the correct nearby Indian area and charging stations.</string>
+	<string>VoltMapEV uses your location while you use the app to center the map, show nearby EV charging stations, and calculate their distance from you.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>VoltMapEV uses your location only while you use the app to center the map, show nearby EV charging stations, and calculate their distance from you. VoltMapEV does not track your location in the background.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -1,6 +1,6 @@
 # VoltMapEV App Store and Google Play release
 
-Prepared: 13 August 2026
+Prepared: 14 August 2026
 
 ## Package identity
 
@@ -8,7 +8,7 @@ Prepared: 13 August 2026
 - Android application ID: `in.voltmap.voltmap`
 - Apple bundle ID: `in.voltmap.voltmap`
 - Minimum iOS version: `15.0`
-- Version: `1.11.0` (`14`)
+- Version: `1.12.0` (`15`)
 - Website: `https://voltmapev.com/`
 - Support: `skotla100@gmail.com`, `+91 93927 88714`
 - Privacy: `https://voltmapev.com/privacy-policy.html`
@@ -21,6 +21,10 @@ Prepared: 13 August 2026
 **Name:** VoltMapEV
 
 **Apple subtitle:** EV chargers & trip planner
+
+**Apple keywords:** EV charging,charging stations,EV route planner,nearby chargers,electric vehicle,India
+
+**Apple promotional text:** Find dated public EV charger records across India, compare connector and power details, and plan route-relevant charging stops with clear data-source labels.
 
 **Google Play short description:** Find EV chargers across India and plan trips with route-relevant stops.
 
@@ -41,7 +45,29 @@ near the journey instead of browsing an unrelated nationwide list.
 Station availability, tariffs, connector status, and route estimates can
 change. Confirm important charging stops with the station operator before
 travel. The current payment flow is a clearly marked sandbox and does not move
-real money.
+real money. Production payments remain unavailable until a verified provider,
+charger-meter integration, and server-side webhook verification are configured.
+
+### Version 1.12.0 release notes
+
+- Clearer location permission explanations and nearby-map error states
+- Data-source, freshness, availability, and estimated-price labels
+- Easier reporting of incorrect station information to VoltMapEV support
+- Platform-correct App Store and Google Play installation links
+- Adaptive, round, and Android 13 themed launcher icons
+- Android 12 launch screen and predictive-back integration
+- Android network and backup hardening for private local app data
+- Expanded receipt details and secure production payment safeguards
+- Reliability and performance improvements across charger search and maps
+
+### Ethical discoverability plan
+
+No store position can be guaranteed or purchased through metadata. Improve
+organic conversion and retention with accurate screenshots, localized India
+search terms, a short onboarding path, responsive support, review prompts only
+after a successful user outcome, release-note discipline, crash-free sessions,
+and honest pricing/data freshness. Never use keyword stuffing, fake ratings,
+incentivized reviews, or claims of live/complete data that the app cannot prove.
 
 ## Google Play owner actions
 
@@ -63,6 +89,12 @@ real money.
 Current Flutter targets Android API 36, meeting the announced Google Play
 requirement for new apps and updates from 31 August 2026.
 
+Android release builds never fall back to the debug signing key. The app also
+limits manifest permissions to internet and foreground location, disables
+cleartext HTTP, and excludes local app files, preferences, and databases from
+Android backup and device transfer. Automated configuration tests protect
+these release requirements.
+
 ## Apple owner actions
 
 App Store uploads now require Xcode 26 or later and the iOS 26 SDK. The release
@@ -80,6 +112,15 @@ upload that Apple will reject.
    review notes, contact details, category, age rating, export-compliance
    answers, and any demo credentials required by App Review.
 6. The Account Holder must select the processed build and submit it for review.
+
+### Apple delivery warning resolved for build 15
+
+Apple accepted version 1.11.0 build 14 but reported ITMS-90683. Build 15 adds
+`NSLocationAlwaysAndWhenInUseUsageDescription` alongside
+`NSLocationWhenInUseUsageDescription`, with a specific explanation of map
+centering, nearby stations, distance calculation, and no background tracking.
+The automated iOS privacy configuration test prevents either purpose string
+from being removed in a future release.
 
 ## Encrypted GitHub Actions secrets
 

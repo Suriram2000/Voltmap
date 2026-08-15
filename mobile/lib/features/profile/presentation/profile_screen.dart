@@ -383,7 +383,7 @@ class ProfileScreen extends ConsumerWidget {
                       leading: Icon(Icons.info_outline),
                       title: Text('VoltMapEV demo'),
                       subtitle: Text(
-                        'Android, iOS & browser-ready • Version 1.11.0',
+                        'Android, iOS & browser-ready • Version 1.12.0',
                       ),
                     ),
                   ],

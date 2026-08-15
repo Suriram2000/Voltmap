@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/branding/app_brand.dart';
 import '../core/theme/app_theme.dart';
 import '../features/shell/presentation/app_shell.dart';
 import '../shared/state/app_state.dart';
@@ -18,7 +19,7 @@ class VoltMapApp extends ConsumerWidget {
       ),
     );
     return MaterialApp(
-      title: 'VoltMapEV',
+      title: AppBrand.name,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
@@ -79,7 +80,7 @@ class _AppLoadingScreen extends StatelessWidget {
             ),
             SizedBox(height: 18),
             Text(
-              'VoltMapEV',
+              AppBrand.name,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 28,
@@ -88,7 +89,8 @@ class _AppLoadingScreen extends StatelessWidget {
             ),
             SizedBox(height: 6),
             Text(
-              'Best EV charging site in India',
+              AppBrand.tagline,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppTheme.brandLime,
                 fontSize: 14,
