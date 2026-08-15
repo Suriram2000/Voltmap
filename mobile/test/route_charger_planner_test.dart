@@ -98,6 +98,25 @@ void main() {
     expect(find.text('Show all 142 route chargers'), findsOneWidget);
     expect(find.textContaining('within 4 km of the route'), findsOneWidget);
     expect(find.text('Open live directions'), findsOneWidget);
+
+    await Scrollable.ensureVisible(
+      tester.element(find.text('Lioncharge - Hyderabad')),
+      alignment: 0.5,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Lioncharge - Hyderabad'));
+    await tester.pumpAndSettle();
+    expect(
+        find.byKey(const Key('officialChargerDetailsScreen')), findsOneWidget);
+    expect(find.text('Charger details'), findsOneWidget);
+    expect(find.text('Published station · verify status'), findsOneWidget);
+    expect(find.text('Navigate'), findsOneWidget);
+
+    tester.view.physicalSize = const Size(390, 844);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Verify on Google Maps'), findsOneWidget);
+    expect(find.text('Navigate'), findsOneWidget);
   });
 }
 
