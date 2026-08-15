@@ -10,6 +10,7 @@ import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../../shared/widgets/registered_account_gate.dart';
 import '../../discovery/data/official_charger_search_service.dart';
 import '../../discovery/data/official_charger_station.dart';
+import '../../discovery/presentation/official_charger_details_screen.dart';
 import '../data/route_charger_planner.dart';
 
 class TripPlannerScreen extends ConsumerStatefulWidget {
@@ -516,6 +517,13 @@ class _RouteResultState extends State<_RouteResult> {
                         ? 'Closest published charger to this route segment • verify live status before travel'
                         : 'Suggested charging break',
                   ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    final station =
+                        route.stationForId(route.stopStationIds[index]);
+                    if (station == null) return;
+                    _openStationDetails(context, station);
+                  },
                 ),
               if (route.stopStationIds.length < route.requiredStopCount)
                 ListTile(
@@ -562,6 +570,12 @@ class _RouteResultState extends State<_RouteResult> {
                   recommended: route.stopStationIds.contains(
                     routeCharger.stationId,
                   ),
+                  onTap: () => Navigator.of(context).push<void>(
+                    _stationDetailsRoute(
+                      routeCharger.station,
+                      distanceKm: routeCharger.distanceFromRouteKm,
+                    ),
+                  ),
                 ),
             if (route.routeChargers.length > _initialChargerCount)
               Align(
@@ -606,6 +620,25 @@ class _RouteResultState extends State<_RouteResult> {
       ),
     );
   }
+
+  void _openStationDetails(
+    BuildContext context,
+    OfficialChargerStation station,
+  ) {
+    Navigator.of(context).push<void>(_stationDetailsRoute(station));
+  }
+
+  MaterialPageRoute<void> _stationDetailsRoute(
+    OfficialChargerStation station, {
+    double? distanceKm,
+  }) {
+    return MaterialPageRoute<void>(
+      builder: (_) => OfficialChargerDetailsScreen(
+        station: station,
+        distanceKm: distanceKm,
+      ),
+    );
+  }
 }
 
 class _SavedTripCard extends StatelessWidget {
@@ -637,10 +670,12 @@ class _RouteChargerTile extends StatelessWidget {
   const _RouteChargerTile({
     required this.routeCharger,
     required this.recommended,
+    required this.onTap,
   });
 
   final RouteChargerCandidate routeCharger;
   final bool recommended;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -659,6 +694,7 @@ class _RouteChargerTile extends StatelessWidget {
         .join(', ');
     return ListTile(
       key: Key('routeCharger_${routeCharger.stationId}'),
+      onTap: onTap,
       contentPadding: EdgeInsets.zero,
       leading: Icon(
         availableNow ? Icons.ev_station_rounded : Icons.ev_station_outlined,
@@ -672,27 +708,34 @@ class _RouteChargerTile extends StatelessWidget {
         'Source: ${station.sourceLabel}',
       ),
       isThreeLine: true,
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            hasLiveAvailability
-                ? availableNow
-                    ? '${station.availableConnectors}/${station.totalConnectors} LIVE'
-                    : 'BUSY / OFFLINE'
-                : 'VERIFY STATUS',
-            style: TextStyle(
-              color: statusColor,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                hasLiveAvailability
+                    ? availableNow
+                        ? '${station.availableConnectors}/${station.totalConnectors} LIVE'
+                        : 'BUSY / OFFLINE'
+                    : 'VERIFY STATUS',
+                style: TextStyle(
+                  color: statusColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (recommended)
+                const Text(
+                  'RECOMMENDED',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+                ),
+            ],
           ),
-          if (recommended)
-            const Text(
-              'RECOMMENDED',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
-            ),
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right_rounded),
         ],
       ),
     );
