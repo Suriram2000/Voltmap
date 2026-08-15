@@ -5,11 +5,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/branding/app_brand.dart';
 import '../core/theme/app_theme.dart';
+import '../features/discovery/data/official_charger_search_service.dart';
 import '../features/shell/presentation/app_shell.dart';
 import '../shared/state/app_state.dart';
 
 class VoltMapApp extends ConsumerWidget {
-  const VoltMapApp({super.key});
+  const VoltMapApp({
+    super.key,
+    this.chargerDataService = const OfficialChargerSearchService(),
+  });
+
+  final OfficialChargerSearchService chargerDataService;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,7 +31,9 @@ class VoltMapApp extends ConsumerWidget {
       darkTheme: AppTheme.dark(),
       themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.light,
       scrollBehavior: const VoltMapScrollBehavior(),
-      home: !settings.isReady ? const _AppLoadingScreen() : const AppShell(),
+      home: !settings.isReady
+          ? const _AppLoadingScreen()
+          : AppShell(chargerDataService: chargerDataService),
     );
   }
 }

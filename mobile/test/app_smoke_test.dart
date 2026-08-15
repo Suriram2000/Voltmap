@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voltmap/app/voltmap_app.dart';
 import 'package:voltmap/features/discovery/data/sample_stations.dart';
 import 'package:voltmap/features/discovery/data/national_charger_data.dart';
+import 'package:voltmap/features/discovery/data/official_charger_search_service.dart';
+import 'package:voltmap/features/discovery/data/official_charger_station.dart';
 import 'package:voltmap/features/discovery/presentation/add_charger_screen.dart';
 import 'package:voltmap/features/discovery/presentation/discovery_screen.dart';
 import 'package:voltmap/features/discovery/presentation/station_details_screen.dart';
@@ -33,7 +35,13 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     _useDesktopViewport(tester);
 
-    await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: VoltMapApp(
+          chargerDataService: _FakeOfficialChargerSearchService(),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Find the right charger, faster.'), findsOneWidget);
     expect(find.byKey(const Key('homeInstallAppButton')), findsOneWidget);
@@ -165,7 +173,13 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     _useDesktopViewport(tester);
 
-    await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: VoltMapApp(
+          chargerDataService: _FakeOfficialChargerSearchService(),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Trips'));
     await tester.pumpAndSettle();
@@ -178,7 +192,7 @@ void main() {
     );
     await tester.ensureVisible(find.text('Plan route'));
     await tester.tap(find.text('Plan route'));
-    await tester.pumpAndSettle();
+    await _waitForRoutePlan(tester);
     await tester.tap(find.byTooltip('Save trip'));
     await tester.pumpAndSettle();
 
@@ -279,7 +293,10 @@ void main() {
     await tester.pumpWidget(
       const ProviderScope(
         child: MaterialApp(
-          home: TripPlannerScreen(searchService: _FakePlaceSearchService()),
+          home: TripPlannerScreen(
+            searchService: _FakePlaceSearchService(),
+            chargerDataService: _FakeOfficialChargerSearchService(),
+          ),
         ),
       ),
     );
@@ -295,16 +312,16 @@ void main() {
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Plan route'));
     await tester.tap(find.text('Plan route'));
-    await tester.pumpAndSettle();
+    await _waitForRoutePlan(tester);
 
-    expect(find.text('Coordinate-based road estimate'), findsOneWidget);
+    expect(
+        find.textContaining('Coordinate-based road estimate'), findsOneWidget);
     expect(find.text('Open live directions'), findsOneWidget);
     expect(find.textContaining('Estimated energy:'), findsOneWidget);
     expect(find.textContaining('Chargers along this route ('), findsOneWidget);
     expect(
-      find.byKey(Key('routeCharger_${sampleStations.first.id}')),
-      findsOneWidget,
-    );
+        find.textContaining('Published BEE/operator chargers'), findsOneWidget);
+    expect(find.textContaining('Demo chargers within'), findsNothing);
     expect(find.text('Statiq Connaught Place'), findsNothing);
   });
 
@@ -316,7 +333,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: VoltMapApp(
+          chargerDataService: _FakeOfficialChargerSearchService(),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Find the right charger, faster.'), findsOneWidget);
@@ -357,7 +380,7 @@ void main() {
     );
     await tester.ensureVisible(find.text('Plan route'));
     await tester.tap(find.text('Plan route'));
-    await tester.pumpAndSettle();
+    await _waitForRoutePlan(tester);
     expect(find.textContaining('Estimated energy:'), findsOneWidget);
     expect(find.text('Save this trip'), findsOneWidget);
   });
@@ -468,9 +491,15 @@ void main() {
       find.byKey(const Key('reportStationCorrectionButton')),
       findsOneWidget,
     );
+    await tester.tap(find.byKey(const Key('reportStationCorrectionButton')));
+    await tester.pumpAndSettle();
+    expect(
+        find.byKey(const Key('privateStationFeedbackDialog')), findsOneWidget);
+    expect(find.text('Send private station feedback'), findsOneWidget);
+    expect(find.textContaining('never posted to GitHub'), findsOneWidget);
   });
 
-  testWidgets('public charger reports validate and remain saved for review', (
+  testWidgets('charger reports remain local with private admin delivery', (
     tester,
   ) async {
     _useDesktopViewport(tester);
@@ -512,7 +541,7 @@ void main() {
     expect(find.text('Report saved'), findsOneWidget);
     expect(find.byKey(const Key('finishChargerReportButton')), findsOneWidget);
     expect(
-      find.byKey(const Key('openPublicChargerReviewButton')),
+      find.byKey(const Key('openPrivateChargerReviewButton')),
       findsOneWidget,
     );
     final preferences = await SharedPreferences.getInstance();
@@ -969,4 +998,25 @@ Future<void> _scrollToPaymentPhone(WidgetTester tester) async {
     scrollable: find.byType(Scrollable).first,
   );
   await tester.pumpAndSettle();
+}
+
+Future<void> _waitForRoutePlan(WidgetTester tester) async {
+  for (var attempt = 0; attempt < 600; attempt++) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pump();
+    if (find.text('Finding route chargers…').evaluate().isEmpty) {
+      await tester.pumpAndSettle();
+      return;
+    }
+  }
+  fail('Route planning did not finish within 30 seconds.');
+}
+
+class _FakeOfficialChargerSearchService extends OfficialChargerSearchService {
+  const _FakeOfficialChargerSearchService();
+
+  @override
+  Future<List<OfficialChargerStation>> loadAllStations() async => const [];
 }

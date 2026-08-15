@@ -76,4 +76,15 @@ ${notes.isEmpty ? 'No additional notes supplied.' : notes}
 ---
 Submitted from the VoltMapEV public charger-report form. Please verify this location before adding it to the catalog.
 ''';
+
+  Uri privateAdminEmailUri(String adminEmail) => Uri(
+        scheme: 'mailto',
+        path: adminEmail.trim().toLowerCase(),
+        queryParameters: {
+          'subject':
+              '[VoltMapEV private charger report] $stationName - $postalCode',
+          'body':
+              '$issueBody\n\nThis report is private and addressed only to the VoltMapEV administrator.',
+        },
+      );
 }

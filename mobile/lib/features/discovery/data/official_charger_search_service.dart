@@ -18,6 +18,13 @@ class OfficialChargerSearchService {
       _cachedStateStations = {};
   static final Map<String, Future<OfficialChargerSearchResult>>
       _cachedSearchResults = {};
+  static Future<List<OfficialChargerStation>>? _cachedAllStations;
+
+  /// Loads the deduplicated national inventory once for route-corridor
+  /// planning. State assets remain independently cached for normal searches.
+  Future<List<OfficialChargerStation>> loadAllStations() {
+    return _cachedAllStations ??= _loadAllStations();
+  }
 
   Future<OfficialChargerSearchResult> search({
     required String query,
@@ -76,6 +83,16 @@ class OfficialChargerSearchService {
     return compute(_parseManifest, source);
   }
 
+  static Future<List<OfficialChargerStation>> _loadAllStations() async {
+    final manifest = await (_cachedManifest ??= _loadManifest());
+    final sources = await Future.wait(
+      manifest.states.map((state) => rootBundle.loadString(state.asset)),
+    );
+    return List<OfficialChargerStation>.unmodifiable(
+      await compute(_parseAllStationLists, sources),
+    );
+  }
+
   static Future<List<OfficialChargerStation>> _loadStateStations(
     String asset,
   ) {
@@ -84,6 +101,10 @@ class OfficialChargerSearchService {
       return compute(_parseStationList, source);
     });
   }
+}
+
+List<OfficialChargerStation> _parseAllStationLists(List<String> sources) {
+  return sources.expand(_parseStationList).toList(growable: false);
 }
 
 List<String> _selectStateAssets({

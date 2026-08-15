@@ -8,6 +8,7 @@ import '../../../shared/state/app_state.dart';
 import '../../../shared/widgets/registered_account_gate.dart';
 import '../../payments/presentation/charging_checkout_screen.dart';
 import '../../payments/presentation/charging_receipt_screen.dart';
+import 'station_feedback_dialog.dart';
 
 class StationDetailsScreen extends ConsumerWidget {
   const StationDetailsScreen({super.key, required this.station});
@@ -406,25 +407,16 @@ class StationDetailsScreen extends ConsumerWidget {
   }
 
   Future<void> _reportCorrection(BuildContext context) async {
-    final uri = Uri(
-      scheme: 'mailto',
-      path: AppState.contactEmail,
-      queryParameters: {
-        'subject': 'VoltMapEV station correction: ${station.name}',
-        'body': 'Station ID: ${station.id}\n'
-            'Station: ${station.name}\n'
-            'Address: ${station.formattedAddress}\n\n'
-            'Please describe the incorrect information and include the operator source or a photo when possible:\n',
-      },
+    await showStationFeedbackDialog(
+      context: context,
+      stationId: station.id,
+      stationName: station.name,
+      operatorName: station.network,
+      address: station.formattedAddress,
+      latitude: station.latitude,
+      longitude: station.longitude,
+      sourceNames: [station.dataSource],
     );
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!launched && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open email. Contact skotla100@gmail.com.'),
-        ),
-      );
-    }
   }
 
   Future<void> _startSession(BuildContext context) async {

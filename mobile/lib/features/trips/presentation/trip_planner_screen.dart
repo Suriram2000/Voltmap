@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,15 +8,19 @@ import '../../../shared/services/place_search_service.dart';
 import '../../../shared/state/app_state.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../../shared/widgets/registered_account_gate.dart';
-import '../../discovery/data/sample_stations.dart';
+import '../../discovery/data/official_charger_search_service.dart';
+import '../../discovery/data/official_charger_station.dart';
+import '../data/route_charger_planner.dart';
 
 class TripPlannerScreen extends ConsumerStatefulWidget {
   const TripPlannerScreen({
     super.key,
     this.searchService = const PlaceSearchService(),
+    this.chargerDataService = const OfficialChargerSearchService(),
   });
 
   final PlaceSearchService searchService;
+  final OfficialChargerSearchService chargerDataService;
 
   @override
   ConsumerState<TripPlannerScreen> createState() => _TripPlannerScreenState();
@@ -39,6 +41,7 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
   PlaceSuggestion? destinationPlace;
   double rangeKm = 325;
   _RoutePlan? route;
+  bool _planning = false;
 
   @override
   void dispose() {
@@ -69,7 +72,7 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Search real places across India, estimate range, and add charging stops from the demo network.',
+                'Search real places across India, estimate range, and find every published national-inventory charger near the route.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 18),
@@ -140,9 +143,20 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
-                          onPressed: _planRoute,
-                          icon: const Icon(Icons.route),
-                          label: const Text('Plan route'),
+                          onPressed: _planning ? null : _planRoute,
+                          icon: _planning
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.route),
+                          label: Text(
+                            _planning
+                                ? 'Finding route chargers…'
+                                : 'Plan route',
+                          ),
                         ),
                       ),
                     ],
@@ -160,35 +174,36 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
               const SizedBox(height: 28),
               if (appState.isRegisteredAccount) ...[
                 Row(
-                children: [
-                  Text(
-                    'Saved trips',
-                    style: Theme.of(
-                      context,
-                    )
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                  const Spacer(),
-                  Text('${appState.savedTrips.length}'),
-                ],
+                  children: [
+                    Text(
+                      'Saved trips',
+                      style: Theme.of(
+                        context,
+                      )
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const Spacer(),
+                    Text('${appState.savedTrips.length}'),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 if (appState.savedTrips.isEmpty)
                   const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(22),
-                    child: Row(
-                      children: [
-                        Icon(Icons.route_outlined),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text('Plan and save a route to see it here.'),
-                        ),
-                      ],
+                    child: Padding(
+                      padding: EdgeInsets.all(22),
+                      child: Row(
+                        children: [
+                          Icon(Icons.route_outlined),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child:
+                                Text('Plan and save a route to see it here.'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                   )
                 else
                   for (final trip in appState.savedTrips) ...[
@@ -216,7 +231,7 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
     );
   }
 
-  void _planRoute() {
+  Future<void> _planRoute() async {
     FocusScope.of(context).unfocus();
     final origin = originController.text.trim();
     final destination = destinationController.text.trim();
@@ -229,235 +244,109 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
       return;
     }
 
-    final hasCoordinates = originPlace != null && destinationPlace != null;
-    final distance = hasCoordinates
-        ? _estimatedRoadDistance(originPlace!, destinationPlace!)
-        : _fallbackDistance(origin, destination);
+    setState(() => _planning = true);
+    final resolvedOrigin = await _resolvePlace(origin, originPlace);
+    final resolvedDestination =
+        await _resolvePlace(destination, destinationPlace);
+    if (!mounted) return;
+    final hasCoordinates =
+        resolvedOrigin != null && resolvedDestination != null;
+    if (!hasCoordinates) {
+      setState(() => _planning = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Select both places from the suggestions so VoltMapEV can calculate the route corridor accurately.',
+          ),
+        ),
+      );
+      return;
+    }
+    originPlace = resolvedOrigin;
+    destinationPlace = resolvedDestination;
+    final distance =
+        estimatedRoadDistanceKm(resolvedOrigin, resolvedDestination);
     final safeLegDistance = rangeKm * 0.72;
     final legCount = (distance / safeLegDistance).ceil();
     final stopCount = legCount > 1 ? legCount - 1 : 0;
-    final corridorKm = _routeCorridorKm(distance);
-    final routeChargers = _chargersForRoute(
-      origin: originPlace,
-      destination: destinationPlace,
-      corridorKm: corridorKm,
-    );
-    final stopIds = _selectChargingStops(
+    final corridorKm = routeCorridorKm(distance);
+    List<RouteChargerCandidate> routeChargers;
+    String? chargerDataError;
+    try {
+      final nationalStations =
+          await widget.chargerDataService.loadAllStations();
+      routeChargers = chargersAlongRoute(
+        stations: nationalStations,
+        origin: resolvedOrigin,
+        destination: resolvedDestination,
+        corridorKm: corridorKm,
+      );
+    } catch (_) {
+      routeChargers = const [];
+      chargerDataError =
+          'The national charger inventory could not be loaded. Retry before travelling.';
+    }
+    if (!mounted) return;
+    final stopIds = selectChargingStops(
       stopCount: stopCount,
-      origin: originPlace,
-      destination: destinationPlace,
-      eligibleStationIds:
-          routeChargers.map((charger) => charger.stationId).toSet(),
+      routeChargers: routeChargers,
     );
-    final driveMinutes = (distance / 65 * 60).round();
+    final averageSpeedKmh = distance <= 50
+        ? 35.0
+        : distance <= 200
+            ? 50.0
+            : 65.0;
+    final driveMinutes = (distance / averageSpeedKmh * 60).round();
 
     setState(() {
+      _planning = false;
       route = _RoutePlan(
-        origin: origin,
-        destination: destination,
+        origin: resolvedOrigin.primaryText,
+        destination: resolvedDestination.primaryText,
         distanceKm: distance,
-        estimatedMinutes: driveMinutes + stopCount * 25,
+        estimatedMinutes: driveMinutes + stopIds.length * 25,
         energyKwh: distance * 0.16,
         stopStationIds: stopIds,
         requiredStopCount: stopCount,
         routeChargers: routeChargers,
         corridorKm: corridorKm,
-        locationBased: hasCoordinates,
+        locationBased: true,
+        chargerDataError: chargerDataError,
       );
     });
   }
 
-  List<_RouteCharger> _chargersForRoute({
-    required PlaceSuggestion? origin,
-    required PlaceSuggestion? destination,
-    required double corridorKm,
-  }) {
-    if (origin == null || destination == null) {
-      return const [];
+  Future<PlaceSuggestion?> _resolvePlace(
+    String input,
+    PlaceSuggestion? selected,
+  ) async {
+    final normalizedInput = _normalizePlace(input);
+    if (selected != null) {
+      final selectedText = _normalizePlace(selected.displayName);
+      if (selectedText.contains(normalizedInput) ||
+          normalizedInput.contains(_normalizePlace(selected.primaryText))) {
+        return selected;
+      }
     }
-
-    final chargers = sampleStations.map((station) {
-      return _RouteCharger(
-        stationId: station.id,
-        distanceFromRouteKm: _distanceFromRoute(
-          station.latitude,
-          station.longitude,
-          origin.latitude,
-          origin.longitude,
-          destination.latitude,
-          destination.longitude,
-        ),
-        routeProgress: _routeProgress(
-          station.latitude,
-          station.longitude,
-          origin.latitude,
-          origin.longitude,
-          destination.latitude,
-          destination.longitude,
-        ),
-      );
-    }).where((charger) => charger.distanceFromRouteKm! <= corridorKm).toList();
-    chargers.sort((left, right) {
-      final progressComparison =
-          left.routeProgress!.compareTo(right.routeProgress!);
-      return progressComparison != 0
-          ? progressComparison
-          : left.distanceFromRouteKm!.compareTo(right.distanceFromRouteKm!);
-    });
-    return chargers;
-  }
-
-  double _routeCorridorKm(double routeDistanceKm) {
-    return (routeDistanceKm * 0.08).clamp(25.0, 75.0).toDouble();
-  }
-
-  double _routeProgress(
-    double stationLatitude,
-    double stationLongitude,
-    double originLatitude,
-    double originLongitude,
-    double destinationLatitude,
-    double destinationLongitude,
-  ) {
-    final latitudeScale = math.cos(
-      _radians((originLatitude + destinationLatitude) / 2),
-    );
-    final routeX = (destinationLongitude - originLongitude) * latitudeScale;
-    final routeY = destinationLatitude - originLatitude;
-    final stationX = (stationLongitude - originLongitude) * latitudeScale;
-    final stationY = stationLatitude - originLatitude;
-    final routeLengthSquared = routeX * routeX + routeY * routeY;
-    if (routeLengthSquared == 0) return 0;
-    return ((stationX * routeX + stationY * routeY) / routeLengthSquared)
-        .clamp(0.0, 1.0)
-        .toDouble();
-  }
-
-  double _distanceFromRoute(
-    double stationLatitude,
-    double stationLongitude,
-    double originLatitude,
-    double originLongitude,
-    double destinationLatitude,
-    double destinationLongitude,
-  ) {
-    final latitudeScale = math.cos(
-      _radians((originLatitude + destinationLatitude) / 2),
-    );
-    final routeX = (destinationLongitude - originLongitude) * latitudeScale;
-    final routeY = destinationLatitude - originLatitude;
-    final stationX = (stationLongitude - originLongitude) * latitudeScale;
-    final stationY = stationLatitude - originLatitude;
-    final routeLengthSquared = routeX * routeX + routeY * routeY;
-    final fraction = routeLengthSquared == 0
-        ? 0.0
-        : ((stationX * routeX + stationY * routeY) / routeLengthSquared)
-            .clamp(0.0, 1.0)
-            .toDouble();
-    final nearestLatitude =
-        originLatitude + (destinationLatitude - originLatitude) * fraction;
-    final nearestLongitude =
-        originLongitude + (destinationLongitude - originLongitude) * fraction;
-    return _straightLineDistance(
-      stationLatitude,
-      stationLongitude,
-      nearestLatitude,
-      nearestLongitude,
-    );
-  }
-
-  double _fallbackDistance(String origin, String destination) {
-    final seed = origin.codeUnits.fold<int>(0, (sum, unit) => sum + unit) +
-        destination.codeUnits.fold<int>(0, (sum, unit) => sum + unit);
-    return 70.0 + (seed % 420);
-  }
-
-  double _estimatedRoadDistance(
-    PlaceSuggestion origin,
-    PlaceSuggestion destination,
-  ) {
-    return math.max(
-      1,
-      _straightLineDistance(
-            origin.latitude,
-            origin.longitude,
-            destination.latitude,
-            destination.longitude,
-          ) *
-          1.22,
-    );
-  }
-
-  List<String> _selectChargingStops({
-    required int stopCount,
-    required PlaceSuggestion? origin,
-    required PlaceSuggestion? destination,
-    required Set<String> eligibleStationIds,
-  }) {
-    if (stopCount == 0) return const [];
-    final availableStations = sampleStations
-        .where((station) =>
-            station.available && eligibleStationIds.contains(station.id))
-        .toList();
-    if (origin == null ||
-        destination == null ||
-        availableStations.isEmpty) {
-      return const [];
+    final suggestions = await widget.searchService.searchIndia(input);
+    if (suggestions.isEmpty) return null;
+    final postcode =
+        RegExp(r'(?<!\d)([1-9]\d{5})(?!\d)').firstMatch(input)?.group(1);
+    if (postcode != null) {
+      for (final suggestion in suggestions) {
+        if (suggestion.displayName.contains(postcode)) return suggestion;
+      }
     }
-
-    final selected = <String>[];
-    for (var index = 0; index < stopCount; index++) {
-      final fraction = (index + 1) / (stopCount + 1);
-      final targetLatitude =
-          origin.latitude + (destination.latitude - origin.latitude) * fraction;
-      final targetLongitude = origin.longitude +
-          (destination.longitude - origin.longitude) * fraction;
-      final candidates = availableStations
-          .where((station) => !selected.contains(station.id))
-          .toList()
-        ..sort((left, right) {
-          final leftDistance = _straightLineDistance(
-            targetLatitude,
-            targetLongitude,
-            left.latitude,
-            left.longitude,
-          );
-          final rightDistance = _straightLineDistance(
-            targetLatitude,
-            targetLongitude,
-            right.latitude,
-            right.longitude,
-          );
-          return leftDistance.compareTo(rightDistance);
-        });
-      if (candidates.isEmpty) break;
-      selected.add(candidates.first.id);
+    for (final suggestion in suggestions) {
+      if (_normalizePlace(suggestion.primaryText) == normalizedInput) {
+        return suggestion;
+      }
     }
-    return selected;
+    return suggestions.first;
   }
 
-  double _straightLineDistance(
-    double originLatitudeDegrees,
-    double originLongitudeDegrees,
-    double destinationLatitudeDegrees,
-    double destinationLongitudeDegrees,
-  ) {
-    const earthRadiusKm = 6371.0;
-    final latitudeDelta =
-        _radians(destinationLatitudeDegrees - originLatitudeDegrees);
-    final longitudeDelta =
-        _radians(destinationLongitudeDegrees - originLongitudeDegrees);
-    final originLatitude = _radians(originLatitudeDegrees);
-    final destinationLatitude = _radians(destinationLatitudeDegrees);
-    final a = math.sin(latitudeDelta / 2) * math.sin(latitudeDelta / 2) +
-        math.cos(originLatitude) *
-            math.cos(destinationLatitude) *
-            math.sin(longitudeDelta / 2) *
-            math.sin(longitudeDelta / 2);
-    return earthRadiusKm * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-  }
-
-  double _radians(double degrees) => degrees * math.pi / 180;
+  String _normalizePlace(String value) =>
+      value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
 
   Future<void> _openLiveRoute() async {
     final url = Uri.https('www.google.com', '/maps/dir/', {
@@ -497,7 +386,7 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
   }
 }
 
-class _RouteResult extends StatelessWidget {
+class _RouteResult extends StatefulWidget {
   const _RouteResult({
     required this.route,
     required this.onSave,
@@ -509,7 +398,27 @@ class _RouteResult extends StatelessWidget {
   final VoidCallback onOpenDirections;
 
   @override
+  State<_RouteResult> createState() => _RouteResultState();
+}
+
+class _RouteResultState extends State<_RouteResult> {
+  static const _initialChargerCount = 25;
+  bool _showAllChargers = false;
+
+  @override
+  void didUpdateWidget(covariant _RouteResult oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.route, widget.route)) {
+      _showAllChargers = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final route = widget.route;
+    final visibleChargers = _showAllChargers
+        ? route.routeChargers
+        : route.routeChargers.take(_initialChargerCount);
     final hours = route.estimatedMinutes ~/ 60;
     final minutes = route.estimatedMinutes % 60;
     return Card(
@@ -538,8 +447,8 @@ class _RouteResult extends StatelessWidget {
                       ),
                       Text(
                         route.locationBased
-                            ? 'Coordinate-based road estimate'
-                            : 'Demo estimate — select a search suggestion for location-based results',
+                            ? 'Coordinate-based road estimate • charger corridor uses the national inventory'
+                            : 'Select a search suggestion for location-based results',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -547,13 +456,23 @@ class _RouteResult extends StatelessWidget {
                 ),
                 IconButton(
                   tooltip: 'Save trip',
-                  onPressed: onSave,
+                  onPressed: widget.onSave,
                   icon: const Icon(Icons.bookmark_add_outlined),
                 ),
               ],
             ),
             const Divider(height: 28),
             Text('Estimated energy: ${route.energyKwh.toStringAsFixed(1)} kWh'),
+            if (route.chargerDataError != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                route.chargerDataError!,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             if (route.requiredStopCount == 0)
               const ListTile(
@@ -571,9 +490,9 @@ class _RouteResult extends StatelessWidget {
                   Icons.warning_amber_rounded,
                   color: Theme.of(context).colorScheme.error,
                 ),
-                title: const Text('No demo charger coverage on this route'),
+                title: const Text('No catalog charger coverage on this route'),
                 subtitle: const Text(
-                  'Open live directions and verify charging options before travelling.',
+                  'Retry the plan or verify current operator availability before travelling.',
                 ),
               )
             else ...[
@@ -587,13 +506,15 @@ class _RouteResult extends StatelessWidget {
                   contentPadding: EdgeInsets.zero,
                   leading: CircleAvatar(child: Text('${index + 1}')),
                   title: Text(
-                    stationById(route.stopStationIds[index])?.name ??
+                    route
+                            .stationForId(route.stopStationIds[index])
+                            ?.displayName ??
                         'Charging stop',
                   ),
                   subtitle: Text(
                     route.locationBased
-                        ? 'Nearest available demo charger to this route segment'
-                        : 'Suggested 25 minute demo charging break',
+                        ? 'Closest published charger to this route segment • verify live status before travel'
+                        : 'Suggested charging break',
                   ),
                 ),
               if (route.stopStationIds.length < route.requiredStopCount)
@@ -603,9 +524,9 @@ class _RouteResult extends StatelessWidget {
                     Icons.warning_amber_rounded,
                     color: Theme.of(context).colorScheme.error,
                   ),
-                  title: const Text('Limited demo coverage'),
+                  title: const Text('Limited catalog coverage'),
                   subtitle: Text(
-                    'This trip needs about ${route.requiredStopCount} stops, but only ${route.stopStationIds.length} suitable demo charger${route.stopStationIds.length == 1 ? '' : 's'} were found on the route.',
+                    'This trip needs about ${route.requiredStopCount} stops, but only ${route.stopStationIds.length} suitable published charger${route.stopStationIds.length == 1 ? '' : 's'} were found on the route.',
                   ),
                 ),
             ],
@@ -620,7 +541,7 @@ class _RouteResult extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               route.locationBased
-                  ? 'Demo chargers within ${route.corridorKm.toStringAsFixed(0)} km of the route, ordered from origin to destination.'
+                  ? 'Published BEE/operator chargers within ${route.corridorKm.toStringAsFixed(0)} km of the route, ordered from origin to destination. Inventory-only status must be verified.'
                   : 'Select origin and destination suggestions to find chargers along the route.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
@@ -635,26 +556,46 @@ class _RouteResult extends StatelessWidget {
                 ),
               )
             else
-              for (final routeCharger in route.routeChargers)
+              for (final routeCharger in visibleChargers)
                 _RouteChargerTile(
                   routeCharger: routeCharger,
                   recommended: route.stopStationIds.contains(
                     routeCharger.stationId,
                   ),
                 ),
+            if (route.routeChargers.length > _initialChargerCount)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  key: const Key('toggleAllRouteChargers'),
+                  onPressed: () => setState(
+                    () => _showAllChargers = !_showAllChargers,
+                  ),
+                  icon: Icon(
+                    _showAllChargers
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                  ),
+                  label: Text(
+                    _showAllChargers
+                        ? 'Show fewer chargers'
+                        : 'Show all ${route.routeChargers.length} route chargers',
+                  ),
+                ),
+              ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 10,
               runSpacing: 10,
               children: [
                 OutlinedButton.icon(
-                  onPressed: onSave,
+                  onPressed: widget.onSave,
                   icon: const Icon(Icons.bookmark_add_outlined),
                   label: const Text('Save this trip'),
                 ),
                 FilledButton.icon(
                   key: const Key('openLiveDirectionsButton'),
-                  onPressed: onOpenDirections,
+                  onPressed: widget.onOpenDirections,
                   icon: const Icon(Icons.open_in_new_rounded),
                   label: const Text('Open live directions'),
                 ),
@@ -698,27 +639,37 @@ class _RouteChargerTile extends StatelessWidget {
     required this.recommended,
   });
 
-  final _RouteCharger routeCharger;
+  final RouteChargerCandidate routeCharger;
   final bool recommended;
 
   @override
   Widget build(BuildContext context) {
-    final station = stationById(routeCharger.stationId)!;
-    final statusColor = station.available
-        ? Theme.of(context).colorScheme.primary
-        : Theme.of(context).colorScheme.error;
+    final station = routeCharger.station;
+    final hasLiveAvailability = station.hasLiveAvailability;
+    final availableNow =
+        hasLiveAvailability && (station.availableConnectors ?? 0) > 0;
+    final statusColor = hasLiveAvailability
+        ? availableNow
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.error
+        : Theme.of(context).colorScheme.onSurfaceVariant;
+    final connectors = station.connectors
+        .take(3)
+        .map((connector) => connector.label)
+        .join(', ');
     return ListTile(
-      key: Key('routeCharger_${station.id}'),
+      key: Key('routeCharger_${routeCharger.stationId}'),
       contentPadding: EdgeInsets.zero,
       leading: Icon(
-        station.available ? Icons.ev_station_rounded : Icons.block_rounded,
+        availableNow ? Icons.ev_station_rounded : Icons.ev_station_outlined,
         color: statusColor,
       ),
-      title: Text(station.name),
+      title: Text(station.displayName),
       subtitle: Text(
-        '${station.formattedAddress}\n'
-        '${station.powerKw} kW • ${station.connectorTypes.join(', ')}'
-        '${routeCharger.distanceFromRouteKm == null ? '' : ' • ${routeCharger.distanceFromRouteKm!.toStringAsFixed(0)} km from route'}',
+        '${station.address.isEmpty ? station.areaLabel : station.address}\n'
+        '${connectors.isEmpty ? 'Connector details not published' : connectors}'
+        ' • ${routeCharger.distanceFromRouteKm.toStringAsFixed(1)} km from route\n'
+        'Source: ${station.sourceLabel}',
       ),
       isThreeLine: true,
       trailing: Column(
@@ -726,7 +677,11 @@ class _RouteChargerTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
-            station.available ? 'AVAILABLE' : 'UNAVAILABLE',
+            hasLiveAvailability
+                ? availableNow
+                    ? '${station.availableConnectors}/${station.totalConnectors} LIVE'
+                    : 'BUSY / OFFLINE'
+                : 'VERIFY STATUS',
             style: TextStyle(
               color: statusColor,
               fontSize: 11,
@@ -756,6 +711,7 @@ class _RoutePlan {
     required this.routeChargers,
     required this.corridorKm,
     required this.locationBased,
+    this.chargerDataError,
   });
 
   final String origin;
@@ -765,19 +721,15 @@ class _RoutePlan {
   final double energyKwh;
   final List<String> stopStationIds;
   final int requiredStopCount;
-  final List<_RouteCharger> routeChargers;
+  final List<RouteChargerCandidate> routeChargers;
   final double corridorKm;
   final bool locationBased;
-}
+  final String? chargerDataError;
 
-class _RouteCharger {
-  const _RouteCharger({
-    required this.stationId,
-    this.distanceFromRouteKm,
-    this.routeProgress,
-  });
-
-  final String stationId;
-  final double? distanceFromRouteKm;
-  final double? routeProgress;
+  OfficialChargerStation? stationForId(String id) {
+    for (final candidate in routeChargers) {
+      if (candidate.stationId == id) return candidate.station;
+    }
+    return null;
+  }
 }
