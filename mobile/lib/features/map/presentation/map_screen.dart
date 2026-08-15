@@ -200,15 +200,6 @@ class _MapScreenState extends State<MapScreen> {
                     },
                     onSubmitted: _submitPlaceSearch,
                     textInputAction: TextInputAction.search,
-                    suffixIcon: _loading
-                        ? const Padding(
-                            padding: EdgeInsets.all(15),
-                            child: SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          )
-                        : null,
                   ),
                 ),
               ),
