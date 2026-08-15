@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/app_environment.dart';
 import '../../../shared/models/charging_receipt.dart';
 import '../../../shared/services/receipt_download_service.dart';
+import '../../../shared/services/secure_charging_api.dart';
 import '../../../shared/state/app_state.dart';
 import 'charging_receipt_screen.dart';
 
@@ -68,6 +70,7 @@ class _ReceiptCard extends StatefulWidget {
 
 class _ReceiptCardState extends State<_ReceiptCard> {
   bool _exporting = false;
+  bool _retrying = false;
 
   ChargingReceipt get receipt => widget.receipt;
 
@@ -89,6 +92,36 @@ class _ReceiptCardState extends State<_ReceiptCard> {
       }
     } finally {
       if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Future<void> _retryDelivery() async {
+    if (_retrying) return;
+    setState(() => _retrying = true);
+    try {
+      final method = receipt.deliveryMethod.toLowerCase();
+      final channel = method.contains('email') ? 'email' : 'sms';
+      await SecureChargingApi().retryReceiptDelivery(
+        receiptId: receipt.id,
+        channel: channel,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Receipt delivery retry queued. Updated delivery status will be recorded by the server.',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not retry delivery: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _retrying = false);
     }
   }
 
@@ -140,9 +173,23 @@ class _ReceiptCardState extends State<_ReceiptCard> {
                   .join('\n'),
             ),
           const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            runSpacing: 8,
             children: [
+              if (_canRetryDelivery)
+                OutlinedButton.icon(
+                  key: ValueKey('retryReceipt_${receipt.id}'),
+                  onPressed: _retrying ? null : _retryDelivery,
+                  icon: _retrying
+                      ? const SizedBox.square(
+                          dimension: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh_rounded),
+                  label: const Text('Retry delivery'),
+                ),
               OutlinedButton.icon(
                 key: ValueKey('viewReceipt_${receipt.id}'),
                 onPressed: () => Navigator.of(context).push<void>(
@@ -153,7 +200,6 @@ class _ReceiptCardState extends State<_ReceiptCard> {
                 icon: const Icon(Icons.receipt_long_outlined),
                 label: const Text('View receipt'),
               ),
-              const SizedBox(width: 8),
               FilledButton.tonalIcon(
                 key: ValueKey('downloadReceipt_${receipt.id}'),
                 onPressed: _exporting ? null : _download,
@@ -171,6 +217,12 @@ class _ReceiptCardState extends State<_ReceiptCard> {
       ),
     );
   }
+
+  bool get _canRetryDelivery =>
+      AppRuntimeConfig.hasSecurePaymentBackend &&
+      receipt.isVerifiedSuccessful &&
+      receipt.deliveryMethod.toLowerCase() != 'in app' &&
+      !receipt.deliveryAttempts.any((attempt) => attempt.delivered);
 
   Widget _detail(String label, String value) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),

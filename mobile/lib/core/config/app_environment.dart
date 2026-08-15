@@ -19,6 +19,14 @@ abstract final class AppRuntimeConfig {
     'VOLTMAP_PAYMENT_API_BASE_URL',
   );
 
+  static const identityApiBaseUrl = String.fromEnvironment(
+    'VOLTMAP_IDENTITY_API_BASE_URL',
+  );
+
+  static const realtimeChargerApiBaseUrl = String.fromEnvironment(
+    'VOLTMAP_REALTIME_CHARGER_API_BASE_URL',
+  );
+
   static const monitoringDsn = String.fromEnvironment(
     'VOLTMAP_MONITORING_DSN',
   );
@@ -26,8 +34,20 @@ abstract final class AppRuntimeConfig {
   static bool get isSandbox => environment == AppEnvironment.sandbox;
 
   static bool get hasSecurePaymentBackend {
-    if (isSandbox || paymentApiBaseUrl.isEmpty) return false;
-    final uri = Uri.tryParse(paymentApiBaseUrl);
+    return !isSandbox && _isSecureApiUrl(paymentApiBaseUrl);
+  }
+
+  static bool get hasSecureIdentityBackend {
+    return !isSandbox && _isSecureApiUrl(identityApiBaseUrl);
+  }
+
+  static bool get hasRealtimeChargerBackend {
+    return !isSandbox && _isSecureApiUrl(realtimeChargerApiBaseUrl);
+  }
+
+  static bool _isSecureApiUrl(String value) {
+    if (value.isEmpty) return false;
+    final uri = Uri.tryParse(value);
     return uri != null && uri.scheme == 'https' && uri.host.isNotEmpty;
   }
 }

@@ -1,6 +1,6 @@
 # VoltMapEV App Store and Google Play release
 
-Prepared: 14 August 2026
+Prepared: 15 August 2026
 
 ## Package identity
 
@@ -8,7 +8,7 @@ Prepared: 14 August 2026
 - Android application ID: `in.voltmap.voltmap`
 - Apple bundle ID: `in.voltmap.voltmap`
 - Minimum iOS version: `15.0`
-- Version: `1.12.0` (`15`)
+- Version: `1.13.0` (`17`)
 - Website: `https://voltmapev.com/`
 - Support: `skotla100@gmail.com`, `+91 93927 88714`
 - Privacy: `https://voltmapev.com/privacy-policy.html`
@@ -48,8 +48,16 @@ travel. The current payment flow is a clearly marked sandbox and does not move
 real money. Production payments remain unavailable until a verified provider,
 charger-meter integration, and server-side webhook verification are configured.
 
-### Version 1.12.0 release notes
+### Version 1.13.0 release notes
 
+- Production OTP challenges use the configured secure identity service and
+  never fall back to the preview code
+- Guest charging checkout verifies the receipt destination, opens only the
+  provider-hosted payment page, and waits for webhook plus meter confirmation
+- Verified receipts can be viewed, downloaded, and safely retried after a
+  temporary email or SMS delivery failure
+- Map markers and the nearby list can consume timestamped operator
+  availability and tariffs, with an explicit dated-inventory fallback
 - Clearer location permission explanations and nearby-map error states
 - Data-source, freshness, availability, and estimated-price labels
 - Easier reporting of incorrect station information to VoltMapEV support
@@ -145,3 +153,12 @@ iOS:
 
 Never commit signing files, passwords, API keys, service-account JSON, KYC
 documents, or banking information.
+
+## Public GitHub Actions variables
+
+Set these only to deployed HTTPS VoltMapEV server endpoints. They contain no
+provider secret, but release builds stay fail-closed when they are absent:
+
+- `VOLTMAP_PAYMENT_API_BASE_URL`
+- `VOLTMAP_IDENTITY_API_BASE_URL`
+- `VOLTMAP_REALTIME_CHARGER_API_BASE_URL`

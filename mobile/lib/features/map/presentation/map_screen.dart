@@ -7,12 +7,14 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/place_suggestion.dart';
 import '../../../shared/services/place_search_service.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../discovery/data/official_charger_search_service.dart';
 import '../../discovery/data/official_charger_station.dart';
+import '../../discovery/data/realtime_charger_search_service.dart';
 
 typedef MapLocationLoader = Future<MapUserLocation> Function();
 
@@ -38,12 +40,12 @@ class MapScreen extends StatefulWidget {
     super.key,
     this.locationLoader,
     this.placeSearchService = const PlaceSearchService(),
-    this.chargerSearchService = const OfficialChargerSearchService(),
+    this.chargerSearchService,
   });
 
   final MapLocationLoader? locationLoader;
   final PlaceSearchService placeSearchService;
-  final OfficialChargerSearchService chargerSearchService;
+  final OfficialChargerSearchService? chargerSearchService;
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -62,10 +64,15 @@ class _MapScreenState extends State<MapScreen> {
   int _selectedIndex = 0;
   int _requestId = 0;
   String _connectorFilter = 'All';
+  late final OfficialChargerSearchService _chargerSearchService;
 
   @override
   void initState() {
     super.initState();
+    _chargerSearchService = widget.chargerSearchService ??
+        (AppRuntimeConfig.hasRealtimeChargerBackend
+            ? RealtimeChargerSearchService()
+            : const OfficialChargerSearchService());
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadNearbyChargers());
   }
 
@@ -221,8 +228,9 @@ class _MapScreenState extends State<MapScreen> {
           key: const Key('nearbyChargerNoResults'),
           icon: Icons.ev_station_outlined,
           title: 'No nearby chargers found',
-          message:
-              'No stations in the dated BEE inventory were found near ${_place?.primaryText ?? 'your location'} within ${result.radiusKm.toStringAsFixed(0)} km. Search another area or PIN above.',
+          message: result.isRealtime
+              ? 'The live operator feed found no stations near ${_place?.primaryText ?? 'your location'} within ${result.radiusKm.toStringAsFixed(0)} km. Search another area or PIN above.'
+              : 'No stations in the dated BEE inventory were found near ${_place?.primaryText ?? 'your location'} within ${result.radiusKm.toStringAsFixed(0)} km. Search another area or PIN above.',
           primaryLabel: _locationEnabled ? 'Refresh nearby chargers' : null,
           onPrimary: _locationEnabled ? _loadNearbyChargers : null,
         ),
@@ -238,6 +246,8 @@ class _MapScreenState extends State<MapScreen> {
       totalStationCount: result.totalStationCount,
       radiusKm: result.radiusKm,
       matches: filteredMatches,
+      isRealtime: result.isRealtime,
+      statusMessage: result.statusMessage,
     );
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -378,7 +388,7 @@ class _MapScreenState extends State<MapScreen> {
             longitude: location.longitude,
             type: 'current_location',
           );
-      final result = await widget.chargerSearchService.search(
+      final result = await _chargerSearchService.search(
         query: center.displayName,
         center: center,
       );
@@ -434,7 +444,7 @@ class _MapScreenState extends State<MapScreen> {
       _connectorFilter = 'All';
     });
     try {
-      final result = await widget.chargerSearchService.search(
+      final result = await _chargerSearchService.search(
         query: place.displayName,
         center: place,
       );
@@ -1439,7 +1449,10 @@ class _NearbyPanelHeader extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'List and markers cover the same map area. Official BEE inventory is not live; availability and prices must be verified before travel.',
+          result.statusMessage ??
+              (result.isRealtime
+                  ? 'List and markers cover the same map area. Availability and tariffs come from the timestamped operator feed.'
+                  : 'List and markers cover the same map area. Official BEE inventory is not live; availability and prices must be verified before travel.'),
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -1534,7 +1547,9 @@ class _NearbyStationTile extends StatelessWidget {
                     ],
                     const SizedBox(height: 5),
                     Text(
-                      'Availability: Not published • Price: Not published',
+                      station.hasLiveAvailability
+                          ? '${station.availableConnectors}/${station.totalConnectors} available${station.hasLivePrice ? ' • ₹${station.pricePerKwh!.toStringAsFixed(2)}/kWh' : ' • Price not published'}'
+                          : 'Availability: Not published • Price: Not published',
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                     const SizedBox(height: 3),

@@ -11,6 +11,7 @@ import '../../../shared/models/charging_station.dart';
 import '../../../shared/services/charging_billing.dart';
 import '../../../shared/services/sandbox_payment_validator.dart';
 import '../../../shared/state/app_state.dart';
+import 'production_charging_checkout_screen.dart';
 
 enum PaymentOption { upi, card, wallet }
 
@@ -69,7 +70,7 @@ class _ChargingCheckoutScreenState
   @override
   Widget build(BuildContext context) {
     if (!AppRuntimeConfig.isSandbox) {
-      return _ProductionPaymentGate(station: widget.station);
+      return ProductionChargingCheckoutScreen(station: widget.station);
     }
     return PopScope(
       canPop: !_processing,
@@ -999,104 +1000,6 @@ class _ChargingSessionScreenState extends ConsumerState<ChargingSessionScreen> {
     if (digits.length < 4) return '••••••••••';
     return '••••••${digits.substring(digits.length - 4)}';
   }
-}
-
-class _ProductionPaymentGate extends StatelessWidget {
-  const _ProductionPaymentGate({required this.station});
-
-  final ChargingStation station;
-
-  @override
-  Widget build(BuildContext context) {
-    final backendConfigured = AppRuntimeConfig.hasSecurePaymentBackend;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Secure charging payment')),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 620),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(26),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircleAvatar(
-                      radius: 31,
-                      child: Icon(
-                        backendConfigured
-                            ? Icons.ev_station_rounded
-                            : Icons.lock_clock_outlined,
-                        size: 31,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      backendConfigured
-                          ? 'Charging is not enabled at this station'
-                          : 'Payments are temporarily unavailable',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      backendConfigured
-                          ? '${station.name} does not yet have a verified live charger-session integration. No payment was created.'
-                          : 'The secure production payment and meter-verification service is not configured. No payment details were requested and no charge was attempted.',
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 18),
-                    const _ProductionSafetyItem(
-                      icon: Icons.credit_card_off_outlined,
-                      text:
-                          'VoltMapEV never collects card numbers, CVVs, UPI PINs or banking credentials.',
-                    ),
-                    const _ProductionSafetyItem(
-                      icon: Icons.verified_user_outlined,
-                      text:
-                          'A payment becomes successful only after a provider-signed server webhook and confirmed meter reading.',
-                    ),
-                    const _ProductionSafetyItem(
-                      icon: Icons.receipt_long_outlined,
-                      text:
-                          'Receipts are created only for verified payments and verified contact destinations.',
-                    ),
-                    const SizedBox(height: 14),
-                    OutlinedButton.icon(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      label: const Text('Back to station'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProductionSafetyItem extends StatelessWidget {
-  const _ProductionSafetyItem({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 21, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 11),
-            Expanded(child: Text(text)),
-          ],
-        ),
-      );
 }
 
 class _CheckoutJourneyHeader extends StatelessWidget {
