@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/services/phone_otp_service.dart';
 import '../../../shared/state/app_state.dart';
@@ -10,11 +11,11 @@ class PhoneVerificationScreen extends ConsumerStatefulWidget {
   const PhoneVerificationScreen({
     super.key,
     required this.feature,
-    this.controller = const PreviewPhoneOtpService(),
+    this.controller,
   });
 
   final String feature;
-  final PhoneOtpController controller;
+  final PhoneOtpController? controller;
 
   @override
   ConsumerState<PhoneVerificationScreen> createState() =>
@@ -28,9 +29,19 @@ class _PhoneVerificationScreenState
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
 
+  late final PhoneOtpController _service;
   PhoneOtpChallenge? _challenge;
   bool _submitting = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _service = widget.controller ??
+        (AppRuntimeConfig.isSandbox
+            ? const PreviewPhoneOtpService()
+            : ProductionPhoneOtpService());
+  }
 
   @override
   void dispose() {
@@ -125,7 +136,7 @@ class _PhoneVerificationScreenState
             ),
           ),
           const SizedBox(height: 14),
-          const _PreviewDisclosure(),
+          _OtpDisclosure(isPreview: AppRuntimeConfig.isSandbox),
         ],
       ),
     );
@@ -255,17 +266,19 @@ class _PhoneVerificationScreenState
     final phone = AppState.normalizeIndianMobile(_phoneController.text)!;
     setState(() => _submitting = true);
     try {
-      final challenge = await widget.controller.sendCode(phone);
+      final challenge = await _service.sendCode(phone);
       if (!mounted) return;
       setState(() {
         _challenge = challenge;
         _submitting = false;
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       setState(() {
         _submitting = false;
-        _error = 'Could not prepare a verification code. Try again.';
+        _error = AppRuntimeConfig.hasSecureIdentityBackend
+            ? error.toString()
+            : 'OTP service is not configured yet. No SMS was sent.';
       });
     }
   }
@@ -275,10 +288,20 @@ class _PhoneVerificationScreenState
     setState(() => _error = null);
     if (!(_otpFormKey.currentState?.validate() ?? false)) return;
     setState(() => _submitting = true);
-    final verified = await widget.controller.verifyCode(
-      challenge: challenge,
-      code: _otpController.text,
-    );
+    bool verified;
+    try {
+      verified = await _service.verifyCode(
+        challenge: challenge,
+        code: _otpController.text,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = error.toString();
+      });
+      return;
+    }
     if (!mounted) return;
     if (!verified) {
       setState(() {
@@ -308,8 +331,10 @@ class _PhoneVerificationScreenState
   }
 }
 
-class _PreviewDisclosure extends StatelessWidget {
-  const _PreviewDisclosure();
+class _OtpDisclosure extends StatelessWidget {
+  const _OtpDisclosure({required this.isPreview});
+
+  final bool isPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -322,9 +347,13 @@ class _PreviewDisclosure extends StatelessWidget {
           color: Theme.of(context).colorScheme.primary,
         ),
         const SizedBox(width: 8),
-        const Expanded(
+        Expanded(
           child: Text(
-            'This release previews the OTP experience locally. A hosted SMS provider is required before real codes can be sent.',
+            isPreview
+                ? 'Sandbox preview: the code is shown on screen and no SMS is sent.'
+                : AppRuntimeConfig.hasSecureIdentityBackend
+                    ? 'A time-limited verification code will be sent by the secure VoltMapEV identity service.'
+                    : 'Real SMS verification is unavailable until the production identity service is configured.',
           ),
         ),
       ],

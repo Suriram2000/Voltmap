@@ -44,9 +44,21 @@ jobs:
         working-directory: mobile
         run: flutter test
 
+      - name: Run production-only checkout test
+        working-directory: mobile
+        run: >-
+          flutter test test/production_charging_checkout_screen_test.dart
+          --dart-define=VOLTMAP_ENV=production
+          --dart-define=VOLTMAP_PAYMENT_API_BASE_URL=https://api.voltmapev.test
+          --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=https://api.voltmapev.test
+
       - name: Build Flutter web app
         working-directory: mobile
-        run: flutter build web --release --base-href "/"
+        run: >-
+          flutter build web --release --base-href "/"
+          --dart-define=VOLTMAP_PAYMENT_API_BASE_URL=${{ vars.VOLTMAP_PAYMENT_API_BASE_URL }}
+          --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=${{ vars.VOLTMAP_IDENTITY_API_BASE_URL }}
+          --dart-define=VOLTMAP_REALTIME_CHARGER_API_BASE_URL=${{ vars.VOLTMAP_REALTIME_CHARGER_API_BASE_URL }}
 
       - name: Add custom domain marker
         working-directory: mobile

@@ -6,6 +6,7 @@ import 'package:http/testing.dart';
 import 'package:voltmap/shared/models/charging_receipt.dart';
 import 'package:voltmap/shared/services/charging_billing.dart';
 import 'package:voltmap/shared/services/secure_charging_api.dart';
+import 'package:voltmap/shared/services/secure_identity_api.dart';
 
 void main() {
   group('confirmed metered billing', () {
@@ -172,6 +173,66 @@ void main() {
         () => api.verifiedReceipt('session_1'),
         throwsA(isA<SecureChargingApiException>()),
       );
+    });
+  });
+
+  group('secure OTP contract', () {
+    test('sends only the destination and receives no preview OTP', () async {
+      late http.Request captured;
+      final api = SecureIdentityApi(
+        baseUrl: 'https://identity.voltmapev.test',
+        client: MockClient((request) async {
+          captured = request;
+          return http.Response(
+            jsonEncode({
+              'challengeId': 'otp_123',
+              'destination': '9392788714',
+              'expiresAt': '2026-08-14T13:00:00Z',
+            }),
+            201,
+          );
+        }),
+      );
+
+      final challenge = await api.sendOtp(
+        channel: 'sms',
+        destination: '9392788714',
+        purpose: 'account_sign_in',
+      );
+
+      expect(challenge.id, 'otp_123');
+      expect(captured.url.path, '/v1/identity/otp/challenges');
+      expect(captured.body, isNot(contains('123456')));
+      expect(captured.body, isNot(contains('previewCode')));
+    });
+
+    test('returns an opaque contact token only after OTP verification',
+        () async {
+      final api = SecureIdentityApi(
+        baseUrl: 'https://identity.voltmapev.test',
+        client: MockClient((request) async {
+          return http.Response(
+            jsonEncode({
+              'verified': true,
+              'verifiedContactToken': 'contact_token_123',
+              'destination': 'd***@example.com',
+            }),
+            200,
+          );
+        }),
+      );
+      final contact = await api.verifyOtp(
+        challenge: ContactOtpChallenge(
+          id: 'otp_123',
+          channel: 'email',
+          destination: 'driver@example.com',
+          expiresAt: DateTime.utc(2026, 8, 14, 13),
+        ),
+        code: '654321',
+      );
+
+      expect(contact.token, 'contact_token_123');
+      expect(contact.destination, 'd***@example.com');
     });
   });
 }

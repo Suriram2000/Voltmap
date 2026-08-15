@@ -9,6 +9,13 @@
 - Production charging stays fail-closed until
   `VOLTMAP_PAYMENT_API_BASE_URL` is an HTTPS VoltMapEV server and the selected
   station has a verified charger-session integration.
+- Production OTP stays fail-closed until `VOLTMAP_IDENTITY_API_BASE_URL` is an
+  HTTPS VoltMapEV identity service. Release builds never fall back to the
+  preview code.
+- Live map status may be enabled through
+  `VOLTMAP_REALTIME_CHARGER_API_BASE_URL` only when the server returns
+  operator-authorized, timestamped availability, tariff, connector, and
+  charger identifiers. The dated BEE inventory remains the honest fallback.
 - Provider and monitoring secrets must be injected into their server-side secret
   stores. They must never be passed through Dart defines or committed to this
   repository.

@@ -10,6 +10,12 @@ class OfficialChargerStation {
     required this.longitude,
     required this.postcodes,
     required this.connectors,
+    this.providerStationId,
+    this.availableConnectors,
+    this.totalConnectors,
+    this.pricePerKwh,
+    this.currency = 'INR',
+    this.liveStatusUpdatedAt,
   });
 
   factory OfficialChargerStation.fromCompactJson(Map<String, dynamic> json) {
@@ -45,6 +51,19 @@ class OfficialChargerStation {
   final double longitude;
   final List<String> postcodes;
   final List<OfficialChargerConnector> connectors;
+  final String? providerStationId;
+  final int? availableConnectors;
+  final int? totalConnectors;
+  final double? pricePerKwh;
+  final String currency;
+  final DateTime? liveStatusUpdatedAt;
+
+  bool get hasLiveAvailability =>
+      availableConnectors != null &&
+      totalConnectors != null &&
+      liveStatusUpdatedAt != null;
+
+  bool get hasLivePrice => pricePerKwh != null && liveStatusUpdatedAt != null;
 
   String get displayName =>
       city.isEmpty ? operatorName : '$operatorName - $city';
@@ -110,6 +129,8 @@ class OfficialChargerSearchResult {
     required this.totalStationCount,
     required this.radiusKm,
     required this.matches,
+    this.isRealtime = false,
+    this.statusMessage,
   });
 
   final String source;
@@ -118,6 +139,8 @@ class OfficialChargerSearchResult {
   final int totalStationCount;
   final double radiusKm;
   final List<OfficialChargerMatch> matches;
+  final bool isRealtime;
+  final String? statusMessage;
 
   int get exactPostcodeCount =>
       matches.where((match) => match.exactPostcode).length;
