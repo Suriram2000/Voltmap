@@ -206,6 +206,14 @@ class PlaceSearchService {
 
 const _popularIndianPlaces = <PlaceSuggestion>[
   PlaceSuggestion(
+    primaryText: 'Madhapur / HITEC City - 500081',
+    secondaryText: 'Cyberabad, Hyderabad, Telangana, India',
+    latitude: 17.4486,
+    longitude: 78.3908,
+    type: 'postcode',
+    aliases: ['500081', 'Madhapur', 'Hitech City', 'HITEC City'],
+  ),
+  PlaceSuggestion(
     primaryText: 'Karmanghat / Vaishalinagar - 500079',
     secondaryText: 'Saroornagar, South East Hyderabad, Telangana, India',
     latitude: 17.3366,

@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../discovery/presentation/discovery_screen.dart';
 import '../../discovery/presentation/add_charger_screen.dart';
+import '../../discovery/data/official_charger_search_service.dart';
 import '../../favorites/presentation/favorites_screen.dart';
 import '../../map/presentation/map_screen.dart';
 import '../../install/presentation/install_app_screen.dart';
@@ -22,9 +23,11 @@ class AppShell extends ConsumerStatefulWidget {
   const AppShell({
     super.key,
     this.installController = const InstallAppService(),
+    this.chargerDataService = const OfficialChargerSearchService(),
   });
 
   final InstallAppController installController;
+  final OfficialChargerSearchService chargerDataService;
 
   @override
   ConsumerState<AppShell> createState() => _AppShellState();
@@ -188,7 +191,9 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget _screenFor(int value) => switch (value) {
         0 => const DiscoveryScreen(),
         1 => const MapScreen(),
-        2 => const TripPlannerScreen(),
+        2 => TripPlannerScreen(
+            chargerDataService: widget.chargerDataService,
+          ),
         3 => const FavoritesScreen(),
         4 => const AddChargerScreen(),
         5 => const ProfileScreen(),
