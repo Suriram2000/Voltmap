@@ -188,7 +188,7 @@ void main() {
     expect(bootstrap, contains('window.voltMapEVInstallStatus'));
     expect(bootstrap, contains('window.voltMapEVPromptInstall'));
     expect(bootstrap, contains("choice.outcome === 'accepted'"));
-    expect(bootstrap, contains('voltmapev-pwa-cache-reset-v1'));
+    expect(bootstrap, contains('voltmapev-pwa-cache-reset-v2'));
   });
 
   test('web startup immediately paints a branded shell', () {
