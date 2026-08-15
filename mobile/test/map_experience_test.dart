@@ -7,6 +7,25 @@ import 'package:voltmap/shared/models/place_suggestion.dart';
 import 'package:voltmap/shared/services/place_search_service.dart';
 
 void main() {
+  test('Map app-settings action is disabled on web', () {
+    expect(
+      canOpenMapAppSettings(
+        isWeb: true,
+        permissionFailure: true,
+        blocked: true,
+      ),
+      isFalse,
+    );
+    expect(
+      canOpenMapAppSettings(
+        isWeb: false,
+        permissionFailure: true,
+        blocked: true,
+      ),
+      isTrue,
+    );
+  });
+
   testWidgets('Map automatically loads location and every nearby charger', (
     tester,
   ) async {
