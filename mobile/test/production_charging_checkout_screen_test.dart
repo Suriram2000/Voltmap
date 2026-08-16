@@ -95,6 +95,8 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
+    final destinationInput = tester.widget<TextField>(destinationField);
+    expect(destinationInput.decoration?.prefixText, '+91 ');
     await tester.enterText(
       destinationField,
       '9392788714',

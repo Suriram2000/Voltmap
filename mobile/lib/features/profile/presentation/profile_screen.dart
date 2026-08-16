@@ -534,8 +534,10 @@ class ProfileScreen extends ConsumerWidget {
               TextField(
                 controller: identifierController,
                 keyboardType: TextInputType.text,
-                decoration:
-                    const InputDecoration(labelText: 'Email or phone number'),
+                decoration: const InputDecoration(
+                  labelText: 'Email or India mobile (+91)',
+                  hintText: 'name@example.com or +91 9392788714',
+                ),
               ),
             ],
           ),

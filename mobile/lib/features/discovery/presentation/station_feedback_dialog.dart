@@ -131,7 +131,7 @@ class _StationFeedbackDialogState extends State<_StationFeedbackDialog> {
                   key: const Key('stationFeedbackContact'),
                   controller: _contactController,
                   decoration: const InputDecoration(
-                    labelText: 'Your email or phone (optional)',
+                    labelText: 'Your email or India mobile +91 (optional)',
                     prefixIcon: Icon(Icons.contact_mail_outlined),
                   ),
                 ),

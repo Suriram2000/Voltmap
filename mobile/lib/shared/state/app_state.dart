@@ -17,6 +17,7 @@ final appStateProvider = ChangeNotifierProvider<AppState>((ref) {
 });
 
 class AppState extends ChangeNotifier {
+  static const indiaDialCode = '+91';
   static const adminIdentifier = 'skotla100@gmail.com';
   static const contactEmail = 'skotla100@gmail.com';
   static const contactPhone = '+919392788714';
@@ -429,7 +430,7 @@ class AppState extends ChangeNotifier {
       digits = digits.substring(1);
     }
     if (digits.length == 10 && RegExp(r'^[6-9]').hasMatch(digits)) {
-      return '+91$digits';
+      return '$indiaDialCode$digits';
     }
     if (digits.length == 12 && digits.startsWith('91')) {
       return '+$digits';
@@ -449,7 +450,7 @@ class AppState extends ChangeNotifier {
       digits = digits.substring(1);
     }
     return digits.length == 10 && RegExp(r'^[6-9]').hasMatch(digits)
-        ? '+91$digits'
+        ? '$indiaDialCode$digits'
         : null;
   }
 }

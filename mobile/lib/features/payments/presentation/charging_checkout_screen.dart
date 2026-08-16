@@ -190,8 +190,10 @@ class _ChargingCheckoutScreenState
                         labelText: 'Mobile number',
                         hintText: '9876543210',
                         prefixIcon: Icon(Icons.phone_outlined),
+                        prefixText: '${AppState.indiaDialCode} ',
+                        prefixStyle: TextStyle(fontWeight: FontWeight.w800),
                         helperText:
-                            'Enter your normal 10-digit mobile number. No country code is needed.',
+                            'India selected. Enter the 10 digits after +91.',
                       ),
                       validator: _validatePaymentPhone,
                     ),
@@ -501,7 +503,7 @@ class _ChargingCheckoutScreenState
               SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'The receipt will use the 10-digit mobile number entered for this payment. Live SMS delivery needs the production messaging service.',
+                  'The receipt will use the +91 mobile number entered for this payment. Live SMS delivery needs the production messaging service.',
                 ),
               ),
             ],
@@ -529,7 +531,8 @@ class _ChargingCheckoutScreenState
     if (!mounted) return;
 
     final paymentMethod = _paymentMethodLabel();
-    final paymentPhone = _paymentPhoneController.text.trim();
+    final paymentPhone =
+        AppState.normalizeIndianMobile(_paymentPhoneController.text)!;
     final receiptDeliveryMethod = _receiptDeliveryMethodLabel();
     final receiptDeliveryDestination =
         _receiptDeliveryOption == ReceiptDeliveryOption.email
@@ -595,7 +598,7 @@ class _ChargingCheckoutScreenState
   String? _validatePaymentPhone(String? value) {
     final phone = value?.trim() ?? '';
     if (phone.isEmpty) return 'Enter a mobile number for payment';
-    return RegExp(r'^[6-9]\d{9}$').hasMatch(phone)
+    return AppState.normalizeIndianMobile(phone) != null
         ? null
         : 'Enter a valid 10-digit Indian mobile number';
   }
@@ -997,8 +1000,10 @@ class _ChargingSessionScreenState extends ConsumerState<ChargingSessionScreen> {
 
   static String _maskPhone(String phone) {
     final digits = phone.replaceAll(RegExp(r'\D'), '');
-    if (digits.length < 4) return '••••••••••';
-    return '••••••${digits.substring(digits.length - 4)}';
+    if (digits.length < 4) {
+      return '${AppState.indiaDialCode} ••••••••••';
+    }
+    return '${AppState.indiaDialCode} ••••••${digits.substring(digits.length - 4)}';
   }
 }
 
