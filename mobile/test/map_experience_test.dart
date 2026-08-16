@@ -244,6 +244,62 @@ void main() {
     expect(find.text('Try location again'), findsOneWidget);
   });
 
+  testWidgets('Mobile location-permission UI stays compact and actionable', (
+    tester,
+  ) async {
+    _useViewport(tester, const Size(390, 844));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MapScreen(
+          locationLoader: () async =>
+              throw const MapLocationPermissionException(
+            'Location is blocked for this test.',
+            blocked: true,
+          ),
+          placeSearchService: const _FakePlaceSearchService(),
+          chargerSearchService: const _FakeChargerSearchService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('mapLocationToggle')));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(find.byKey(const Key('mapLocationControlSurface'))).height,
+      lessThanOrEqualTo(58),
+    );
+    expect(find.byKey(const Key('compactMapStatusContent')), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('mapStatusCardSurface'))).width,
+      greaterThanOrEqualTo(300),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('compactMapStatusTitle'))).height,
+      lessThanOrEqualTo(35),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('compactMapStatusMessage'))).height,
+      lessThanOrEqualTo(50),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('compactMapStatusSummary'))).height,
+      lessThanOrEqualTo(80),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('compactMapStatusActions'))).height,
+      lessThanOrEqualTo(60),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('mapStatusCardSurface'))).height,
+      lessThanOrEqualTo(170),
+    );
+    expect(find.text('Try location again'), findsOneWidget);
+    expect(find.text('Open settings'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Map area search works when device location is unavailable', (
     tester,
   ) async {
