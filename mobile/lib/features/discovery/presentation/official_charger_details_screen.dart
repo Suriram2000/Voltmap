@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../shared/models/charging_station.dart';
+import '../../payments/presentation/production_charging_checkout_screen.dart';
 import '../data/official_charger_station.dart';
 import 'station_feedback_dialog.dart';
 
@@ -306,6 +308,12 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
                     icon: const Icon(Icons.navigation_rounded),
                     label: const Text('Navigate'),
                   );
+                  final chargeButton = FilledButton.icon(
+                    key: const Key('chargeOfficialStationButton'),
+                    onPressed: () => _openSecureCheckout(context),
+                    icon: const Icon(Icons.bolt_rounded),
+                    label: const Text('Charge & pay'),
+                  );
                   if (constraints.maxWidth < 520) {
                     return Column(
                       mainAxisSize: MainAxisSize.min,
@@ -314,6 +322,8 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
                         verifyButton,
                         const SizedBox(height: 8),
                         navigateButton,
+                        const SizedBox(height: 8),
+                        chargeButton,
                       ],
                     );
                   }
@@ -322,6 +332,8 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
                       Expanded(child: verifyButton),
                       const SizedBox(width: 12),
                       Expanded(child: navigateButton),
+                      const SizedBox(width: 12),
+                      Expanded(child: chargeButton),
                     ],
                   );
                 },
@@ -351,6 +363,62 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
         'query':
             '${station.operatorName} EV charging station ${station.latitude},${station.longitude}',
       }),
+    );
+  }
+
+  Future<void> _openSecureCheckout(BuildContext context) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ProductionChargingCheckoutScreen(
+          station: _asChargingStation(),
+        ),
+      ),
+    );
+  }
+
+  ChargingStation _asChargingStation() {
+    final publishedPower = station.connectors
+        .map((connector) => connector.ratingKw)
+        .whereType<double>()
+        .fold<double>(0, (current, value) => value > current ? value : current);
+    final publishedPorts = station.connectors.fold<int>(
+      0,
+      (total, connector) => total + (connector.count ?? 0),
+    );
+    final connectorTypes = station.connectors
+        .map((connector) => connector.type.trim())
+        .where((connector) => connector.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    return ChargingStation(
+      id: station.feedbackStationId,
+      name: station.displayName,
+      network: station.operatorName,
+      address: station.address.isEmpty ? station.areaLabel : station.address,
+      city: station.city,
+      state: station.state,
+      postalCode: station.postcodes.isEmpty ? '' : station.postcodes.first,
+      distanceKm: distanceKm ?? 0,
+      powerKw: publishedPower.round(),
+      availableConnectors:
+          station.hasLiveAvailability ? station.availableConnectors! : 0,
+      totalConnectors: station.hasLiveAvailability
+          ? station.totalConnectors!
+          : publishedPorts,
+      latitude: station.latitude,
+      longitude: station.longitude,
+      connectorTypes: connectorTypes.isEmpty
+          ? const ['Connector details pending']
+          : connectorTypes,
+      pricePerKwh: station.hasLivePrice ? station.pricePerKwh! : 0,
+      rating: 0,
+      amenities: const [],
+      dataSource: station.sourceLabel,
+      dataUpdatedLabel: station.liveStatusUpdatedAt == null
+          ? 'Published inventory — not live'
+          : 'Live status updated ${station.liveStatusUpdatedAt!.toLocal()}',
+      availabilityIsLive: station.hasLiveAvailability,
+      pricingIsLive: station.hasLivePrice,
     );
   }
 

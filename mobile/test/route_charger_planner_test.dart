@@ -111,12 +111,25 @@ void main() {
     expect(find.text('Charger details'), findsOneWidget);
     expect(find.text('Published station · verify status'), findsOneWidget);
     expect(find.text('Navigate'), findsOneWidget);
+    expect(find.text('Charge & pay'), findsOneWidget);
 
     tester.view.physicalSize = const Size(390, 844);
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Verify on Google Maps'), findsOneWidget);
     expect(find.text('Navigate'), findsOneWidget);
+    expect(find.text('Charge & pay'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('chargeOfficialStationButton')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Secure charging services are not connected'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('No OTP, payment, or receipt delivery was attempted'),
+      findsOneWidget,
+    );
   });
 }
 
