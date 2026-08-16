@@ -15,6 +15,7 @@ import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../discovery/data/official_charger_search_service.dart';
 import '../../discovery/data/official_charger_station.dart';
 import '../../discovery/data/realtime_charger_search_service.dart';
+import '../../discovery/presentation/official_charger_details_screen.dart';
 import '../../discovery/presentation/station_feedback_dialog.dart';
 
 typedef MapLocationLoader = Future<MapUserLocation> Function();
@@ -54,8 +55,9 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final TextEditingController _mapSearchController = TextEditingController();
-  bool _loading = true;
-  bool _locationEnabled = true;
+  bool _loading = false;
+  bool _locationEnabled = false;
+  bool _usingDeviceLocation = false;
   bool _locationBlocked = false;
   _MapFailureType? _failureType;
   String? _error;
@@ -74,7 +76,6 @@ class _MapScreenState extends State<MapScreen> {
         (AppRuntimeConfig.hasRealtimeChargerBackend
             ? RealtimeChargerSearchService()
             : const OfficialChargerSearchService());
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadNearbyChargers());
   }
 
   @override
@@ -114,6 +115,9 @@ class _MapScreenState extends State<MapScreen> {
           _LocationAccessControl(
             enabled: _locationEnabled,
             loading: _loading,
+            usingDeviceLocation: _usingDeviceLocation,
+            permissionFailure: _failureType == _MapFailureType.permission,
+            placeLabel: _place?.primaryText,
             onChanged: _setLocationEnabled,
           ),
           Expanded(
@@ -127,18 +131,6 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildStatusBody() {
-    if (!_locationEnabled) {
-      return _buildSearchableStatus(
-        status: const _MapStatusCard(
-          key: Key('nearbyChargerLocationOff'),
-          icon: Icons.location_off_rounded,
-          title: 'Location sharing is off',
-          message:
-              'Search an area or PIN above to use the charger map without sharing your device location. Turn location sharing on whenever you want automatic nearby results.',
-        ),
-      );
-    }
-
     if (_loading) {
       return _buildSearchableStatus(
         status: const _MapStatusCard(
@@ -159,6 +151,17 @@ class _MapScreenState extends State<MapScreen> {
       permissionFailure: permission,
       blocked: _locationBlocked,
     );
+    if (!_locationEnabled && !permission) {
+      return _buildSearchableStatus(
+        status: const _MapStatusCard(
+          key: Key('nearbyChargerLocationOff'),
+          icon: Icons.location_off_rounded,
+          title: 'Use your location or search an area',
+          message:
+              'Turn on location sharing to request access and automatically show nearby chargers, or search an area or PIN above without sharing your device location.',
+        ),
+      );
+    }
     return _buildSearchableStatus(
       status: _MapStatusCard(
         key: const Key('nearbyChargerError'),
@@ -168,17 +171,25 @@ class _MapScreenState extends State<MapScreen> {
                 ? Icons.cloud_off_rounded
                 : Icons.sync_problem_rounded,
         title: permission
-            ? 'Location access is off'
+            ? 'Location permission required'
             : offline
                 ? 'You appear to be offline'
                 : 'Charger service is unavailable',
         message: permission
             ? '${_error ?? 'Location permission is unavailable.'} You can still search any area or PIN above.'
             : _error ?? 'Try again to show nearby chargers.',
-        primaryLabel: 'Try again',
-        onPrimary: _loadNearbyChargers,
-        secondaryLabel: canOpenSettings ? 'Open settings' : null,
-        onSecondary: canOpenSettings ? Geolocator.openAppSettings : null,
+        primaryLabel: permission ? 'Try location again' : 'Try again',
+        onPrimary: permission ? _requestLocationAccess : _loadNearbyChargers,
+        secondaryLabel: permission && kIsWeb
+            ? 'How to enable'
+            : canOpenSettings
+                ? 'Open settings'
+                : null,
+        onSecondary: permission && kIsWeb
+            ? _showWebLocationHelp
+            : canOpenSettings
+                ? Geolocator.openAppSettings
+                : null,
       ),
     );
   }
@@ -272,6 +283,7 @@ class _MapScreenState extends State<MapScreen> {
           onSelected: (index) => setState(() => _selectedIndex = index),
           onDirections: _openDirections,
           onReport: _reportStation,
+          onOpenDetails: _openStationDetails,
         );
 
         if (constraints.maxWidth >= 900) {
@@ -311,6 +323,7 @@ class _MapScreenState extends State<MapScreen> {
                   onSelected: (index) => setState(() => _selectedIndex = index),
                   onDirections: _openDirections,
                   onReport: _reportStation,
+                  onOpenDetails: _openStationDetails,
                   scrollController: scrollController,
                   showDragHandle: true,
                 ),
@@ -350,7 +363,7 @@ class _MapScreenState extends State<MapScreen> {
             key: const Key('mapRecenterButton'),
             heroTag: 'mapRecenter',
             tooltip: 'Center on my location',
-            onPressed: _loading ? null : _loadNearbyChargers,
+            onPressed: _loading ? null : _requestLocationAccess,
             child: _loading
                 ? const SizedBox.square(
                     dimension: 18,
@@ -400,14 +413,18 @@ class _MapScreenState extends State<MapScreen> {
         _location = location;
         _place = center;
         _result = result;
+        _locationEnabled = true;
+        _usingDeviceLocation = true;
         _selectedIndex = 0;
         _connectorFilter = 'All';
         _loading = false;
       });
-    } on _MapLocationException catch (error) {
+    } on MapLocationPermissionException catch (error) {
       if (!mounted || requestId != _requestId || !_locationEnabled) return;
       setState(() {
         _loading = false;
+        _locationEnabled = false;
+        _usingDeviceLocation = false;
         _locationBlocked = error.blocked;
         _failureType = _MapFailureType.permission;
         _error = error.message;
@@ -459,6 +476,7 @@ class _MapScreenState extends State<MapScreen> {
         );
         _place = place;
         _result = result;
+        _usingDeviceLocation = false;
         _loading = false;
       });
     } on TimeoutException {
@@ -596,19 +614,23 @@ class _MapScreenState extends State<MapScreen> {
 
     if (!enabled) {
       _requestId++;
+      final clearDeviceResult = _usingDeviceLocation;
       setState(() {
         _locationEnabled = false;
+        _usingDeviceLocation = false;
         _loading = false;
         _locationBlocked = false;
         _failureType = null;
         _error = null;
-        _location = null;
-        _place = null;
-        _result = null;
+        if (clearDeviceResult) {
+          _location = null;
+          _place = null;
+          _result = null;
+        }
         _selectedIndex = 0;
         _connectorFilter = 'All';
       });
-      _mapSearchController.clear();
+      if (clearDeviceResult) _mapSearchController.clear();
       return;
     }
 
@@ -619,9 +641,21 @@ class _MapScreenState extends State<MapScreen> {
     _loadNearbyChargers();
   }
 
+  void _requestLocationAccess() {
+    if (_loading) return;
+    if (!_locationEnabled) {
+      setState(() {
+        _locationEnabled = true;
+        _failureType = null;
+        _error = null;
+      });
+    }
+    _loadNearbyChargers();
+  }
+
   Future<MapUserLocation> _loadDeviceLocation() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
-      throw const _MapLocationException(
+      throw const MapLocationPermissionException(
         'Turn on Location Services to find chargers near you.',
       );
     }
@@ -631,7 +665,7 @@ class _MapScreenState extends State<MapScreen> {
       permission = await Geolocator.requestPermission();
     }
     if (permission == LocationPermission.deniedForever) {
-      throw const _MapLocationException(
+      throw const MapLocationPermissionException(
         kIsWeb
             ? 'Location access is blocked for VoltMapEV. Allow it in your browser site settings, then try again.'
             : 'Location access is blocked for VoltMapEV. Open settings and allow access while using the app.',
@@ -639,7 +673,7 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
     if (permission == LocationPermission.denied) {
-      throw const _MapLocationException(
+      throw const MapLocationPermissionException(
         'Location permission is needed to center the map and show nearby chargers.',
       );
     }
@@ -682,10 +716,40 @@ class _MapScreenState extends State<MapScreen> {
       sourceNames: station.sourceNames,
     );
   }
+
+  void _openStationDetails(OfficialChargerMatch match) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => OfficialChargerDetailsScreen(
+          station: match.station,
+          distanceKm: match.distanceKm,
+          distanceContext: 'from the selected map center',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showWebLocationHelp() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Allow location for VoltMapEV'),
+        content: const Text(
+          'Use the location or site-permissions icon beside the browser address bar, allow Location for voltmapev.com, then choose Try location again. You can still search an area or PIN without location access.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _MapLocationException implements Exception {
-  const _MapLocationException(this.message, {this.blocked = false});
+class MapLocationPermissionException implements Exception {
+  const MapLocationPermissionException(this.message, {this.blocked = false});
 
   final String message;
   final bool blocked;
@@ -780,21 +844,36 @@ class _LocationAccessControl extends StatelessWidget {
   const _LocationAccessControl({
     required this.enabled,
     required this.loading,
+    required this.usingDeviceLocation,
+    required this.permissionFailure,
+    required this.placeLabel,
     required this.onChanged,
   });
 
   final bool enabled;
   final bool loading;
+  final bool usingDeviceLocation;
+  final bool permissionFailure;
+  final String? placeLabel;
   final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final status = !enabled
-        ? 'Off — your location is not being used.'
+    final title = permissionFailure
+        ? 'Location permission required'
+        : enabled
+            ? 'Location sharing enabled'
+            : 'Location sharing off';
+    final status = permissionFailure
+        ? 'Off — allow access in device or browser settings, then try again.'
         : loading
-            ? 'On — finding chargers near you…'
-            : 'On — map centered near your location.';
+            ? 'Requesting access and finding chargers near you…'
+            : enabled && usingDeviceLocation
+                ? 'On — map centered near your device location.'
+                : placeLabel != null
+                    ? '${enabled ? 'On' : 'Off'} — showing chargers near $placeLabel${enabled ? '; tap the target to return to your location.' : ' without using device location.'}'
+                    : 'Off — turn on to request access, or search an area or PIN.';
 
     return ColoredBox(
       color: colors.surface,
@@ -821,7 +900,7 @@ class _LocationAccessControl extends StatelessWidget {
               ),
             ),
             title: Text(
-              enabled ? 'Location sharing enabled' : 'Location sharing off',
+              title,
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
             subtitle: Text(status),
@@ -1345,6 +1424,7 @@ class _NearbyChargerPanel extends StatelessWidget {
     required this.onSelected,
     required this.onDirections,
     required this.onReport,
+    required this.onOpenDetails,
     this.scrollController,
     this.showDragHandle = false,
   });
@@ -1356,6 +1436,7 @@ class _NearbyChargerPanel extends StatelessWidget {
   final ValueChanged<int> onSelected;
   final ValueChanged<OfficialChargerStation> onDirections;
   final ValueChanged<OfficialChargerStation> onReport;
+  final ValueChanged<OfficialChargerMatch> onOpenDetails;
   final ScrollController? scrollController;
   final bool showDragHandle;
 
@@ -1392,7 +1473,10 @@ class _NearbyChargerPanel extends StatelessWidget {
             child: _NearbyStationTile(
               match: match,
               selected: matchIndex == selectedIndex,
-              onTap: () => onSelected(matchIndex),
+              onTap: () {
+                onSelected(matchIndex);
+                onOpenDetails(match);
+              },
               onDirections: () => onDirections(match.station),
               onReport: () => onReport(match.station),
             ),
@@ -1607,6 +1691,7 @@ class _NearbyStationTile extends StatelessWidget {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  const Icon(Icons.chevron_right_rounded),
                   IconButton(
                     tooltip: 'Directions in Google Maps',
                     onPressed: onDirections,

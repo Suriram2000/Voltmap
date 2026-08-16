@@ -26,7 +26,8 @@ void main() {
     );
   });
 
-  testWidgets('Map automatically loads location and every nearby charger', (
+  testWidgets('Map requests location only after opt-in and shows every charger',
+      (
     tester,
   ) async {
     _useViewport(tester, const Size(1200, 900));
@@ -49,15 +50,22 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(locationRequests, 1);
+    expect(locationRequests, 0);
+    expect(find.byKey(const Key('nearbyChargerLocationOff')), findsOneWidget);
+    final locationToggle = find.byKey(const Key('mapLocationToggle'));
     expect(
       tester
           .widget<SwitchListTile>(
-            find.byKey(const Key('mapLocationToggle')),
+            locationToggle,
           )
           .value,
-      isTrue,
+      isFalse,
     );
+    await tester.tap(locationToggle);
+    await tester.pumpAndSettle();
+
+    expect(locationRequests, 1);
+    expect(tester.widget<SwitchListTile>(locationToggle).value, isTrue);
     expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
     expect(find.byKey(const Key('nearbyChargerSidebar')), findsOneWidget);
     expect(find.text('Location sharing enabled'), findsOneWidget);
@@ -76,6 +84,14 @@ void main() {
     expect(find.text('Charging speed: up to 60 kW'), findsOneWidget);
     expect(find.text('Charging speed: up to 22 kW'), findsOneWidget);
     expect(find.byTooltip('Directions in Google Maps'), findsNWidgets(2));
+
+    await tester.tap(find.text('Alpha Charge - Hyderabad'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('officialChargerDetailsScreen')),
+      findsOneWidget,
+    );
+    expect(find.text('Charge & pay'), findsOneWidget);
   });
 
   testWidgets('Map location can be disabled and re-enabled in place', (
@@ -98,7 +114,12 @@ void main() {
     await tester.pumpAndSettle();
 
     final toggle = find.byKey(const Key('mapLocationToggle'));
+    expect(locationRequests, 0);
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
     expect(locationRequests, 1);
+    expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
 
     await tester.tap(toggle);
     await tester.pumpAndSettle();
@@ -131,6 +152,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const Key('mapLocationToggle')));
+    await tester.pumpAndSettle();
+
     expect(
       find.byKey(const Key('nearbyChargerBottomSheet')),
       findsOneWidget,
@@ -153,6 +177,9 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('mapLocationToggle')));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('mapFilterButton')));
@@ -180,10 +207,41 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const Key('mapLocationToggle')));
+    await tester.pumpAndSettle();
+
     expect(find.byKey(const Key('nearbyChargerError')), findsOneWidget);
     expect(find.text('Charger service is unavailable'), findsOneWidget);
     expect(find.text('Try again'), findsOneWidget);
     expect(find.byKey(const Key('mapLocationSearch')), findsOneWidget);
+  });
+
+  testWidgets('Denied location resets the switch and explains permission', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MapScreen(
+          locationLoader: () async =>
+              throw const MapLocationPermissionException(
+            'Location is blocked for this test.',
+            blocked: true,
+          ),
+          placeSearchService: const _FakePlaceSearchService(),
+          chargerSearchService: const _FakeChargerSearchService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final toggle = find.byKey(const Key('mapLocationToggle'));
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+    expect(find.text('Location permission required'), findsWidgets);
+    expect(find.byKey(const Key('nearbyChargerError')), findsOneWidget);
+    expect(find.text('Try location again'), findsOneWidget);
   });
 
   testWidgets('Map area search works when device location is unavailable', (
@@ -192,7 +250,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: MapScreen(
-          locationLoader: () async => throw Exception('location unavailable'),
+          locationLoader: () async => throw Exception('must not be requested'),
           placeSearchService: const _ManualPlaceSearchService(),
           chargerSearchService: const _FakeChargerSearchService(),
         ),
@@ -200,7 +258,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('nearbyChargerError')), findsOneWidget);
+    expect(find.byKey(const Key('nearbyChargerLocationOff')), findsOneWidget);
     final searchField = find.byKey(
       const ValueKey('locationField_Search chargers by area or PIN'),
     );
@@ -213,6 +271,16 @@ void main() {
     expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
     expect(find.byKey(const Key('nearbyChargerPanel')), findsOneWidget);
     expect(find.text('Alpha Charge - Hyderabad'), findsOneWidget);
+    expect(
+      tester
+          .widget<SwitchListTile>(
+            find.byKey(const Key('mapLocationToggle')),
+          )
+          .value,
+      isFalse,
+    );
+    expect(
+        find.textContaining('without using device location'), findsOneWidget);
   });
 
   testWidgets('Map explains a valid empty nearby result', (tester) async {
@@ -225,6 +293,9 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('mapLocationToggle')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('nearbyChargerNoResults')), findsOneWidget);
