@@ -1,62 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../shared/models/station_feedback.dart';
 import '../../../shared/state/app_state.dart';
 
-Future<void> showStationFeedbackDialog({
-  required BuildContext context,
-  required String stationId,
-  required String stationName,
-  required String operatorName,
-  required String address,
-  required double latitude,
-  required double longitude,
-  List<String> sourceNames = const [],
-}) {
+enum _AppFeedbackCategory {
+  general('General feedback'),
+  appIssue('App issue'),
+  paymentReceipt('Payment or receipt issue'),
+  chargerData('Charging-station data issue'),
+  featureSuggestion('Feature suggestion');
+
+  const _AppFeedbackCategory(this.label);
+
+  final String label;
+}
+
+Future<void> showAppFeedbackDialog(BuildContext context) {
   return showDialog<void>(
     context: context,
-    builder: (_) => _StationFeedbackDialog(
-      stationId: stationId,
-      stationName: stationName,
-      operatorName: operatorName,
-      address: address,
-      latitude: latitude,
-      longitude: longitude,
-      sourceNames: sourceNames,
-    ),
+    builder: (_) => const _AppFeedbackDialog(),
   );
 }
 
-class _StationFeedbackDialog extends StatefulWidget {
-  const _StationFeedbackDialog({
-    required this.stationId,
-    required this.stationName,
-    required this.operatorName,
-    required this.address,
-    required this.latitude,
-    required this.longitude,
-    required this.sourceNames,
-  });
-
-  final String stationId;
-  final String stationName;
-  final String operatorName;
-  final String address;
-  final double latitude;
-  final double longitude;
-  final List<String> sourceNames;
+class _AppFeedbackDialog extends StatefulWidget {
+  const _AppFeedbackDialog();
 
   @override
-  State<_StationFeedbackDialog> createState() => _StationFeedbackDialogState();
+  State<_AppFeedbackDialog> createState() => _AppFeedbackDialogState();
 }
 
-class _StationFeedbackDialogState extends State<_StationFeedbackDialog> {
+class _AppFeedbackDialogState extends State<_AppFeedbackDialog> {
   final _formKey = GlobalKey<FormState>();
   final _detailsController = TextEditingController();
   final _contactController = TextEditingController();
-  StationFeedbackCategory _category =
-      StationFeedbackCategory.chargingExperience;
+  _AppFeedbackCategory _category = _AppFeedbackCategory.general;
   bool _openingEmail = false;
 
   @override
@@ -69,9 +46,9 @@ class _StationFeedbackDialogState extends State<_StationFeedbackDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      key: const Key('privateStationFeedbackDialog'),
-      icon: const Icon(Icons.private_connectivity_rounded),
-      title: const Text('Send private station feedback'),
+      key: const Key('privateAppFeedbackDialog'),
+      icon: const Icon(Icons.feedback_outlined),
+      title: const Text('Send private app feedback'),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 540),
         child: SingleChildScrollView(
@@ -81,24 +58,19 @@ class _StationFeedbackDialogState extends State<_StationFeedbackDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  widget.stationName,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 6),
                 const Text(
-                  'This report opens a private email addressed only to the VoltMapEV administrator. It is never posted to GitHub or shown publicly. Review the message, attach a photo if useful, then press Send in your email app.',
+                  'Your feedback opens in a private email addressed only to the VoltMapEV administrator. Review it, then press Send in your email app.',
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<StationFeedbackCategory>(
-                  key: const Key('stationFeedbackCategory'),
+                DropdownButtonFormField<_AppFeedbackCategory>(
+                  key: const Key('appFeedbackCategory'),
                   isExpanded: true,
                   initialValue: _category,
                   decoration: const InputDecoration(
-                    labelText: 'What is your feedback about?',
-                    prefixIcon: Icon(Icons.fact_check_outlined),
+                    labelText: 'Feedback type',
+                    prefixIcon: Icon(Icons.category_outlined),
                   ),
-                  items: StationFeedbackCategory.values
+                  items: _AppFeedbackCategory.values
                       .map(
                         (category) => DropdownMenuItem(
                           value: category,
@@ -112,14 +84,13 @@ class _StationFeedbackDialogState extends State<_StationFeedbackDialog> {
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
-                  key: const Key('stationFeedbackDetails'),
+                  key: const Key('appFeedbackDetails'),
                   controller: _detailsController,
                   minLines: 3,
-                  maxLines: 6,
+                  maxLines: 7,
                   decoration: const InputDecoration(
-                    labelText: 'Feedback and useful details',
-                    hintText:
-                        'Example: charging worked well, payment issue, or operator app shows CCS2 60 kW.',
+                    labelText: 'Your feedback',
+                    hintText: 'Tell us what happened and what would help.',
                     alignLabelWithHint: true,
                   ),
                   validator: (value) => (value?.trim().length ?? 0) < 10
@@ -128,7 +99,7 @@ class _StationFeedbackDialogState extends State<_StationFeedbackDialog> {
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
-                  key: const Key('stationFeedbackContact'),
+                  key: const Key('appFeedbackContact'),
                   controller: _contactController,
                   decoration: const InputDecoration(
                     labelText: 'Your email or phone (optional)',
@@ -146,7 +117,7 @@ class _StationFeedbackDialogState extends State<_StationFeedbackDialog> {
           child: const Text('Cancel'),
         ),
         FilledButton.icon(
-          key: const Key('sendPrivateStationFeedbackButton'),
+          key: const Key('sendPrivateAppFeedbackButton'),
           onPressed: _openingEmail ? null : _openPrivateEmail,
           icon: _openingEmail
               ? const SizedBox.square(
@@ -163,30 +134,35 @@ class _StationFeedbackDialogState extends State<_StationFeedbackDialog> {
   Future<void> _openPrivateEmail() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _openingEmail = true);
-    final now = DateTime.now();
-    final feedback = StationFeedbackDraft(
-      feedbackId: 'FB-${now.microsecondsSinceEpoch}',
-      stationId: widget.stationId,
-      stationName: widget.stationName,
-      operatorName: widget.operatorName,
-      address: widget.address,
-      latitude: widget.latitude,
-      longitude: widget.longitude,
-      category: _category,
-      details: _detailsController.text.trim(),
-      observedAt: now,
-      createdAt: now,
-      sourceNames: widget.sourceNames,
-      contact: _contactController.text.trim(),
+    final now = DateTime.now().toUtc();
+    final uri = Uri(
+      scheme: 'mailto',
+      path: AppState.adminIdentifier,
+      queryParameters: {
+        'subject': '[VoltMapEV private app feedback] ${_category.label}',
+        'body': '''
+Private VoltMapEV app feedback
+
+Category: ${_category.label}
+Submitted: ${now.toIso8601String()}
+
+Feedback:
+${_detailsController.text.trim()}
+
+Optional reporter contact: ${_contactController.text.trim().isEmpty ? 'Not provided' : _contactController.text.trim()}
+
+This message is addressed only to the VoltMapEV administrator.
+''',
+      },
     );
     var launched = false;
     try {
       launched = await launchUrl(
-        feedback.privateAdminEmailUri(AppState.adminIdentifier),
+        uri,
         mode: LaunchMode.externalApplication,
       ).timeout(const Duration(seconds: 4), onTimeout: () => false);
     } catch (_) {
-      // The user receives a clear retry message below.
+      // A clear manual-delivery fallback is shown below.
     }
     if (!mounted) return;
     setState(() => _openingEmail = false);
@@ -195,7 +171,7 @@ class _StationFeedbackDialogState extends State<_StationFeedbackDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Private admin email opened. Review it and press Send to deliver the feedback.',
+            'Private admin email opened. Review it and press Send to deliver your feedback.',
           ),
         ),
       );
@@ -203,7 +179,7 @@ class _StationFeedbackDialogState extends State<_StationFeedbackDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'No email app is available. Send the correction privately to skotla100@gmail.com.',
+            'No email app is available. Send feedback privately to skotla100@gmail.com.',
           ),
         ),
       );

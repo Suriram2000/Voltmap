@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../features/about/presentation/about_screen.dart';
+import '../../features/feedback/presentation/app_feedback_dialog.dart';
 
 class SiteFooter extends StatelessWidget {
   const SiteFooter({super.key});
@@ -30,13 +31,29 @@ class SiteFooter extends StatelessWidget {
             ),
           ),
           TextButton.icon(
-            key: const Key('footerAboutButton'),
-            onPressed: () => Navigator.of(context).push<void>(
-              MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
-            ),
-            icon: const Icon(Icons.info_outline_rounded, size: 17),
-            label: const Text('About & contact'),
+            key: const Key('footerFeedbackButton'),
+            onPressed: () => showAppFeedbackDialog(context),
+            icon: const Icon(Icons.feedback_outlined, size: 17),
+            label: const Text('Feedback'),
           ),
+          if (compact)
+            IconButton(
+              key: const Key('footerAboutButton'),
+              tooltip: 'About & contact',
+              onPressed: () => Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
+              ),
+              icon: const Icon(Icons.info_outline_rounded, size: 19),
+            )
+          else
+            TextButton.icon(
+              key: const Key('footerAboutButton'),
+              onPressed: () => Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
+              ),
+              icon: const Icon(Icons.info_outline_rounded, size: 17),
+              label: const Text('About & contact'),
+            ),
         ],
       ),
     );

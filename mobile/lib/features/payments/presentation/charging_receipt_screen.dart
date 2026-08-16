@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../shared/models/charging_receipt.dart';
 import '../../../shared/models/charging_station.dart';
 import '../../../shared/services/receipt_download_service.dart';
+import '../../discovery/presentation/station_feedback_dialog.dart';
 
 class ChargingReceiptScreen extends StatefulWidget {
   const ChargingReceiptScreen({
@@ -307,14 +308,42 @@ class _ChargingReceiptScreenState extends State<ChargingReceiptScreen> {
               heightFactor: 1,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 680),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    key: const Key('receiptDoneButton'),
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.check_rounded),
-                    label: const Text('Done'),
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.station case final station?) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          key: const Key('receiptStationFeedbackButton'),
+                          onPressed: () => showStationFeedbackDialog(
+                            context: context,
+                            stationId: station.id,
+                            stationName: station.name,
+                            operatorName: station.network,
+                            address: station.formattedAddress,
+                            latitude: station.latitude,
+                            longitude: station.longitude,
+                            sourceNames: [station.dataSource],
+                          ),
+                          icon: const Icon(Icons.rate_review_outlined),
+                          label: const Text(
+                            'Share station feedback (optional)',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        key: const Key('receiptDoneButton'),
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.check_rounded),
+                        label: const Text('Done'),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

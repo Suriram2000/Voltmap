@@ -1,4 +1,5 @@
 enum StationFeedbackCategory {
+  chargingExperience('Charging experience'),
   notWorking('Charger not working'),
   permanentlyClosed('Station closed or removed'),
   wrongLocation('Wrong map location'),
@@ -51,7 +52,7 @@ class StationFeedbackDraft {
       queryParameters: {
         'subject': '[VoltMapEV private station feedback] $stationName',
         'body': '''
-Private VoltMapEV station correction
+Private VoltMapEV station feedback
 
 Feedback ID: $feedbackId
 Category: ${category.label}
@@ -65,7 +66,7 @@ Address: $address
 Coordinates: $latitude, $longitude
 Catalog sources: ${sourceNames.isEmpty ? 'Not published' : sourceNames.join(', ')}
 
-Correction / evidence:
+Feedback / evidence:
 $details
 
 Optional reporter contact: ${contact.trim().isEmpty ? 'Not provided' : contact.trim()}
