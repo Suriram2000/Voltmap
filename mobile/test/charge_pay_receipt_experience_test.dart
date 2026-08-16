@@ -118,6 +118,18 @@ void main() {
     );
     expect(find.text('Delivered by email'), findsOneWidget);
     expect(find.text('Verified digital receipt'), findsOneWidget);
+    expect(
+      find.byKey(const Key('receiptStationFeedbackButton')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('receiptStationFeedbackButton')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('privateStationFeedbackDialog')),
+      findsOneWidget,
+    );
+    expect(find.text(station.name), findsWidgets);
+    expect(find.text('Charging experience'), findsOneWidget);
     expect(find.byKey(const Key('receiptDoneButton')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

@@ -277,13 +277,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(MapScreen, skipOffstage: false), findsOneWidget);
 
-    await tester.tap(find.text('Discover'));
+    await tester.tap(find.byKey(const Key('voltmapevHomeLogoButton')));
     await tester.pumpAndSettle();
     expect(find.byType(MapScreen, skipOffstage: false), findsOneWidget);
     expect(
       find.byType(DiscoveryScreen, skipOffstage: false),
       findsOneWidget,
     );
+    expect(find.byKey(const Key('footerFeedbackButton')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('footerFeedbackButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('privateAppFeedbackDialog')), findsOneWidget);
+    expect(find.text('Send private app feedback'), findsOneWidget);
   });
 
   testWidgets('Trip search suggests India-wide places for partial text', (
@@ -605,6 +610,12 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Profile & settings'), findsOneWidget);
+    expect(find.byKey(const Key('footerFeedbackButton')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('footerFeedbackButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('privateAppFeedbackDialog')), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
     await tester.drag(find.byType(ListView), const Offset(0, -1200));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('installVoltMapEVTile')), findsOneWidget);

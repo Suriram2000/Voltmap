@@ -120,6 +120,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                   selectedIndex: index,
                   destinations: destinations,
                   onSelected: _selectDestination,
+                  onHome: () => _selectDestination(0),
                 ),
                 Expanded(
                   child: ColoredBox(
@@ -331,12 +332,14 @@ class _DesktopNavigation extends StatelessWidget {
     required this.selectedIndex,
     required this.destinations,
     required this.onSelected,
+    required this.onHome,
   });
 
   final bool compact;
   final int selectedIndex;
   final List<_Destination> destinations;
   final ValueChanged<int> onSelected;
+  final VoidCallback onHome;
 
   @override
   Widget build(BuildContext context) {
@@ -361,7 +364,7 @@ class _DesktopNavigation extends StatelessWidget {
             crossAxisAlignment:
                 compact ? CrossAxisAlignment.center : CrossAxisAlignment.start,
             children: [
-              _BrandLockup(compact: compact),
+              _BrandLockup(compact: compact, onTap: onHome),
               const SizedBox(height: 34),
               for (var itemIndex = 0;
                   itemIndex < destinations.length;
@@ -426,9 +429,10 @@ class _DesktopNavigation extends StatelessWidget {
 }
 
 class _BrandLockup extends StatelessWidget {
-  const _BrandLockup({required this.compact});
+  const _BrandLockup({required this.compact, required this.onTap});
 
   final bool compact;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -452,36 +456,52 @@ class _BrandLockup extends StatelessWidget {
       ),
       child: const Icon(Icons.bolt_rounded, color: AppTheme.brandNavy),
     );
-    if (compact) return mark;
-    return Row(
-      children: [
-        mark,
-        const SizedBox(width: 12),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'VoltMapEV',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 21,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
+    return Semantics(
+      button: true,
+      label: 'Go to VoltMapEV home',
+      child: Tooltip(
+        message: 'Home',
+        child: InkWell(
+          key: const Key('voltmapevHomeLogoButton'),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: compact
+              ? mark
+              : Row(
+                  children: [
+                    mark,
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'VoltMapEV',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 21,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          Text(
+                            'Charge forward',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Color(0xFF9FB7AD),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              Text(
-                'Charge forward',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Color(0xFF9FB7AD), fontSize: 11),
-              ),
-            ],
-          ),
         ),
-      ],
+      ),
     );
   }
 }
