@@ -860,6 +860,7 @@ class _LocationAccessControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final compact = MediaQuery.sizeOf(context).width < 600;
     final title = permissionFailure
         ? 'Location permission required'
         : enabled
@@ -878,35 +879,100 @@ class _LocationAccessControl extends StatelessWidget {
     return ColoredBox(
       color: colors.surface,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
+        padding: EdgeInsets.fromLTRB(12, 2, 12, compact ? 5 : 10),
         child: Material(
+          key: const Key('mapLocationControlSurface'),
           color: enabled
               ? colors.primaryContainer.withValues(alpha: 0.64)
               : colors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(compact ? 14 : 18),
           clipBehavior: Clip.antiAlias,
-          child: SwitchListTile.adaptive(
-            key: const Key('mapLocationToggle'),
-            value: enabled,
-            onChanged: onChanged,
-            secondary: CircleAvatar(
-              backgroundColor:
-                  enabled ? colors.primary : colors.surfaceContainerHighest,
-              foregroundColor:
-                  enabled ? colors.onPrimary : colors.onSurfaceVariant,
-              child: Icon(
-                enabled ? Icons.near_me_rounded : Icons.location_off_rounded,
-                size: 20,
-              ),
-            ),
-            title: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-            subtitle: Text(status),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-          ),
+          child: compact
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(9, 5, 6, 5),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: enabled
+                            ? colors.primary
+                            : colors.surfaceContainerHighest,
+                        foregroundColor: enabled
+                            ? colors.onPrimary
+                            : colors.onSurfaceVariant,
+                        child: Icon(
+                          enabled
+                              ? Icons.near_me_rounded
+                              : Icons.location_off_rounded,
+                          size: 17,
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              status,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: colors.onSurfaceVariant,
+                                fontSize: 10.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch.adaptive(
+                        key: const Key('mapLocationToggle'),
+                        value: enabled,
+                        onChanged: onChanged,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ],
+                  ),
+                )
+              : SwitchListTile.adaptive(
+                  key: const Key('mapLocationToggle'),
+                  value: enabled,
+                  onChanged: onChanged,
+                  secondary: CircleAvatar(
+                    radius: 20,
+                    backgroundColor: enabled
+                        ? colors.primary
+                        : colors.surfaceContainerHighest,
+                    foregroundColor:
+                        enabled ? colors.onPrimary : colors.onSurfaceVariant,
+                    child: Icon(
+                      enabled
+                          ? Icons.near_me_rounded
+                          : Icons.location_off_rounded,
+                      size: 20,
+                    ),
+                  ),
+                  title: Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  subtitle: Text(
+                    status,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                ),
         ),
       ),
     );
@@ -937,49 +1003,171 @@ class _MapStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 600;
+    if (compact) {
+      return Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: SizedBox(
+              width: double.infinity,
+              child: Card(
+                key: const Key('mapStatusCardSurface'),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: _buildCompact(context),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
           child: Card(
+            key: const Key('mapStatusCardSurface'),
             child: Padding(
               padding: const EdgeInsets.all(28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircleAvatar(radius: 32, child: Icon(icon, size: 32)),
-                  const SizedBox(height: 18),
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(message, textAlign: TextAlign.center),
-                  if (loading) ...[
-                    const SizedBox(height: 22),
-                    const LinearProgressIndicator(value: 0.45),
-                  ],
-                  if (primaryLabel != null && onPrimary != null) ...[
-                    const SizedBox(height: 22),
-                    FilledButton.icon(
-                      onPressed: onPrimary,
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: Text(primaryLabel!),
-                    ),
-                  ],
-                  if (secondaryLabel != null && onSecondary != null)
-                    TextButton(
-                      onPressed: onSecondary,
-                      child: Text(secondaryLabel!),
-                    ),
-                ],
-              ),
+              child: _buildExpanded(context),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCompact(BuildContext context) {
+    return Column(
+      key: const Key('compactMapStatusContent'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          key: const Key('compactMapStatusSummary'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(radius: 20, child: Icon(icon, size: 20)),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    key: const Key('compactMapStatusTitle'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                        ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    message,
+                    key: const Key('compactMapStatusMessage'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (loading) ...[
+          const SizedBox(height: 10),
+          const LinearProgressIndicator(value: 0.45),
+        ],
+        if ((primaryLabel != null && onPrimary != null) ||
+            (secondaryLabel != null && onSecondary != null)) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(
+              key: const Key('compactMapStatusActions'),
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                if (secondaryLabel != null && onSecondary != null)
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      minimumSize: Size.zero,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      textStyle: const TextStyle(fontSize: 12),
+                    ),
+                    onPressed: onSecondary,
+                    child: Text(secondaryLabel!),
+                  ),
+                if (primaryLabel != null && onPrimary != null)
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      minimumSize: Size.zero,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 6,
+                      ),
+                      textStyle: const TextStyle(fontSize: 12),
+                    ),
+                    onPressed: onPrimary,
+                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                    label: Text(primaryLabel!),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildExpanded(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircleAvatar(radius: 32, child: Icon(icon, size: 32)),
+        const SizedBox(height: 18),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 8),
+        Text(message, textAlign: TextAlign.center),
+        if (loading) ...[
+          const SizedBox(height: 22),
+          const LinearProgressIndicator(value: 0.45),
+        ],
+        if (primaryLabel != null && onPrimary != null) ...[
+          const SizedBox(height: 22),
+          FilledButton.icon(
+            onPressed: onPrimary,
+            icon: const Icon(Icons.refresh_rounded),
+            label: Text(primaryLabel!),
+          ),
+        ],
+        if (secondaryLabel != null && onSecondary != null)
+          TextButton(
+            onPressed: onSecondary,
+            child: Text(secondaryLabel!),
+          ),
+      ],
     );
   }
 }
