@@ -199,7 +199,13 @@ void main() {
     expect(find.byKey(const Key('phoneVerificationScreen')), findsOneWidget);
     expect(find.text('Continue with phone'), findsOneWidget);
     expect(find.textContaining('Saved trips'), findsOneWidget);
-    expect(find.textContaining('+91'), findsNothing);
+    final otpPhoneField = tester.widget<TextField>(
+      find.descendant(
+        of: find.byKey(const Key('otpPhoneField')),
+        matching: find.byType(TextField),
+      ),
+    );
+    expect(otpPhoneField.decoration?.prefixText, '+91 ');
 
     await tester.enterText(
         find.byKey(const Key('otpPhoneField')), '9392788714');
@@ -640,6 +646,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Charge & pay'), findsOneWidget);
     expect(find.byKey(const Key('chargePayJourneyHeader')), findsOneWidget);
+    await _scrollToPaymentPhone(tester);
+    final paymentPhoneField = tester.widget<TextField>(
+      find.descendant(
+        of: find.byKey(const Key('paymentPhoneField')),
+        matching: find.byType(TextField),
+      ),
+    );
+    expect(paymentPhoneField.decoration?.prefixText, '+91 ');
     final cardOption = find.byKey(const Key('paymentMethod_card'));
     await tester.scrollUntilVisible(
       cardOption,
@@ -648,7 +662,6 @@ void main() {
     );
     expect(find.text('Credit / debit card'), findsOneWidget);
     expect(find.text('VoltMapEV wallet'), findsOneWidget);
-    expect(find.textContaining('+91'), findsNothing);
 
     await tester.enterText(
       find.byKey(const Key('paymentPhoneField')),
@@ -759,7 +772,13 @@ void main() {
     await _scrollToPaymentPhone(tester);
     expect(find.byKey(const Key('paymentPhoneField')), findsOneWidget);
     expect(find.text('Guest checkout — no signup required'), findsOneWidget);
-    expect(find.textContaining('+91'), findsNothing);
+    final paymentPhoneField = tester.widget<TextField>(
+      find.descendant(
+        of: find.byKey(const Key('paymentPhoneField')),
+        matching: find.byType(TextField),
+      ),
+    );
+    expect(paymentPhoneField.decoration?.prefixText, '+91 ');
   });
 
   testWidgets('payment phone is required and reused for SMS receipts', (
@@ -776,6 +795,13 @@ void main() {
     await tester.pumpAndSettle();
 
     await _scrollToPaymentPhone(tester);
+    final paymentPhoneField = tester.widget<TextField>(
+      find.descendant(
+        of: find.byKey(const Key('paymentPhoneField')),
+        matching: find.byType(TextField),
+      ),
+    );
+    expect(paymentPhoneField.decoration?.prefixText, '+91 ');
     await tester.enterText(find.byKey(const Key('paymentPhoneField')), '12345');
     await tester.tap(find.byKey(const Key('authorizeButton')));
     await tester.pump();
@@ -814,11 +840,10 @@ void main() {
     expect(find.byKey(const Key('receiptSmsMessage')), findsOneWidget);
     expect(
       find.textContaining(
-        'receipt will use the 10-digit mobile number entered for this payment',
+        'receipt will use the +91 mobile number entered for this payment',
       ),
       findsOneWidget,
     );
-    expect(find.textContaining('+91'), findsNothing);
   });
 
   testWidgets('card authorization rejects declined cards before charging', (
@@ -940,9 +965,8 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Mobile number'), findsOneWidget);
-    expect(find.text('••••••8714'), findsWidgets);
-    expect(find.text('SMS • ••••••8714'), findsOneWidget);
-    expect(find.textContaining('+91'), findsNothing);
+    expect(find.text('+91 ••••••8714'), findsWidgets);
+    expect(find.text('SMS • +91 ••••••8714'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 700));
     await tester.tap(find.byKey(const Key('stopChargingButton')));
     await tester.pump(const Duration(milliseconds: 800));

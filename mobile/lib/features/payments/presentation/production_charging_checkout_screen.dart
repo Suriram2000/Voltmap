@@ -196,10 +196,20 @@ class _ProductionChargingCheckoutScreenState
                             : null,
                         decoration: InputDecoration(
                           labelText: _channel == _ReceiptChannel.sms
-                              ? '10-digit mobile number'
+                              ? 'Mobile number'
                               : 'Email address',
-                          helperText:
-                              'No signup required. This destination must be verified before checkout.',
+                          prefixIcon: _channel == _ReceiptChannel.sms
+                              ? const Icon(Icons.phone_outlined)
+                              : const Icon(Icons.email_outlined),
+                          prefixText: _channel == _ReceiptChannel.sms
+                              ? '${AppState.indiaDialCode} '
+                              : null,
+                          prefixStyle: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                          ),
+                          helperText: _channel == _ReceiptChannel.sms
+                              ? 'India selected. Enter the 10 digits after +91; verification is required.'
+                              : 'No signup required. This email must be verified before checkout.',
                         ),
                       ),
                       const SizedBox(height: 12),

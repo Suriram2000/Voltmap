@@ -14,6 +14,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final identifierField = tester.widget<TextField>(
+      find.descendant(
+        of: find.byKey(const Key('authIdentifierField')),
+        matching: find.byType(TextField),
+      ),
+    );
+    expect(
+      identifierField.decoration?.labelText,
+      'Email or India mobile (+91)',
+    );
+    expect(identifierField.decoration?.helperText, contains('+91'));
+
     await tester.tap(find.text('Sign up'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('authSubmitButton')));

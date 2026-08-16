@@ -98,7 +98,7 @@ class _PhoneVerificationScreenState
           _header(Icons.phone_android_rounded, 'Continue with phone'),
           const SizedBox(height: 12),
           Text(
-            'Enter your 10-digit mobile number to use ${widget.feature}. No country code or password is needed.',
+            'India (${AppState.indiaDialCode}) is selected. Enter your 10-digit mobile number to use ${widget.feature}.',
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           const SizedBox(height: 24),
@@ -116,7 +116,9 @@ class _PhoneVerificationScreenState
               labelText: 'Mobile number',
               hintText: '9392788714',
               prefixIcon: Icon(Icons.phone_outlined),
-              helperText: 'Enter 10 digits only. Do not add a country code.',
+              prefixText: '${AppState.indiaDialCode} ',
+              prefixStyle: TextStyle(fontWeight: FontWeight.w800),
+              helperText: 'India selected. Enter the 10 digits after +91.',
             ),
             validator: (value) =>
                 AppState.normalizeIndianMobile(value ?? '') == null
@@ -327,7 +329,7 @@ class _PhoneVerificationScreenState
 
   String _maskedPhone(String phone) {
     final digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
-    return '••••••${digits.substring(digits.length - 4)}';
+    return '${AppState.indiaDialCode} ••••••${digits.substring(digits.length - 4)}';
   }
 }
 
