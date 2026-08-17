@@ -881,7 +881,7 @@ void main() {
     expect(find.byKey(const Key('receiptWhatsAppMessage')), findsOneWidget);
     expect(
       find.textContaining(
-        'receipt will use the +91 mobile number entered for this payment',
+        'receipt will use the +91 WhatsApp number entered for this payment',
       ),
       findsOneWidget,
     );
