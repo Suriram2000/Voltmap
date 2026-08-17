@@ -88,7 +88,8 @@ void main() {
     expect(selected, const [_previewStationId]);
   });
 
-  testWidgets('typed PIN shows selectable chargers before Plan route', (
+  testWidgets('typing 50079 automatically shows route data without checkboxes',
+      (
     tester,
   ) async {
     tester.view.physicalSize = const Size(900, 1200);
@@ -110,25 +111,18 @@ void main() {
 
     await tester.enterText(
       find.widgetWithText(TextField, 'Destination'),
-      '500079',
+      '50079',
     );
-    await tester.pump(const Duration(milliseconds: 150));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 200));
+    await _waitForRoutePlan(tester);
 
-    expect(find.byKey(const Key('routeStationPreview')), findsOneWidget);
-    expect(find.textContaining('Charging stations near'), findsOneWidget);
-    expect(find.textContaining('1 exact PIN match'), findsOneWidget);
-    expect(find.text(_previewStation.displayName), findsOneWidget);
-    expect(find.byKey(const Key('routeChargersHeading')), findsNothing);
-
-    final stationChoice = find.widgetWithText(
-      CheckboxListTile,
-      _previewStation.displayName,
+    expect(find.byType(CheckboxListTile), findsNothing);
+    expect(find.byKey(const Key('routeStationPreview')), findsNothing);
+    expect(find.byKey(const Key('routeChargersHeading')), findsOneWidget);
+    expect(
+      find.textContaining('Karmanghat / Vaishalinagar - 500079'),
+      findsOneWidget,
     );
-    expect(tester.widget<CheckboxListTile>(stationChoice).value, isFalse);
-    await tester.tap(stationChoice);
-    await tester.pump();
-    expect(tester.widget<CheckboxListTile>(stationChoice).value, isTrue);
     expect(find.text('Plan route'), findsOneWidget);
   });
 
@@ -159,8 +153,7 @@ void main() {
       find.widgetWithText(TextField, 'Destination'),
       '500079',
     );
-    await tester.ensureVisible(find.text('Plan route'));
-    await tester.tap(find.text('Plan route'));
+    await tester.pump(const Duration(milliseconds: 200));
     await _waitForRoutePlan(tester);
 
     expect(find.text('Chargers along this route (142)'), findsOneWidget);
