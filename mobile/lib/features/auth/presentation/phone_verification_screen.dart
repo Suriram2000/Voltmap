@@ -137,6 +137,21 @@ class _PhoneVerificationScreenState
               label: Text(_submitting ? 'Preparing code…' : 'Send OTP'),
             ),
           ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const Key('appReviewDemoButton'),
+              onPressed: _submitting ? null : _enterDemoAccount,
+              icon: const Icon(Icons.visibility_outlined),
+              label: const Text('Explore with demo account'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'For App Review and feature evaluation. No SMS, real payment, or private account data is used.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           const SizedBox(height: 14),
           _OtpDisclosure(isPreview: AppRuntimeConfig.isSandbox),
         ],
@@ -283,6 +298,16 @@ class _PhoneVerificationScreenState
             : 'OTP service is not configured yet. No SMS was sent.';
       });
     }
+  }
+
+  Future<void> _enterDemoAccount() async {
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    await ref.read(appStateProvider).enterDemoAccount();
+    if (!mounted) return;
+    Navigator.of(context).pop(true);
   }
 
   Future<void> _verifyCode(PhoneOtpChallenge challenge) async {

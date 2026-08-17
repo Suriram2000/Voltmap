@@ -16,7 +16,7 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appState = ref.watch(appStateProvider);
-    if (!appState.isRegisteredAccount) {
+    if (!appState.canUseSavedFeatures) {
       return _buildGuestProfile(context);
     }
     return Scaffold(
@@ -63,9 +63,11 @@ class ProfileScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'DRIVER PROFILE',
-                              style: TextStyle(
+                            Text(
+                              appState.isDemoAccount
+                                  ? 'DEMO DRIVER PROFILE'
+                                  : 'DRIVER PROFILE',
+                              style: const TextStyle(
                                 color: AppTheme.brandLime,
                                 fontSize: 10,
                                 letterSpacing: 1.3,

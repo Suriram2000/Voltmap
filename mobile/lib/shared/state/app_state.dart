@@ -65,6 +65,8 @@ class AppState extends ChangeNotifier {
   bool get isRegisteredAccount =>
       isSignedIn && hasLocalAccount && !isDemoAccount;
 
+  bool get canUseSavedFeatures => isRegisteredAccount || isDemoAccount;
+
   bool get isAdminAccount =>
       isRegisteredAccount && userIdentifier.toLowerCase() == adminIdentifier;
 
