@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +33,9 @@ class _PhoneVerificationScreenState
 
   late final PhoneOtpController _service;
   PhoneOtpChallenge? _challenge;
+  Timer? _resendTimer;
+  Timer? _expiryTimer;
+  DateTime _now = DateTime.now();
   bool _submitting = false;
   String? _error;
 
@@ -45,6 +50,8 @@ class _PhoneVerificationScreenState
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
+    _expiryTimer?.cancel();
     _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
@@ -137,6 +144,23 @@ class _PhoneVerificationScreenState
               label: Text(_submitting ? 'Preparing code…' : 'Send OTP'),
             ),
           ),
+          if (AppRuntimeConfig.isSandbox) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('appReviewDemoButton'),
+                onPressed: _submitting ? null : _enterDemoAccount,
+                icon: const Icon(Icons.visibility_outlined),
+                label: const Text('Explore with demo account'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Sandbox only. No SMS, real payment, or private account data is used.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
           const SizedBox(height: 14),
           _OtpDisclosure(isPreview: AppRuntimeConfig.isSandbox),
         ],
@@ -145,6 +169,9 @@ class _PhoneVerificationScreenState
   }
 
   Widget _buildOtpStep(PhoneOtpChallenge challenge) {
+    final expiresIn = _secondsUntil(challenge.expiresAt);
+    final resendIn = _secondsUntil(challenge.resendAt);
+    final expired = expiresIn == 0;
     return Form(
       key: _otpFormKey,
       child: Column(
@@ -157,6 +184,19 @@ class _PhoneVerificationScreenState
           Text(
             'Code for ${_maskedPhone(challenge.phoneNumber)}',
             style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            expired
+                ? 'This code expired. Request a new code.'
+                : 'Expires in ${_formatCountdown(expiresIn)} · ${challenge.attemptsRemaining} attempts allowed',
+            key: const Key('otpExpiryMessage'),
+            style: TextStyle(
+              color: expired
+                  ? Theme.of(context).colorScheme.error
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           if (challenge.previewCode != null) ...[
             const SizedBox(height: 16),
@@ -200,7 +240,8 @@ class _PhoneVerificationScreenState
             width: double.infinity,
             child: FilledButton.icon(
               key: const Key('verifyOtpButton'),
-              onPressed: _submitting ? null : () => _verifyCode(challenge),
+              onPressed:
+                  _submitting || expired ? null : () => _verifyCode(challenge),
               icon: _progressOr(const Icon(Icons.check_circle_outline)),
               label: Text(_submitting ? 'Verifying…' : 'Verify & continue'),
             ),
@@ -208,11 +249,29 @@ class _PhoneVerificationScreenState
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const Key('resendOtpButton'),
+              onPressed: _submitting || resendIn > 0
+                  ? null
+                  : () => _resendCode(challenge),
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(
+                resendIn > 0
+                    ? 'Resend in ${_formatCountdown(resendIn)}'
+                    : 'Resend OTP',
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          SizedBox(
+            width: double.infinity,
             child: TextButton(
               key: const Key('changeOtpPhoneButton'),
               onPressed: _submitting
                   ? null
                   : () => setState(() {
+                        _resendTimer?.cancel();
+                        _expiryTimer?.cancel();
                         _challenge = null;
                         _otpController.clear();
                         _error = null;
@@ -266,14 +325,20 @@ class _PhoneVerificationScreenState
     setState(() => _error = null);
     if (!(_phoneFormKey.currentState?.validate() ?? false)) return;
     final phone = AppState.normalizeIndianMobile(_phoneController.text)!;
+    await _requestCode(phone);
+  }
+
+  Future<void> _requestCode(String phone) async {
     setState(() => _submitting = true);
     try {
       final challenge = await _service.sendCode(phone);
       if (!mounted) return;
       setState(() {
         _challenge = challenge;
+        _otpController.clear();
         _submitting = false;
       });
+      _startCountdown();
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -285,9 +350,28 @@ class _PhoneVerificationScreenState
     }
   }
 
+  Future<void> _resendCode(PhoneOtpChallenge challenge) async {
+    if (_secondsUntil(challenge.resendAt) > 0) return;
+    await _requestCode(challenge.phoneNumber);
+  }
+
+  Future<void> _enterDemoAccount() async {
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    await ref.read(appStateProvider).enterDemoAccount();
+    if (!mounted) return;
+    Navigator.of(context).pop(true);
+  }
+
   Future<void> _verifyCode(PhoneOtpChallenge challenge) async {
     FocusScope.of(context).unfocus();
     setState(() => _error = null);
+    if (_secondsUntil(challenge.expiresAt) == 0) {
+      setState(() => _error = 'That OTP expired. Request a new code.');
+      return;
+    }
     if (!(_otpFormKey.currentState?.validate() ?? false)) return;
     setState(() => _submitting = true);
     bool verified;
@@ -325,6 +409,37 @@ class _PhoneVerificationScreenState
       return;
     }
     Navigator.of(context).pop(true);
+  }
+
+  void _startCountdown() {
+    _resendTimer?.cancel();
+    _expiryTimer?.cancel();
+    _now = DateTime.now();
+    final challenge = _challenge;
+    if (challenge == null) return;
+    final resendDelay = challenge.resendAt.difference(_now);
+    final expiryDelay = challenge.expiresAt.difference(_now);
+    if (resendDelay > Duration.zero) {
+      _resendTimer = Timer(resendDelay, _refreshOtpTiming);
+    }
+    if (expiryDelay > Duration.zero) {
+      _expiryTimer = Timer(expiryDelay, _refreshOtpTiming);
+    }
+  }
+
+  void _refreshOtpTiming() {
+    if (mounted) setState(() => _now = DateTime.now());
+  }
+
+  int _secondsUntil(DateTime target) {
+    final seconds = target.difference(_now).inSeconds;
+    return seconds < 0 ? 0 : seconds;
+  }
+
+  String _formatCountdown(int seconds) {
+    final minutes = seconds ~/ 60;
+    final remainder = seconds % 60;
+    return '$minutes:${remainder.toString().padLeft(2, '0')}';
   }
 
   String _maskedPhone(String phone) {

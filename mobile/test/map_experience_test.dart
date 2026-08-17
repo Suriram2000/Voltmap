@@ -136,34 +136,44 @@ void main() {
     expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
   });
 
-  testWidgets('iPhone Map uses a draggable nearby-charger panel', (
-    tester,
-  ) async {
-    _useViewport(tester, const Size(390, 844));
+  for (final size in const [
+    Size(320, 568),
+    Size(375, 667),
+    Size(393, 852),
+    Size(430, 932),
+    Size(440, 956),
+    Size(568, 320),
+    Size(852, 393),
+  ]) {
+    testWidgets(
+        'iPhone Map uses a synchronized charger sheet at '
+        '${size.width.toInt()}x${size.height.toInt()}', (tester) async {
+      _useViewport(tester, size);
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: MapScreen(
-          locationLoader: _fakeLocation,
-          placeSearchService: _FakePlaceSearchService(),
-          chargerSearchService: _FakeChargerSearchService(),
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: MapScreen(
+            locationLoader: _fakeLocation,
+            placeSearchService: _FakePlaceSearchService(),
+            chargerSearchService: _FakeChargerSearchService(),
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('mapLocationToggle')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('mapLocationToggle')));
+      await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const Key('nearbyChargerBottomSheet')),
-      findsOneWidget,
-    );
-    expect(find.byKey(const Key('nearbyChargerPanel')), findsOneWidget);
-    expect(find.text('Nearby Chargers'), findsOneWidget);
-    expect(find.text('2 shown'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      expect(
+        find.byKey(const Key('nearbyChargerBottomSheet')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('nearbyChargerPanel')), findsOneWidget);
+      expect(find.text('Nearby Chargers'), findsOneWidget);
+      expect(find.text('2 shown'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('Map filters markers and nearby list together', (tester) async {
     _useViewport(tester, const Size(1200, 900));
@@ -337,6 +347,43 @@ void main() {
     );
     expect(
         find.textContaining('without using device location'), findsOneWidget);
+  });
+
+  testWidgets('Map keeps location enabled while searching another PIN in place',
+      (
+    tester,
+  ) async {
+    _useViewport(tester, const Size(1200, 900));
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MapScreen(
+          locationLoader: _fakeLocation,
+          placeSearchService: _ManualPlaceSearchService(),
+          chargerSearchService: _FakeChargerSearchService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final toggle = find.byKey(const Key('mapLocationToggle'));
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+
+    final searchField = find.byKey(
+      const ValueKey('locationField_Search map'),
+    );
+    expect(searchField, findsOneWidget);
+    await tester.enterText(searchField, '500079');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+    expect(find.byKey(const Key('mapLocationSearch')), findsOneWidget);
+    expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
+    expect(find.byKey(const Key('nearbyChargerPanel')), findsOneWidget);
+    expect(find.textContaining('showing chargers near'), findsOneWidget);
+    expect(find.text('Alpha Charge - Hyderabad'), findsOneWidget);
   });
 
   testWidgets('Map explains a valid empty nearby result', (tester) async {

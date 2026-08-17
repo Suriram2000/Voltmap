@@ -8,12 +8,12 @@ Future<bool> requireRegisteredAccount(
   AppState appState,
   String feature,
 ) async {
-  if (appState.isRegisteredAccount) return true;
+  if (appState.canUseSavedFeatures) return true;
 
   final verified = await Navigator.of(context).push<bool>(
     MaterialPageRoute<bool>(
       builder: (_) => PhoneVerificationScreen(feature: feature),
     ),
   );
-  return verified == true && appState.isRegisteredAccount;
+  return verified == true && appState.canUseSavedFeatures;
 }

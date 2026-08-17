@@ -195,38 +195,53 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildSearchableStatus({required Widget status}) {
-    return Column(
-      key: const Key('mapSearchableStatus'),
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
-              child: Card(
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: LocationAutocompleteField(
-                    key: const Key('mapLocationSearch'),
-                    controller: _mapSearchController,
-                    label: 'Search chargers by area or PIN',
-                    hint: 'Try 500079, Hyderabad, or Bengaluru',
-                    prefixIcon: Icons.search_rounded,
-                    searchService: widget.placeSearchService,
-                    onSelected: (place) {
-                      if (place != null) _loadSelectedPlace(place);
-                    },
-                    onSubmitted: _submitPlaceSearch,
-                    textInputAction: TextInputAction.search,
-                  ),
-                ),
+    final search = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Card(
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: LocationAutocompleteField(
+                key: const Key('mapLocationSearch'),
+                controller: _mapSearchController,
+                label: 'Search chargers by area or PIN',
+                hint: 'Try 500079, Hyderabad, or Bengaluru',
+                prefixIcon: Icons.search_rounded,
+                searchService: widget.placeSearchService,
+                onSelected: (place) {
+                  if (place != null) _loadSelectedPlace(place);
+                },
+                onSubmitted: _submitPlaceSearch,
+                textInputAction: TextInputAction.search,
               ),
             ),
           ),
         ),
-        Expanded(child: status),
-      ],
+      ),
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxHeight < 220) {
+          return ListView(
+            key: const Key('mapSearchableStatus'),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            children: [
+              search,
+              SizedBox(height: 140, child: status),
+            ],
+          );
+        }
+        return Column(
+          key: const Key('mapSearchableStatus'),
+          children: [
+            search,
+            Expanded(child: status),
+          ],
+        );
+      },
     );
   }
 
@@ -1005,10 +1020,10 @@ class _MapStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 600;
     if (compact) {
-      return Align(
-        alignment: Alignment.topCenter,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(12),
+        child: Align(
+          alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
             child: SizedBox(

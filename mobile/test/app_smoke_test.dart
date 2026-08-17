@@ -229,6 +229,47 @@ void main() {
     expect(find.text('Trip saved on this device.'), findsOneWidget);
   });
 
+  testWidgets('App Review demo can inspect saved features without SMS', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    _useDesktopViewport(tester);
+
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: VoltMapApp(
+          chargerDataService: _FakeOfficialChargerSearchService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Trips'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Destination'),
+      'Bengaluru',
+    );
+    await tester.ensureVisible(find.text('Plan route'));
+    await tester.tap(find.text('Plan route'));
+    await _waitForRoutePlan(tester);
+    await tester.tap(find.byTooltip('Save trip'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('phoneVerificationScreen')), findsOneWidget);
+    expect(find.byKey(const Key('appReviewDemoButton')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('appReviewDemoButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('phoneVerificationScreen')), findsNothing);
+    expect(find.text('Trip saved on this device.'), findsOneWidget);
+
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+    expect(find.text('DEMO DRIVER PROFILE'), findsOneWidget);
+    expect(find.text('demo@voltmapev.com'), findsOneWidget);
+  });
+
   test('India phone normalization is limited to valid mobile numbers', () {
     expect(
       AppState.normalizeIndianMobile('93927 88714'),
@@ -1051,6 +1092,20 @@ Future<void> _waitForRoutePlan(WidgetTester tester) async {
 
 class _FakeOfficialChargerSearchService extends OfficialChargerSearchService {
   const _FakeOfficialChargerSearchService();
+
+  @override
+  Future<OfficialChargerSearchResult> search({
+    required String query,
+    PlaceSuggestion? center,
+  }) async =>
+      OfficialChargerSearchResult(
+        source: 'Test inventory',
+        sourceUrl: 'https://example.test/chargers',
+        asOf: DateTime.utc(2026, 8, 16),
+        totalStationCount: 0,
+        radiusKm: 25,
+        matches: const [],
+      );
 
   @override
   Future<List<OfficialChargerStation>> loadAllStations() async => const [];

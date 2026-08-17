@@ -49,8 +49,8 @@ jobs:
         run: >-
           flutter test test/production_charging_checkout_screen_test.dart
           --dart-define=VOLTMAP_ENV=production
-          --dart-define=VOLTMAP_PAYMENT_API_BASE_URL=https://api.voltmapev.test
-          --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=https://api.voltmapev.test
+          --dart-define=VOLTMAP_PAYMENT_API_BASE_URL=https://api.voltmapev.com
+          --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=https://api.voltmapev.com
 
       - name: Build Flutter web app
         working-directory: mobile

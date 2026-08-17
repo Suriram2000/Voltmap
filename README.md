@@ -6,7 +6,7 @@ Production site: [https://voltmapev.com](https://voltmapev.com)
 
 ## Working in the browser
 
-- Create a local Login/Signup account with a salted password hash, persisted session, and logout flow, or enter with the one-click demo account.
+- Create a local Login/Signup account with a salted password hash, persisted session, and logout flow, or use the clearly labeled one-click demo account for App Review and feature evaluation.
 - See the Government of India’s official total of 29,277 public charging stations (1 August 2025) with the complete state/UT breakdown.
 - Search the 45 detailed VoltMapEV demo locations by station, locality, city, state, connector, or PIN code, including formatted PINs such as `500-081`.
 - Search an inline BEE Government of India station list for an Indian PIN code or area without leaving Discover, with exact-PIN matches followed by all official records within the displayed radius and an optional Google Maps verification link.
@@ -16,7 +16,7 @@ Production site: [https://voltmapev.com](https://voltmapev.com)
 - Validate a sandbox UPI ID, credit/debit card, or VoltMapEV wallet before charging, meter the demo session by actual kWh, and capture the final amount only after charging stops.
 - Use a premium responsive interface with adaptive mobile navigation, lazy station-card rendering, a smooth bounded location-options list, native-feeling iOS scroll physics, and light or dark appearance.
 - Use the interactive offline map without a Google Maps key.
-- Search chargers, plan trips, open the sandbox checkout, and save a missing-station report without signing in. Favorites and saved trips use a streamlined `+91` phone-and-OTP preview instead of the old signup dialog; sending a saved station report to GitHub for public moderation remains optional.
+- Search chargers, plan trips, open the sandbox checkout, and save a missing-station report without signing in. Favorites and saved trips use a streamlined `+91` phone-and-OTP preview instead of the old signup dialog; optionally open a private email addressed to the VoltMapEV administrator for review of a saved station report.
 - Save favorites, trips, vehicle information, and preferences in browser storage.
 - Open About and Contact information from the site footer. The private admin dashboard is visible only to `skotla100@gmail.com` and reports browser-local users and demo activity without exposing credential hashes or payment credentials.
 - Switch between light and dark themes.

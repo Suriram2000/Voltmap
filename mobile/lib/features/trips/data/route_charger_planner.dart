@@ -108,8 +108,10 @@ List<RouteChargerCandidate> chargersAlongRoute({
 List<String> selectChargingStops({
   required int stopCount,
   required List<RouteChargerCandidate> routeChargers,
+  Iterable<String> preferredStationIds = const [],
 }) {
   if (stopCount <= 0 || routeChargers.isEmpty) return const [];
+  final preferred = preferredStationIds.toSet();
   final selected = <String>[];
   for (var index = 0; index < stopCount; index++) {
     final targetProgress = (index + 1) / (stopCount + 1);
@@ -117,6 +119,9 @@ List<String> selectChargingStops({
         .where((candidate) => !selected.contains(candidate.stationId))
         .toList()
       ..sort((left, right) {
+        final leftPreferred = preferred.contains(left.stationId);
+        final rightPreferred = preferred.contains(right.stationId);
+        if (leftPreferred != rightPreferred) return leftPreferred ? -1 : 1;
         final leftLive = left.station.hasLiveAvailability &&
             (left.station.availableConnectors ?? 0) > 0;
         final rightLive = right.station.hasLiveAvailability &&

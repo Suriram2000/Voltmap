@@ -174,6 +174,37 @@ void main() {
         throwsA(isA<SecureChargingApiException>()),
       );
     });
+
+    test('refund requests are idempotent and contain no banking data',
+        () async {
+      late http.Request captured;
+      final api = SecureChargingApi(
+        baseUrl: 'https://payments.voltmapev.com',
+        client: MockClient((request) async {
+          captured = request;
+          return http.Response(jsonEncode({'status': 'refund_pending'}), 202);
+        }),
+      );
+
+      await api.requestRefund(
+        paymentReference: 'pay_verified_123',
+        reason: 'charging_session_interrupted',
+        idempotencyKey: 'refund-pay_verified_123-1',
+      );
+
+      expect(
+        captured.url.path,
+        '/v1/payments/pay_verified_123/refunds',
+      );
+      expect(
+        captured.headers['idempotency-key'],
+        'refund-pay_verified_123-1',
+      );
+      expect(captured.body, contains('charging_session_interrupted'));
+      expect(captured.body, isNot(contains('card')));
+      expect(captured.body, isNot(contains('cvv')));
+      expect(captured.body, isNot(contains('upiPin')));
+    });
   });
 
   group('secure OTP contract', () {
@@ -188,6 +219,8 @@ void main() {
               'challengeId': 'otp_123',
               'destination': '9392788714',
               'expiresAt': '2026-08-14T13:00:00Z',
+              'resendAt': '2026-08-14T12:55:30Z',
+              'attemptsRemaining': 5,
             }),
             201,
           );
@@ -201,6 +234,8 @@ void main() {
       );
 
       expect(challenge.id, 'otp_123');
+      expect(challenge.attemptsRemaining, 5);
+      expect(challenge.resendAt, DateTime.utc(2026, 8, 14, 12, 55, 30));
       expect(captured.url.path, '/v1/identity/otp/challenges');
       expect(captured.body, isNot(contains('123456')));
       expect(captured.body, isNot(contains('previewCode')));
@@ -227,12 +262,53 @@ void main() {
           channel: 'email',
           destination: 'driver@example.com',
           expiresAt: DateTime.utc(2026, 8, 14, 13),
+          resendAt: DateTime.utc(2026, 8, 14, 12, 55, 30),
+          attemptsRemaining: 5,
         ),
         code: '654321',
       );
 
       expect(contact.token, 'contact_token_123');
       expect(contact.destination, 'd***@example.com');
+    });
+
+    test('preserves server rate-limit and attempt metadata', () async {
+      final api = SecureIdentityApi(
+        baseUrl: 'https://identity.voltmapev.com',
+        client: MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'code': 'otp_rate_limited',
+              'message': 'Too many OTP requests. Try again later.',
+              'retryAfterSeconds': 60,
+              'attemptsRemaining': 0,
+            }),
+            429,
+          ),
+        ),
+      );
+
+      expect(
+        () => api.sendOtp(
+          channel: 'sms',
+          destination: '9392788714',
+          purpose: 'account_sign_in',
+        ),
+        throwsA(
+          isA<SecureIdentityApiException>()
+              .having((error) => error.code, 'code', 'otp_rate_limited')
+              .having(
+                (error) => error.retryAfterSeconds,
+                'retryAfterSeconds',
+                60,
+              )
+              .having(
+                (error) => error.attemptsRemaining,
+                'attemptsRemaining',
+                0,
+              ),
+        ),
+      );
     });
   });
 }

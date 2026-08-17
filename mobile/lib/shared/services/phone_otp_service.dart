@@ -4,11 +4,17 @@ class PhoneOtpChallenge {
   const PhoneOtpChallenge({
     required this.id,
     required this.phoneNumber,
+    required this.expiresAt,
+    required this.resendAt,
+    required this.attemptsRemaining,
     this.previewCode,
   });
 
   final String id;
   final String phoneNumber;
+  final DateTime expiresAt;
+  final DateTime resendAt;
+  final int attemptsRemaining;
   final String? previewCode;
 }
 
@@ -32,9 +38,13 @@ class PreviewPhoneOtpService implements PhoneOtpController {
   @override
   Future<PhoneOtpChallenge> sendCode(String phoneNumber) async {
     await Future<void>.delayed(const Duration(milliseconds: 350));
+    final now = DateTime.now();
     return PhoneOtpChallenge(
       id: 'preview-$phoneNumber',
       phoneNumber: phoneNumber,
+      expiresAt: now.add(const Duration(minutes: 5)),
+      resendAt: now.add(const Duration(seconds: 30)),
+      attemptsRemaining: 5,
       previewCode: previewCode,
     );
   }
@@ -69,6 +79,9 @@ class ProductionPhoneOtpService implements PhoneOtpController {
     return PhoneOtpChallenge(
       id: secureChallenge.id,
       phoneNumber: secureChallenge.destination,
+      expiresAt: secureChallenge.expiresAt,
+      resendAt: secureChallenge.resendAt,
+      attemptsRemaining: secureChallenge.attemptsRemaining,
     );
   }
 

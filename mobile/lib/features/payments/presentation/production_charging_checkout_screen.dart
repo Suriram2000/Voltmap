@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -49,6 +51,9 @@ class _ProductionChargingCheckoutScreenState
   bool _busy = false;
   String? _message;
   bool _messageIsError = false;
+  Timer? _otpResendTimer;
+  Timer? _otpExpiryTimer;
+  DateTime _now = DateTime.now();
 
   double get _energyEstimate => _energyLimitKwh * widget.station.pricePerKwh;
   double get _taxEstimate => _energyEstimate * _taxRate;
@@ -64,6 +69,8 @@ class _ProductionChargingCheckoutScreenState
 
   @override
   void dispose() {
+    _otpResendTimer?.cancel();
+    _otpExpiryTimer?.cancel();
     _destinationController.dispose();
     _otpController.dispose();
     super.dispose();
@@ -232,6 +239,21 @@ class _ProductionChargingCheckoutScreenState
                           label: const Text('Send verification code'),
                         )
                       else ...[
+                        Text(
+                          _secondsUntil(_challenge!.expiresAt) == 0
+                              ? 'This code expired. Request a new code.'
+                              : 'Code expires in ${_formatCountdown(_secondsUntil(_challenge!.expiresAt))} · ${_challenge!.attemptsRemaining} attempts allowed',
+                          key: const Key('productionOtpExpiryMessage'),
+                          style: TextStyle(
+                            color: _secondsUntil(_challenge!.expiresAt) == 0
+                                ? Theme.of(context).colorScheme.error
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
                         TextField(
                           key: const Key('productionOtpCode'),
                           controller: _otpController,
@@ -248,9 +270,26 @@ class _ProductionChargingCheckoutScreenState
                         const SizedBox(height: 12),
                         FilledButton.tonalIcon(
                           key: const Key('productionVerifyOtp'),
-                          onPressed: _busy ? null : _verifyOtp,
+                          onPressed:
+                              _busy || _secondsUntil(_challenge!.expiresAt) == 0
+                                  ? null
+                                  : _verifyOtp,
                           icon: const Icon(Icons.check_circle_outline),
                           label: const Text('Verify code'),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          key: const Key('productionResendOtp'),
+                          onPressed:
+                              _busy || _secondsUntil(_challenge!.resendAt) > 0
+                                  ? null
+                                  : _sendOtp,
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: Text(
+                            _secondsUntil(_challenge!.resendAt) > 0
+                                ? 'Resend in ${_formatCountdown(_secondsUntil(_challenge!.resendAt))}'
+                                : 'Resend verification code',
+                          ),
                         ),
                       ],
                     ],
@@ -367,6 +406,8 @@ class _ProductionChargingCheckoutScreenState
   }
 
   void _changeChannel(_ReceiptChannel channel) {
+    _otpResendTimer?.cancel();
+    _otpExpiryTimer?.cancel();
     setState(() {
       _channel = channel;
       _challenge = null;
@@ -378,6 +419,8 @@ class _ProductionChargingCheckoutScreenState
   }
 
   void _resetVerification() {
+    _otpResendTimer?.cancel();
+    _otpExpiryTimer?.cancel();
     setState(() {
       _challenge = null;
       _verifiedContact = null;
@@ -401,11 +444,16 @@ class _ProductionChargingCheckoutScreenState
         _message = 'Verification code sent. It expires soon.';
         _messageIsError = false;
       });
+      _startOtpClock();
     });
   }
 
   Future<void> _verifyOtp() async {
     final challenge = _challenge;
+    if (challenge != null && _secondsUntil(challenge.expiresAt) == 0) {
+      _showMessage('That code expired. Request a new code.', true);
+      return;
+    }
     if (challenge == null || _otpController.text.trim().length != 6) {
       _showMessage('Enter the complete 6-digit verification code.', true);
       return;
@@ -524,6 +572,37 @@ class _ProductionChargingCheckoutScreenState
       _message = message;
       _messageIsError = isError;
     });
+  }
+
+  void _startOtpClock() {
+    _otpResendTimer?.cancel();
+    _otpExpiryTimer?.cancel();
+    _now = DateTime.now();
+    final challenge = _challenge;
+    if (challenge == null) return;
+    final resendDelay = challenge.resendAt.difference(_now);
+    final expiryDelay = challenge.expiresAt.difference(_now);
+    if (resendDelay > Duration.zero) {
+      _otpResendTimer = Timer(resendDelay, _refreshOtpTiming);
+    }
+    if (expiryDelay > Duration.zero) {
+      _otpExpiryTimer = Timer(expiryDelay, _refreshOtpTiming);
+    }
+  }
+
+  void _refreshOtpTiming() {
+    if (mounted) setState(() => _now = DateTime.now());
+  }
+
+  int _secondsUntil(DateTime target) {
+    final seconds = target.difference(_now).inSeconds;
+    return seconds < 0 ? 0 : seconds;
+  }
+
+  String _formatCountdown(int seconds) {
+    final minutes = seconds ~/ 60;
+    final remainder = seconds % 60;
+    return '$minutes:${remainder.toString().padLeft(2, '0')}';
   }
 }
 
