@@ -43,24 +43,26 @@ Actions secrets when specifically required.
 
 KYC documents are uploaded only inside the payment provider's secure dashboard.
 
-### 2. Firebase project for authentication and synchronized app data
+### 2. WhatsApp identity service and synchronized app data
 
-Create or select a Firebase/Google Cloud project owned by the business Google
-account, then provide the non-secret Firebase project ID.
+Deploy the server implementation in `services/identity-worker/` to an account
+owned by VoltMapEV. Complete Meta Business verification and create an approved
+WhatsApp authentication template before enabling its public endpoint.
 
-Required console configuration:
+Required identity configuration:
 
-- Upgrade to the Blaze billing plan; Firebase phone verification SMS requires a
-  linked Cloud Billing account.
-- Register Web, Android, and iOS apps.
-- Add `voltmapev.com` to Firebase Authentication authorized domains.
-- Enable Phone as an Authentication sign-in provider.
-- Set the SMS region policy to allow India and deny markets the app does not
-  serve.
-- Add controlled fictional/test phone numbers and test codes for QA.
-- Create a Firestore database and deploy deny-by-default security rules.
-- Enable App Check and appropriate bot/abuse protection before launch.
-- Set budget alerts and authentication/Cloud Functions usage alerts.
+- Verify the Meta Business portfolio and WhatsApp sender phone number.
+- Approve a one-time-password authentication template with a copy-code button.
+- Store Meta access tokens, phone-number IDs, email-provider keys, and the OTP
+  HMAC secret only in the backend secret store.
+- Create separate production challenge and rate-limit stores.
+- Route `https://api.voltmapev.com` to the identity server and restrict browser
+  origins to VoltMapEV domains.
+- Add provider fraud controls, WAF/rate limits, monitoring, and cost alerts.
+- Use test senders/numbers for staging; never return a production OTP to the
+  client or application logs.
+- If Firebase/Firestore is used for synchronized account data, deploy
+  deny-by-default rules and App Check independently of OTP delivery.
 
 Platform inputs:
 
@@ -148,11 +150,11 @@ Required public pages before live activation:
 - Contact/support page
 - Business identity and customer grievance/contact information
 
-### 5. Receipt email and SMS
+### 5. Receipt email and WhatsApp
 
 Guest checkout fields:
 
-- Delivery choice: email or SMS
+- Delivery choice: email or WhatsApp
 - Email address or `+91` mobile number
 - Explicit transactional-receipt consent
 - Optional separate marketing consent, off by default
@@ -166,21 +168,19 @@ Email setup:
 - Approve receipt, payment-failed, and refund templates.
 - Store provider API credentials only in the backend.
 
-India SMS setup:
+India WhatsApp setup:
 
-- Select an India-capable transactional SMS provider.
-- Complete TRAI Distributed Ledger Technology requirements: Principal Entity
-  registration, sender/header registration, content-template registration,
-  and consent-template/consent registration when applicable.
-- Approve separate OTP and receipt content templates.
-- Configure the provider's PE ID, header, template IDs, and API credential in
-  the backend.
+- Use the official WhatsApp Business Platform or an approved business solution
+  provider; do not automate a personal WhatsApp account.
+- Approve separate authentication and receipt/utility templates as required.
+- Configure the sender phone-number ID, template names, supported Graph API
+  version, and access token only in the backend.
 - Implement resend throttling, OTP expiry, attempt limits, fraud monitoring,
   delivery acknowledgement, retries, and permanent-failure handling.
 
-Firebase Authentication sends authentication OTPs only. It is not the service
-for sending arbitrary payment receipt messages; receipt SMS/email needs a
-separate transactional messaging provider.
+WhatsApp authentication messages may be billed by Meta or a solution provider;
+they must not be advertised as a guaranteed free service. Receipt delivery also
+requires an approved utility template or a verified transactional email sender.
 
 ### 6. Receipt contents
 
@@ -212,7 +212,7 @@ separate transactional messaging provider.
 - Guest checkout success/failure/pending/cancel/duplicate tests
 - Signature and webhook tamper tests using raw request bodies
 - Amount/currency/order mismatch rejection tests
-- Email and SMS receipt success/failure/retry tests
+- Email and WhatsApp receipt success/failure/retry tests
 - Refund and reconciliation tests
 - Admin-role negative tests
 - Accessibility, responsive layout, startup paint, performance, and offline
@@ -223,21 +223,21 @@ separate transactional messaging provider.
 
 ## Safe implementation order
 
-1. Owner completes Firebase project/billing and provides project access.
-2. Configure real Firebase phone authentication and replace the preview OTP.
+1. Owner completes Meta Business/sender verification and provider billing.
+2. Deploy the identity worker and approve the WhatsApp authentication template.
 3. Move Favorites/Trips/users to Firestore and deploy/test rules.
 4. Create backend order, webhook, receipt, and admin-role services.
 5. Complete Razorpay test-mode integration and full payment verification tests.
-6. Configure transactional email; add DLT-compliant SMS only after approval.
+6. Configure transactional email and approved WhatsApp utility templates.
 7. Complete KYC, production signing, privacy/terms/refund review, and security
    review.
-8. Enable live payment/SMS credentials only after staging evidence passes.
+8. Enable live payment/WhatsApp credentials only after staging evidence passes.
 
 ## Official references
 
 - [Firebase Flutter setup](https://firebase.google.com/docs/flutter/setup)
-- [Firebase Flutter phone authentication](https://firebase.google.com/docs/auth/flutter/phone-auth)
-- [Firebase Authentication limits](https://firebase.google.com/docs/auth/limits)
+- [WhatsApp Business Platform](https://developers.facebook.com/docs/whatsapp/)
+- [WhatsApp message templates](https://developers.facebook.com/docs/whatsapp/business-management-api/message-templates/)
 - [Firestore rule conditions](https://firebase.google.com/docs/firestore/security/rules-conditions)
 - [Razorpay account setup](https://razorpay.com/docs/payments/set-up/)
 - [Razorpay Standard Checkout](https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/integration-steps/)

@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "mobile/**"
+      - "services/identity-worker/**"
       - ".github/workflows/validate-mobile.yml"
   workflow_dispatch:
 
@@ -11,6 +12,16 @@ permissions:
   contents: read
 
 jobs:
+  identity:
+    name: Identity service tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test WhatsApp and email OTP service
+        working-directory: services/identity-worker
+        run: node --test test/*.test.mjs
+
   android:
     name: Android debug build
     runs-on: ubuntu-latest

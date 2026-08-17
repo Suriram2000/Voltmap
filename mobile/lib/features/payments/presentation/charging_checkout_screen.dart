@@ -15,7 +15,7 @@ import 'production_charging_checkout_screen.dart';
 
 enum PaymentOption { upi, card, wallet }
 
-enum ReceiptDeliveryOption { app, email, sms }
+enum ReceiptDeliveryOption { app, email, whatsapp }
 
 class ChargingCheckoutScreen extends ConsumerStatefulWidget {
   const ChargingCheckoutScreen({super.key, required this.station});
@@ -279,15 +279,15 @@ class _ChargingCheckoutScreenState
                                       ),
                             ),
                             ChoiceChip(
-                              key: const Key('receiptDelivery_sms'),
-                              avatar: const Icon(Icons.sms_outlined, size: 18),
-                              label: const Text('Phone SMS'),
+                              key: const Key('receiptDelivery_whatsapp'),
+                              avatar: const Icon(Icons.chat_outlined, size: 18),
+                              label: const Text('WhatsApp'),
                               selected: _receiptDeliveryOption ==
-                                  ReceiptDeliveryOption.sms,
+                                  ReceiptDeliveryOption.whatsapp,
                               onSelected: _processing
                                   ? null
                                   : (_) => _selectReceiptDelivery(
-                                        ReceiptDeliveryOption.sms,
+                                        ReceiptDeliveryOption.whatsapp,
                                       ),
                             ),
                           ],
@@ -487,9 +487,9 @@ class _ChargingCheckoutScreenState
           ),
           validator: _validateReceiptEmail,
         );
-      case ReceiptDeliveryOption.sms:
+      case ReceiptDeliveryOption.whatsapp:
         return Container(
-          key: const ValueKey('receiptSmsMessage'),
+          key: const ValueKey('receiptWhatsAppMessage'),
           width: double.infinity,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -499,11 +499,11 @@ class _ChargingCheckoutScreenState
           child: const Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.sms_outlined),
+              Icon(Icons.chat_outlined),
               SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'The receipt will use the +91 mobile number entered for this payment. Live SMS delivery needs the production messaging service.',
+                  'The receipt will use the +91 WhatsApp number entered for this payment. Live delivery needs the verified production WhatsApp service.',
                 ),
               ),
             ],
@@ -537,7 +537,7 @@ class _ChargingCheckoutScreenState
     final receiptDeliveryDestination =
         _receiptDeliveryOption == ReceiptDeliveryOption.email
             ? _receiptEmailController.text.trim()
-            : _receiptDeliveryOption == ReceiptDeliveryOption.sms
+            : _receiptDeliveryOption == ReceiptDeliveryOption.whatsapp
                 ? paymentPhone
                 : null;
 
@@ -583,8 +583,8 @@ class _ChargingCheckoutScreenState
         return 'In app';
       case ReceiptDeliveryOption.email:
         return 'Email';
-      case ReceiptDeliveryOption.sms:
-        return 'SMS';
+      case ReceiptDeliveryOption.whatsapp:
+        return 'WhatsApp';
     }
   }
 

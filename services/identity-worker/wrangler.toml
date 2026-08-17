@@ -1,0 +1,24 @@
+name = "voltmapev-identity"
+main = "src/worker.mjs"
+compatibility_date = "2026-08-17"
+workers_dev = false
+
+routes = [
+  { pattern = "api.voltmapev.com/v1/identity/*", zone_name = "voltmapev.com" },
+  { pattern = "api.voltmapev.com/health", zone_name = "voltmapev.com" }
+]
+
+[[kv_namespaces]]
+binding = "OTP_CHALLENGES"
+id = "REPLACE_WITH_PRODUCTION_KV_ID"
+
+[[kv_namespaces]]
+binding = "OTP_RATE_LIMITS"
+id = "REPLACE_WITH_PRODUCTION_RATE_LIMIT_KV_ID"
+
+[vars]
+ALLOWED_ORIGINS = "https://voltmapev.com,https://www.voltmapev.com,https://suriram2000.github.io"
+WHATSAPP_GRAPH_API_VERSION = "REPLACE_WITH_SUPPORTED_GRAPH_API_VERSION"
+WHATSAPP_AUTH_TEMPLATE = "voltmapev_authentication"
+WHATSAPP_TEMPLATE_LANGUAGE = "en"
+OTP_FROM_EMAIL = "VoltMapEV <verify@voltmapev.com>"

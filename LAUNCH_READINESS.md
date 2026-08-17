@@ -44,15 +44,15 @@ Never describe the inventory as complete, live, or verified unless the upstream 
 
 ## Phone verification and receipt delivery
 
-The app now uses a compact India `+91` phone flow for protected Favorites and Saved trips actions. The current GitHub Pages release is a static, local preview: it displays a clearly labeled preview OTP and does not claim that an SMS was sent. Payments remain accessible to guests.
+The app now uses a compact India `+91` WhatsApp flow for protected Favorites and Saved trips actions. The local sandbox displays a clearly labeled preview OTP and does not claim that a WhatsApp message was sent. Payments remain accessible to guests.
 
-Before enabling real phone verification or sending payment receipts by SMS/email:
+Before enabling real WhatsApp verification or sending payment receipts by WhatsApp/email:
 
-1. Select a hosted identity provider that supports India phone authentication and abuse controls.
+1. Complete Meta Business verification, approve a WhatsApp authentication template, and verify the production sender.
 2. Configure restricted production credentials outside the Flutter bundle.
 3. Enforce OTP expiry, resend throttling, attempt limits, bot protection, and audited account linking on the server/provider.
 4. Store consent and a verified receipt destination separately from payment instrument data.
-5. Send receipts from a server-side transactional SMS/email provider only after a server-verified payment event.
+5. Send receipts from a server-side transactional WhatsApp/email provider only after a server-verified payment event.
 6. Add delivery status, retry, bounce/failure handling, and a user-accessible receipt fallback.
 
 Never treat the local preview code as production verification or state that a receipt was sent without a provider delivery acknowledgement.

@@ -21,9 +21,20 @@ permissions:
   contents: read
 
 jobs:
+  identity:
+    name: Identity service tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test WhatsApp and email OTP service
+        working-directory: services/identity-worker
+        run: node --test test/*.test.mjs
+
   android:
     if: inputs.platform == 'android' || inputs.platform == 'both'
     name: Signed Android App Bundle
+    needs: identity
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -84,6 +95,7 @@ jobs:
   ios:
     if: inputs.platform == 'ios' || inputs.platform == 'both'
     name: Signed iOS App Store package
+    needs: identity
     runs-on: macos-latest
     timeout-minutes: 45
     steps:

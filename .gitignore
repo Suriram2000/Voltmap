@@ -2,6 +2,9 @@
 .flutter-plugins-dependencies
 build/
 .env
+.dev.vars
+.wrangler/
+node_modules/
 *.jks
 *.keystore
 android/key.properties

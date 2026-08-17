@@ -1,0 +1,4 @@
+OTP_HMAC_SECRET=replace-with-at-least-32-random-characters
+WHATSAPP_ACCESS_TOKEN=replace-with-meta-system-user-token
+WHATSAPP_PHONE_NUMBER_ID=replace-with-whatsapp-phone-number-id
+RESEND_API_KEY=replace-with-email-provider-key
