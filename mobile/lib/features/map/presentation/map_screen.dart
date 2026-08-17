@@ -67,6 +67,7 @@ class _MapScreenState extends State<MapScreen> {
   int _selectedIndex = 0;
   int _requestId = 0;
   String _connectorFilter = 'All';
+  Timer? _pinSearchDebounce;
   late final OfficialChargerSearchService _chargerSearchService;
 
   @override
@@ -80,6 +81,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   void dispose() {
+    _pinSearchDebounce?.cancel();
     _mapSearchController.dispose();
     super.dispose();
   }
@@ -214,7 +216,9 @@ class _MapScreenState extends State<MapScreen> {
                 onSelected: (place) {
                   if (place != null) _loadSelectedPlace(place);
                 },
-                onSubmitted: _submitPlaceSearch,
+                onChanged: _schedulePinSearch,
+                shouldHideSuggestions: _shouldHideMapPinSuggestions,
+                onSubmitted: (value) => _submitPlaceSearch(value),
                 textInputAction: TextInputAction.search,
               ),
             ),
@@ -367,7 +371,9 @@ class _MapScreenState extends State<MapScreen> {
             onSelected: (place) {
               if (place != null) _loadSelectedPlace(place);
             },
-            onSubmitted: _submitPlaceSearch,
+            onChanged: _schedulePinSearch,
+            shouldHideSuggestions: _shouldHideMapPinSuggestions,
+            onSubmitted: (value) => _submitPlaceSearch(value),
             onFilterPressed: _showConnectorFilters,
           ),
         ),
@@ -532,7 +538,8 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _submitPlaceSearch(String value) async {
-    final query = value.trim();
+    _pinSearchDebounce?.cancel();
+    final query = _expandedPinLookup(value);
     if (query.length < 2) return;
     final places = await widget.placeSearchService.searchIndia(query);
     if (!mounted) return;
@@ -544,11 +551,48 @@ class _MapScreenState extends State<MapScreen> {
       );
       return;
     }
-    final place = places.first;
+    var place = places.first;
+    for (final candidate in places) {
+      if (candidate.displayName.contains(query)) {
+        place = candidate;
+        break;
+      }
+    }
     _mapSearchController
       ..text = place.displayName
       ..selection = TextSelection.collapsed(offset: place.displayName.length);
     await _loadSelectedPlace(place);
+  }
+
+  void _schedulePinSearch(String value) {
+    _pinSearchDebounce?.cancel();
+    final entered = value.trim();
+    final query = _expandedPinLookup(entered);
+    if (!RegExp(r'^[1-9]\d{5}$').hasMatch(query)) return;
+
+    _pinSearchDebounce = Timer(const Duration(milliseconds: 220), () {
+      if (!mounted || _mapSearchController.text.trim() != entered) return;
+      _submitPlaceSearch(entered);
+    });
+  }
+
+  bool _shouldHideMapPinSuggestions(String value) =>
+      RegExp(r'^[1-9]\d{5}$').hasMatch(_expandedPinLookup(value));
+
+  String _expandedPinLookup(String value) {
+    final trimmed = value.trim();
+    if (!RegExp(r'^\d{5}$').hasMatch(trimmed)) return trimmed;
+
+    final matches = <String>{};
+    for (var index = 0; index <= trimmed.length; index++) {
+      final candidate =
+          '${trimmed.substring(0, index)}0${trimmed.substring(index)}';
+      final hasExactLocalPin = widget.placeSearchService
+          .localSuggestions(candidate)
+          .any((place) => place.displayName.contains(candidate));
+      if (hasExactLocalPin) matches.add(candidate);
+    }
+    return matches.length == 1 ? matches.single : trimmed;
   }
 
   Future<void> _showConnectorFilters() async {
@@ -778,6 +822,8 @@ class _MapSearchOverlay extends StatelessWidget {
     required this.loading,
     required this.activeFilter,
     required this.onSelected,
+    required this.onChanged,
+    required this.shouldHideSuggestions,
     required this.onSubmitted,
     required this.onFilterPressed,
   });
@@ -788,6 +834,8 @@ class _MapSearchOverlay extends StatelessWidget {
   final bool loading;
   final String activeFilter;
   final ValueChanged<PlaceSuggestion?> onSelected;
+  final ValueChanged<String> onChanged;
+  final bool Function(String value) shouldHideSuggestions;
   final ValueChanged<String> onSubmitted;
   final VoidCallback onFilterPressed;
 
@@ -818,6 +866,8 @@ class _MapSearchOverlay extends StatelessWidget {
               prefixIcon: Icons.search_rounded,
               searchService: searchService,
               onSelected: onSelected,
+              onChanged: onChanged,
+              shouldHideSuggestions: shouldHideSuggestions,
               onSubmitted: onSubmitted,
               textInputAction: TextInputAction.search,
               suffixIcon: loading
