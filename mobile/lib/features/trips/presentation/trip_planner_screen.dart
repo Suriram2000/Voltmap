@@ -94,6 +94,7 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                         hint: 'Search any city, area, address, or PIN',
                         prefixIcon: Icons.my_location,
                         searchService: widget.searchService,
+                        shouldHideSuggestions: _shouldHideRoutePinSuggestions,
                         onSelected: (place) {
                           originPlace = place;
                           if (place != null) {
@@ -113,6 +114,7 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                         hint: 'Try “ban” for Bengaluru and more places',
                         prefixIcon: Icons.flag,
                         searchService: widget.searchService,
+                        shouldHideSuggestions: _shouldHideRoutePinSuggestions,
                         onSelected: (place) {
                           destinationPlace = place;
                           if (place != null) {
@@ -459,6 +461,15 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
       if (hasExactLocalPin) matches.add(candidate);
     }
     return matches.length == 1 ? matches.single : trimmed;
+  }
+
+  bool _shouldHideRoutePinSuggestions(String input) {
+    final lookup = _expandedPinLookup(input);
+    if (lookup != input.trim()) return true;
+    if (!RegExp(r'^[1-9]\d{5}$').hasMatch(lookup)) return false;
+    return widget.searchService
+        .localSuggestions(lookup)
+        .any((place) => place.displayName.contains(lookup));
   }
 
   String _normalizePlace(String value) =>

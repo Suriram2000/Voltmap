@@ -19,6 +19,7 @@ class LocationAutocompleteField extends StatefulWidget {
     this.onSubmitted,
     this.onChanged,
     this.suffixIcon,
+    this.shouldHideSuggestions,
   });
 
   final TextEditingController controller;
@@ -31,6 +32,7 @@ class LocationAutocompleteField extends StatefulWidget {
   final ValueChanged<String>? onSubmitted;
   final ValueChanged<String>? onChanged;
   final Widget? suffixIcon;
+  final bool Function(String value)? shouldHideSuggestions;
 
   @override
   State<LocationAutocompleteField> createState() =>
@@ -200,6 +202,15 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
     widget.onSelected(null);
     _debounce?.cancel();
     final query = value.trim();
+    if (widget.shouldHideSuggestions?.call(query) ?? false) {
+      _requestId++;
+      setState(() {
+        _suggestions = const [];
+        _searching = false;
+        _showSuggestions = false;
+      });
+      return;
+    }
     if (query.length < 2) {
       setState(() {
         _suggestions = const [];

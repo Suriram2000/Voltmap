@@ -118,6 +118,7 @@ void main() {
 
     expect(find.byType(CheckboxListTile), findsNothing);
     expect(find.byKey(const Key('routeStationPreview')), findsNothing);
+    expect(find.byKey(const Key('locationSuggestions')), findsNothing);
     expect(find.byKey(const Key('routeChargersHeading')), findsOneWidget);
     expect(
       find.textContaining('Karmanghat / Vaishalinagar - 500079'),
