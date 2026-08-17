@@ -100,7 +100,7 @@ class _ReceiptCardState extends State<_ReceiptCard> {
     setState(() => _retrying = true);
     try {
       final method = receipt.deliveryMethod.toLowerCase();
-      final channel = method.contains('email') ? 'email' : 'sms';
+      final channel = method.contains('email') ? 'email' : 'whatsapp';
       await SecureChargingApi().retryReceiptDelivery(
         receiptId: receipt.id,
         channel: channel,

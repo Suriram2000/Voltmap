@@ -52,8 +52,9 @@ class VerifiedContact {
   final String destination;
 }
 
-/// Calls the VoltMapEV identity server. SMS and email provider credentials,
-/// OTP values, rate limits and abuse controls live only behind this API.
+/// Calls the VoltMapEV identity server. WhatsApp and email provider
+/// credentials, OTP values, rate limits and abuse controls live only behind
+/// this API.
 class SecureIdentityApi {
   SecureIdentityApi({http.Client? client, String? baseUrl})
       : _client = client ?? http.Client(),

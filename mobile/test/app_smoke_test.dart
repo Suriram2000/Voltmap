@@ -197,7 +197,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('phoneVerificationScreen')), findsOneWidget);
-    expect(find.text('Continue with phone'), findsOneWidget);
+    expect(find.text('Continue with WhatsApp'), findsOneWidget);
     expect(find.textContaining('Saved trips'), findsOneWidget);
     final otpPhoneField = tester.widget<TextField>(
       find.descendant(
@@ -229,7 +229,7 @@ void main() {
     expect(find.text('Trip saved on this device.'), findsOneWidget);
   });
 
-  testWidgets('App Review demo can inspect saved features without SMS', (
+  testWidgets('App Review demo can inspect saved features without WhatsApp', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -822,7 +822,7 @@ void main() {
     expect(paymentPhoneField.decoration?.prefixText, '+91 ');
   });
 
-  testWidgets('payment phone is required and reused for SMS receipts', (
+  testWidgets('payment phone is required and reused for WhatsApp receipts', (
     tester,
   ) async {
     _useDesktopViewport(tester);
@@ -873,12 +873,12 @@ void main() {
     await tester.pump();
     expect(find.text('Enter a valid email address'), findsOneWidget);
 
-    final smsOption = find.byKey(const Key('receiptDelivery_sms'));
-    await tester.ensureVisible(smsOption);
-    await tester.tap(smsOption);
+    final whatsappOption = find.byKey(const Key('receiptDelivery_whatsapp'));
+    await tester.ensureVisible(whatsappOption);
+    await tester.tap(whatsappOption);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('receiptPhoneField')), findsNothing);
-    expect(find.byKey(const Key('receiptSmsMessage')), findsOneWidget);
+    expect(find.byKey(const Key('receiptWhatsAppMessage')), findsOneWidget);
     expect(
       find.textContaining(
         'receipt will use the +91 mobile number entered for this payment',
@@ -988,13 +988,13 @@ void main() {
     await tester.tap(walletOption);
     await tester.pumpAndSettle();
     expect(find.textContaining('Sandbox balance is unlimited'), findsOneWidget);
-    final smsOption = find.byKey(const Key('receiptDelivery_sms'));
+    final whatsappOption = find.byKey(const Key('receiptDelivery_whatsapp'));
     await tester.scrollUntilVisible(
-      smsOption,
+      whatsappOption,
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(smsOption);
+    await tester.tap(whatsappOption);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('authorizeButton')));
     await tester.pump(const Duration(milliseconds: 800));
@@ -1007,7 +1007,7 @@ void main() {
     );
     expect(find.text('Mobile number'), findsOneWidget);
     expect(find.text('+91 ••••••8714'), findsWidgets);
-    expect(find.text('SMS • +91 ••••••8714'), findsOneWidget);
+    expect(find.text('WhatsApp • +91 ••••••8714'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 700));
     await tester.tap(find.byKey(const Key('stopChargingButton')));
     await tester.pump(const Duration(milliseconds: 800));

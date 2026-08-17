@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:voltmap/shared/models/charging_receipt.dart';
 import 'package:voltmap/shared/services/charging_billing.dart';
+import 'package:voltmap/shared/services/phone_otp_service.dart';
 import 'package:voltmap/shared/services/secure_charging_api.dart';
 import 'package:voltmap/shared/services/secure_identity_api.dart';
 
@@ -61,7 +62,7 @@ void main() {
       customerEmail: 'd•••@example.com',
       phoneVerified: true,
       emailVerified: true,
-      deliveryMethod: 'Email and SMS',
+      deliveryMethod: 'Email and WhatsApp',
       deliveryDestination: 'verified contacts',
       deliveryStatus: 'Delivered',
       deliveryAttempts: [
@@ -208,6 +209,36 @@ void main() {
   });
 
   group('secure OTP contract', () {
+    test('production phone verification selects WhatsApp, never legacy SMS',
+        () async {
+      late http.Request captured;
+      final service = ProductionPhoneOtpService(
+        api: SecureIdentityApi(
+          baseUrl: 'https://identity.voltmapev.test',
+          client: MockClient((request) async {
+            captured = request;
+            return http.Response(
+              jsonEncode({
+                'challengeId': 'otp_whatsapp_123',
+                'destination': '9392788714',
+                'expiresAt': '2026-08-14T13:00:00Z',
+                'resendAt': '2026-08-14T12:55:30Z',
+                'attemptsRemaining': 5,
+              }),
+              201,
+            );
+          }),
+        ),
+      );
+
+      await service.sendCode('9392788714');
+
+      final requestBody = jsonDecode(captured.body) as Map<String, dynamic>;
+      expect(requestBody['channel'], 'whatsapp');
+      expect(captured.body, isNot(contains('sms')));
+      expect(captured.body, isNot(contains('123456')));
+    });
+
     test('sends only the destination and receives no preview OTP', () async {
       late http.Request captured;
       final api = SecureIdentityApi(
@@ -228,7 +259,7 @@ void main() {
       );
 
       final challenge = await api.sendOtp(
-        channel: 'sms',
+        channel: 'whatsapp',
         destination: '9392788714',
         purpose: 'account_sign_in',
       );
@@ -237,6 +268,7 @@ void main() {
       expect(challenge.attemptsRemaining, 5);
       expect(challenge.resendAt, DateTime.utc(2026, 8, 14, 12, 55, 30));
       expect(captured.url.path, '/v1/identity/otp/challenges');
+      expect(jsonDecode(captured.body)['channel'], 'whatsapp');
       expect(captured.body, isNot(contains('123456')));
       expect(captured.body, isNot(contains('previewCode')));
     });
@@ -290,7 +322,7 @@ void main() {
 
       expect(
         () => api.sendOtp(
-          channel: 'sms',
+          channel: 'whatsapp',
           destination: '9392788714',
           purpose: 'account_sign_in',
         ),

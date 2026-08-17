@@ -12,7 +12,7 @@ import '../../../shared/services/secure_identity_api.dart';
 import '../../../shared/state/app_state.dart';
 import 'charging_receipt_screen.dart';
 
-enum _ReceiptChannel { sms, email }
+enum _ReceiptChannel { whatsapp, email }
 
 class ProductionChargingCheckoutScreen extends ConsumerStatefulWidget {
   const ProductionChargingCheckoutScreen({
@@ -43,7 +43,7 @@ class _ProductionChargingCheckoutScreenState
   late final SecureIdentityApi _identityApi;
   late final SecureChargingApi _chargingApi;
   late String _connector;
-  _ReceiptChannel _channel = _ReceiptChannel.sms;
+  _ReceiptChannel _channel = _ReceiptChannel.whatsapp;
   double _energyLimitKwh = 20;
   ContactOtpChallenge? _challenge;
   VerifiedContact? _verifiedContact;
@@ -172,9 +172,9 @@ class _ProductionChargingCheckoutScreenState
                       SegmentedButton<_ReceiptChannel>(
                         segments: const [
                           ButtonSegment(
-                            value: _ReceiptChannel.sms,
-                            icon: Icon(Icons.sms_outlined),
-                            label: Text('SMS'),
+                            value: _ReceiptChannel.whatsapp,
+                            icon: Icon(Icons.chat_outlined),
+                            label: Text('WhatsApp'),
                           ),
                           ButtonSegment(
                             value: _ReceiptChannel.email,
@@ -192,30 +192,30 @@ class _ProductionChargingCheckoutScreenState
                         key: const Key('productionReceiptDestination'),
                         controller: _destinationController,
                         enabled: !_busy && _verifiedContact == null,
-                        keyboardType: _channel == _ReceiptChannel.sms
+                        keyboardType: _channel == _ReceiptChannel.whatsapp
                             ? TextInputType.phone
                             : TextInputType.emailAddress,
-                        inputFormatters: _channel == _ReceiptChannel.sms
+                        inputFormatters: _channel == _ReceiptChannel.whatsapp
                             ? [
                                 FilteringTextInputFormatter.digitsOnly,
                                 LengthLimitingTextInputFormatter(10),
                               ]
                             : null,
                         decoration: InputDecoration(
-                          labelText: _channel == _ReceiptChannel.sms
+                          labelText: _channel == _ReceiptChannel.whatsapp
                               ? 'Mobile number'
                               : 'Email address',
-                          prefixIcon: _channel == _ReceiptChannel.sms
-                              ? const Icon(Icons.phone_outlined)
+                          prefixIcon: _channel == _ReceiptChannel.whatsapp
+                              ? const Icon(Icons.chat_outlined)
                               : const Icon(Icons.email_outlined),
-                          prefixText: _channel == _ReceiptChannel.sms
+                          prefixText: _channel == _ReceiptChannel.whatsapp
                               ? '${AppState.indiaDialCode} '
                               : null,
                           prefixStyle: const TextStyle(
                             fontWeight: FontWeight.w800,
                           ),
-                          helperText: _channel == _ReceiptChannel.sms
-                              ? 'India selected. Enter the 10 digits after +91; verification is required.'
+                          helperText: _channel == _ReceiptChannel.whatsapp
+                              ? 'India selected. Enter the WhatsApp number after +91; verification is required.'
                               : 'No signup required. This email must be verified before checkout.',
                         ),
                       ),
@@ -536,7 +536,7 @@ class _ProductionChargingCheckoutScreenState
 
   String? _normalizedDestination() {
     final raw = _destinationController.text.trim();
-    if (_channel == _ReceiptChannel.sms) {
+    if (_channel == _ReceiptChannel.whatsapp) {
       final phone = AppState.normalizeIndianMobile(raw);
       if (phone == null) {
         _showMessage('Enter a valid 10-digit India mobile number.', true);

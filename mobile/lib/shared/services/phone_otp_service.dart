@@ -27,9 +27,9 @@ abstract interface class PhoneOtpController {
   });
 }
 
-/// Local preview used until a hosted SMS authentication provider is connected.
-/// It never claims to send a real text message and must not be treated as
-/// production identity verification.
+/// Local preview used until a hosted WhatsApp authentication provider is
+/// connected. It never claims to send a real message and must not be treated
+/// as production identity verification.
 class PreviewPhoneOtpService implements PhoneOtpController {
   const PreviewPhoneOtpService();
 
@@ -60,7 +60,7 @@ class PreviewPhoneOtpService implements PhoneOtpController {
   }
 }
 
-/// Production adapter for real, server-issued India phone OTP challenges.
+/// Production adapter for real, server-issued WhatsApp OTP challenges.
 class ProductionPhoneOtpService implements PhoneOtpController {
   ProductionPhoneOtpService({SecureIdentityApi? api})
       : _api = api ?? SecureIdentityApi();
@@ -71,7 +71,7 @@ class ProductionPhoneOtpService implements PhoneOtpController {
   @override
   Future<PhoneOtpChallenge> sendCode(String phoneNumber) async {
     final secureChallenge = await _api.sendOtp(
-      channel: 'sms',
+      channel: 'whatsapp',
       destination: phoneNumber,
       purpose: 'account_sign_in',
     );

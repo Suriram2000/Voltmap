@@ -25,9 +25,9 @@ deduplication rules, ingestion contract, and private station-correction flow.
 
 ## Required server workflow
 
-1. Verify the user-controlled email address and Indian mobile number with
+1. Verify the user-controlled email address or Indian WhatsApp number with
    expiring, rate-limited OTP challenges. Return an opaque contact token; never
-   return the OTP.
+   return or log the OTP.
 2. `POST /v1/charging-sessions/authorize` accepts the station, charger,
    user-approved energy limit, disclosed rate, tax rate, service fee, verified
    contact token, and an `Idempotency-Key` header.
@@ -83,7 +83,7 @@ availability, connector status, price, and charger ID.
 Block release unless analysis, unit/widget tests, coverage, and a production web
 build pass. Test location permission states, empty and failed map services,
 marker/list synchronization, navigation, live-operator freshness, signed meter
-readings, rounding, success/failure/cancel/duplicate payment webhooks, email/SMS
+readings, rounding, success/failure/cancel/duplicate payment webhooks, email/WhatsApp
 delivery and retry, refunds, interrupted sessions, offline/slow/server-error
 states, and supported iOS/Android versions on physical devices.
 

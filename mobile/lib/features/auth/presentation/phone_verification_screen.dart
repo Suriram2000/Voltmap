@@ -102,7 +102,7 @@ class _PhoneVerificationScreenState
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _header(Icons.phone_android_rounded, 'Continue with phone'),
+          _header(Icons.chat_outlined, 'Continue with WhatsApp'),
           const SizedBox(height: 12),
           Text(
             'India (${AppState.indiaDialCode}) is selected. Enter your 10-digit mobile number to use ${widget.feature}.',
@@ -140,8 +140,10 @@ class _PhoneVerificationScreenState
             child: FilledButton.icon(
               key: const Key('sendOtpButton'),
               onPressed: _submitting ? null : _sendCode,
-              icon: _progressOr(const Icon(Icons.sms_outlined)),
-              label: Text(_submitting ? 'Preparing code…' : 'Send OTP'),
+              icon: _progressOr(const Icon(Icons.chat_outlined)),
+              label: Text(
+                _submitting ? 'Preparing code…' : 'Send OTP on WhatsApp',
+              ),
             ),
           ),
           if (AppRuntimeConfig.isSandbox) ...[
@@ -157,7 +159,7 @@ class _PhoneVerificationScreenState
             ),
             const SizedBox(height: 8),
             Text(
-              'Sandbox only. No SMS, real payment, or private account data is used.',
+              'Sandbox only. No WhatsApp message, real payment, or private account data is used.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -209,7 +211,7 @@ class _PhoneVerificationScreenState
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Text(
-                'Preview code: ${challenge.previewCode}. SMS delivery is not connected in this static preview.',
+                'Preview code: ${challenge.previewCode}. No WhatsApp message is sent in this static preview.',
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
@@ -345,7 +347,7 @@ class _PhoneVerificationScreenState
         _submitting = false;
         _error = AppRuntimeConfig.hasSecureIdentityBackend
             ? error.toString()
-            : 'OTP service is not configured yet. No SMS was sent.';
+            : 'WhatsApp OTP is not configured yet. No message was sent.';
       });
     }
   }
@@ -467,10 +469,10 @@ class _OtpDisclosure extends StatelessWidget {
         Expanded(
           child: Text(
             isPreview
-                ? 'Sandbox preview: the code is shown on screen and no SMS is sent.'
+                ? 'Sandbox preview: the code is shown on screen and no WhatsApp message is sent.'
                 : AppRuntimeConfig.hasSecureIdentityBackend
-                    ? 'A time-limited verification code will be sent by the secure VoltMapEV identity service.'
-                    : 'Real SMS verification is unavailable until the production identity service is configured.',
+                    ? 'A time-limited code will be sent by the verified VoltMapEV WhatsApp Business account. Standard WhatsApp data use may apply.'
+                    : 'WhatsApp verification is unavailable until the production identity service is configured.',
           ),
         ),
       ],

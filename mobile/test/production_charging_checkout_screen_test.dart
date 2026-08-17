@@ -41,6 +41,7 @@ void main() {
             200,
           );
         }
+        expect(jsonDecode(request.body)['channel'], 'whatsapp');
         return http.Response(
           jsonEncode({
             'challengeId': 'otp_123',
@@ -99,6 +100,7 @@ void main() {
     await tester.pumpAndSettle();
     final destinationInput = tester.widget<TextField>(destinationField);
     expect(destinationInput.decoration?.prefixText, '+91 ');
+    expect(find.text('WhatsApp'), findsOneWidget);
     await tester.enterText(
       destinationField,
       '9392788714',
@@ -176,12 +178,12 @@ final _receipt = ChargingReceipt(
   environment: 'production',
   createdAt: DateTime.utc(2026, 8, 15, 12),
   phoneVerified: true,
-  deliveryMethod: 'SMS',
+  deliveryMethod: 'WhatsApp',
   deliveryDestination: '******8714',
   deliveryStatus: 'Delivered',
   deliveryAttempts: [
     ReceiptDeliveryAttempt(
-      channel: 'sms',
+      channel: 'whatsapp',
       destination: '******8714',
       status: 'delivered',
       attemptedAt: DateTime.utc(2026, 8, 15, 12, 1),
