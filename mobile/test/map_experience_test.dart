@@ -237,7 +237,7 @@ void main() {
             'Location is blocked for this test.',
             blocked: true,
           ),
-          placeSearchService: const _FakePlaceSearchService(),
+          placeSearchService: const _ManualPlaceSearchService(),
           chargerSearchService: const _FakeChargerSearchService(),
         ),
       ),
@@ -252,6 +252,18 @@ void main() {
     expect(find.text('Location permission required'), findsWidgets);
     expect(find.byKey(const Key('nearbyChargerError')), findsOneWidget);
     expect(find.text('Try location again'), findsOneWidget);
+
+    final searchField = find.byKey(
+      const ValueKey('locationField_Search chargers by area or PIN'),
+    );
+    await tester.enterText(searchField, '500079');
+    await tester.pump(const Duration(milliseconds: 240));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('locationSuggestions')), findsNothing);
+    expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
+    expect(find.byKey(const Key('nearbyChargerPanel')), findsOneWidget);
+    expect(find.text('Alpha Charge - Hyderabad'), findsOneWidget);
   });
 
   testWidgets('Mobile location-permission UI stays compact and actionable', (
@@ -310,7 +322,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Map area search works when device location is unavailable', (
+  testWidgets('Map PIN search auto-loads when device location is unavailable', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -331,7 +343,7 @@ void main() {
     expect(searchField, findsOneWidget);
 
     await tester.enterText(searchField, '500079');
-    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pump(const Duration(milliseconds: 240));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
