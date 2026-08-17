@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -40,6 +41,7 @@ class SecureChargingApi {
 
   final http.Client _client;
   final Uri _baseUri;
+  static const _requestTimeout = Duration(seconds: 20);
 
   Future<ChargingAuthorization> authorizeSession({
     required String stationId,
@@ -51,18 +53,20 @@ class SecureChargingApi {
     required String verifiedContactToken,
     required String idempotencyKey,
   }) async {
-    final response = await _client.post(
-      _endpoint('/v1/charging-sessions/authorize'),
-      headers: _headers(idempotencyKey),
-      body: jsonEncode({
-        'stationId': stationId,
-        'chargerId': chargerId,
-        'approvedEnergyLimitKwh': approvedEnergyLimitKwh,
-        'disclosedRatePerKwh': disclosedRatePerKwh,
-        'disclosedTaxRate': disclosedTaxRate,
-        'disclosedServiceFee': disclosedServiceFee,
-        'verifiedContactToken': verifiedContactToken,
-      }),
+    final response = await _request(
+      _client.post(
+        _endpoint('/v1/charging-sessions/authorize'),
+        headers: _headers(idempotencyKey),
+        body: jsonEncode({
+          'stationId': stationId,
+          'chargerId': chargerId,
+          'approvedEnergyLimitKwh': approvedEnergyLimitKwh,
+          'disclosedRatePerKwh': disclosedRatePerKwh,
+          'disclosedTaxRate': disclosedTaxRate,
+          'disclosedServiceFee': disclosedServiceFee,
+          'verifiedContactToken': verifiedContactToken,
+        }),
+      ),
     );
     final body = _validatedBody(response);
     final checkoutUrl = Uri.tryParse(body['checkoutUrl'] as String? ?? '');
@@ -83,9 +87,11 @@ class SecureChargingApi {
   /// Returns a receipt only after the server confirms the final meter reading
   /// and a provider-signed webhook. A client redirect is never proof of payment.
   Future<ChargingReceipt?> verifiedReceipt(String sessionId) async {
-    final response = await _client.get(
-      _endpoint('/v1/charging-sessions/$sessionId/receipt'),
-      headers: const {'accept': 'application/json'},
+    final response = await _request(
+      _client.get(
+        _endpoint('/v1/charging-sessions/$sessionId/receipt'),
+        headers: const {'accept': 'application/json'},
+      ),
     );
     if (response.statusCode == 202 || response.statusCode == 404) return null;
     final body = _validatedBody(response);
@@ -103,10 +109,12 @@ class SecureChargingApi {
     required String receiptId,
     required String channel,
   }) async {
-    final response = await _client.post(
-      _endpoint('/v1/receipts/$receiptId/deliveries/retry'),
-      headers: _headers('receipt-retry-$receiptId-$channel'),
-      body: jsonEncode({'channel': channel}),
+    final response = await _request(
+      _client.post(
+        _endpoint('/v1/receipts/$receiptId/deliveries/retry'),
+        headers: _headers('receipt-retry-$receiptId-$channel'),
+        body: jsonEncode({'channel': channel}),
+      ),
     );
     _validatedBody(response);
   }
@@ -116,10 +124,12 @@ class SecureChargingApi {
     required String reason,
     required String idempotencyKey,
   }) async {
-    final response = await _client.post(
-      _endpoint('/v1/payments/$paymentReference/refunds'),
-      headers: _headers(idempotencyKey),
-      body: jsonEncode({'reason': reason}),
+    final response = await _request(
+      _client.post(
+        _endpoint('/v1/payments/$paymentReference/refunds'),
+        headers: _headers(idempotencyKey),
+        body: jsonEncode({'reason': reason}),
+      ),
     );
     _validatedBody(response);
   }
@@ -132,6 +142,22 @@ class SecureChargingApi {
       );
     }
     return _baseUri.resolve(path);
+  }
+
+  Future<http.Response> _request(Future<http.Response> request) async {
+    try {
+      return await request.timeout(_requestTimeout);
+    } on TimeoutException {
+      throw const SecureChargingApiException(
+        'The secure payment service timed out. No success was recorded.',
+        code: 'payment_timeout',
+      );
+    } on http.ClientException {
+      throw const SecureChargingApiException(
+        'The secure payment service is unavailable. No charge was attempted.',
+        code: 'payment_unavailable',
+      );
+    }
   }
 
   static Map<String, String> _headers(String idempotencyKey) => {

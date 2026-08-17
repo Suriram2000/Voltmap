@@ -45,7 +45,9 @@ void main() {
           jsonEncode({
             'challengeId': 'otp_123',
             'destination': '9392788714',
-            'expiresAt': '2026-08-15T13:00:00Z',
+            'expiresAt': '2099-08-15T13:00:00Z',
+            'resendAt': '2099-08-15T12:55:30Z',
+            'attemptsRemaining': 5,
           }),
           201,
         );

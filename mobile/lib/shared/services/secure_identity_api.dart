@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -5,10 +6,17 @@ import 'package:http/http.dart' as http;
 import '../../core/config/app_environment.dart';
 
 class SecureIdentityApiException implements Exception {
-  const SecureIdentityApiException(this.message, {this.code});
+  const SecureIdentityApiException(
+    this.message, {
+    this.code,
+    this.retryAfterSeconds,
+    this.attemptsRemaining,
+  });
 
   final String message;
   final String? code;
+  final int? retryAfterSeconds;
+  final int? attemptsRemaining;
 
   @override
   String toString() => message;
@@ -20,12 +28,16 @@ class ContactOtpChallenge {
     required this.channel,
     required this.destination,
     required this.expiresAt,
+    required this.resendAt,
+    required this.attemptsRemaining,
   });
 
   final String id;
   final String channel;
   final String destination;
   final DateTime expiresAt;
+  final DateTime resendAt;
+  final int attemptsRemaining;
 }
 
 class VerifiedContact {
@@ -49,23 +61,26 @@ class SecureIdentityApi {
 
   final http.Client _client;
   final Uri _baseUri;
+  static const _requestTimeout = Duration(seconds: 15);
 
   Future<ContactOtpChallenge> sendOtp({
     required String channel,
     required String destination,
     required String purpose,
   }) async {
-    final response = await _client.post(
-      _endpoint('/v1/identity/otp/challenges'),
-      headers: const {
-        'accept': 'application/json',
-        'content-type': 'application/json',
-      },
-      body: jsonEncode({
-        'channel': channel,
-        'destination': destination,
-        'purpose': purpose,
-      }),
+    final response = await _request(
+      _client.post(
+        _endpoint('/v1/identity/otp/challenges'),
+        headers: const {
+          'accept': 'application/json',
+          'content-type': 'application/json',
+        },
+        body: jsonEncode({
+          'channel': channel,
+          'destination': destination,
+          'purpose': purpose,
+        }),
+      ),
     );
     final body = _validatedBody(response);
     return ContactOtpChallenge(
@@ -73,6 +88,8 @@ class SecureIdentityApi {
       channel: channel,
       destination: _requiredString(body, 'destination'),
       expiresAt: DateTime.parse(_requiredString(body, 'expiresAt')),
+      resendAt: DateTime.parse(_requiredString(body, 'resendAt')),
+      attemptsRemaining: _requiredInt(body, 'attemptsRemaining'),
     );
   }
 
@@ -80,13 +97,15 @@ class SecureIdentityApi {
     required ContactOtpChallenge challenge,
     required String code,
   }) async {
-    final response = await _client.post(
-      _endpoint('/v1/identity/otp/challenges/${challenge.id}/verify'),
-      headers: const {
-        'accept': 'application/json',
-        'content-type': 'application/json',
-      },
-      body: jsonEncode({'code': code}),
+    final response = await _request(
+      _client.post(
+        _endpoint('/v1/identity/otp/challenges/${challenge.id}/verify'),
+        headers: const {
+          'accept': 'application/json',
+          'content-type': 'application/json',
+        },
+        body: jsonEncode({'code': code}),
+      ),
     );
     final body = _validatedBody(response);
     if (body['verified'] != true) {
@@ -126,6 +145,8 @@ class SecureIdentityApi {
       throw SecureIdentityApiException(
         body['message'] as String? ?? 'The verification request failed.',
         code: body['code'] as String?,
+        retryAfterSeconds: (body['retryAfterSeconds'] as num?)?.toInt(),
+        attemptsRemaining: (body['attemptsRemaining'] as num?)?.toInt(),
       );
     }
     return body;
@@ -134,6 +155,33 @@ class SecureIdentityApi {
   static String _requiredString(Map<String, dynamic> body, String key) {
     final value = body[key] as String?;
     if (value == null || value.isEmpty) {
+      throw SecureIdentityApiException(
+        'The verification response is missing $key.',
+        code: 'invalid_response',
+      );
+    }
+    return value;
+  }
+
+  Future<http.Response> _request(Future<http.Response> request) async {
+    try {
+      return await request.timeout(_requestTimeout);
+    } on TimeoutException {
+      throw const SecureIdentityApiException(
+        'The verification service timed out. Try again.',
+        code: 'identity_timeout',
+      );
+    } on http.ClientException {
+      throw const SecureIdentityApiException(
+        'The verification service is unavailable. Check your connection.',
+        code: 'identity_unavailable',
+      );
+    }
+  }
+
+  static int _requiredInt(Map<String, dynamic> body, String key) {
+    final value = (body[key] as num?)?.toInt();
+    if (value == null || value < 0) {
       throw SecureIdentityApiException(
         'The verification response is missing $key.',
         code: 'invalid_response',

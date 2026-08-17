@@ -1094,5 +1094,19 @@ class _FakeOfficialChargerSearchService extends OfficialChargerSearchService {
   const _FakeOfficialChargerSearchService();
 
   @override
+  Future<OfficialChargerSearchResult> search({
+    required String query,
+    PlaceSuggestion? center,
+  }) async =>
+      OfficialChargerSearchResult(
+        source: 'Test inventory',
+        sourceUrl: 'https://example.test/chargers',
+        asOf: DateTime.utc(2026, 8, 16),
+        totalStationCount: 0,
+        radiusKm: 25,
+        matches: const [],
+      );
+
+  @override
   Future<List<OfficialChargerStation>> loadAllStations() async => const [];
 }

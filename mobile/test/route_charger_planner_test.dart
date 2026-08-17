@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voltmap/features/discovery/data/official_charger_search_service.dart';
+import 'package:voltmap/features/discovery/data/official_charger_station.dart';
 import 'package:voltmap/features/trips/data/route_charger_planner.dart';
 import 'package:voltmap/features/trips/presentation/trip_planner_screen.dart';
 import 'package:voltmap/shared/models/place_suggestion.dart';
@@ -66,6 +67,71 @@ void main() {
     expect(routeCorridorKm(900), 15);
   });
 
+  test('user-selected route chargers are preferred for required stops', () {
+    final selected = selectChargingStops(
+      stopCount: 1,
+      routeChargers: const [
+        RouteChargerCandidate(
+          station: _nearerStation,
+          distanceFromRouteKm: 0.2,
+          routeProgress: 0.5,
+        ),
+        RouteChargerCandidate(
+          station: _previewStation,
+          distanceFromRouteKm: 1.2,
+          routeProgress: 0.6,
+        ),
+      ],
+      preferredStationIds: const [_previewStationId],
+    );
+
+    expect(selected, const [_previewStationId]);
+  });
+
+  testWidgets('typed PIN shows selectable chargers before Plan route', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          home: TripPlannerScreen(
+            searchService: _LocalPlaceSearchService(),
+            chargerDataService: _PreviewChargerSearchService(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Destination'),
+      '500079',
+    );
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('routeStationPreview')), findsOneWidget);
+    expect(find.textContaining('Charging stations near'), findsOneWidget);
+    expect(find.textContaining('1 exact PIN match'), findsOneWidget);
+    expect(find.text(_previewStation.displayName), findsOneWidget);
+    expect(find.byKey(const Key('routeChargersHeading')), findsNothing);
+
+    final stationChoice = find.widgetWithText(
+      CheckboxListTile,
+      _previewStation.displayName,
+    );
+    expect(tester.widget<CheckboxListTile>(stationChoice).value, isFalse);
+    await tester.tap(stationChoice);
+    await tester.pump();
+    expect(tester.widget<CheckboxListTile>(stationChoice).value, isTrue);
+    expect(find.text('Plan route'), findsOneWidget);
+  });
+
   testWidgets('typed PINs plan in-page without selecting a suggestion', (
     tester,
   ) async {
@@ -77,7 +143,10 @@ void main() {
     await tester.pumpWidget(
       const ProviderScope(
         child: MaterialApp(
-          home: TripPlannerScreen(searchService: _LocalPlaceSearchService()),
+          home: TripPlannerScreen(
+            searchService: _LocalPlaceSearchService(),
+            chargerDataService: _FastPreviewChargerSearchService(),
+          ),
         ),
       ),
     );
@@ -141,6 +210,94 @@ class _LocalPlaceSearchService extends PlaceSearchService {
     return localSuggestions(rawQuery);
   }
 }
+
+class _PreviewChargerSearchService extends OfficialChargerSearchService {
+  const _PreviewChargerSearchService();
+
+  @override
+  Future<OfficialChargerSearchResult> search({
+    required String query,
+    PlaceSuggestion? center,
+  }) async =>
+      OfficialChargerSearchResult(
+        source: 'BEE test inventory',
+        sourceUrl: 'https://example.test/chargers',
+        asOf: DateTime.utc(2026, 8, 16),
+        totalStationCount: 2,
+        radiusKm: 15,
+        matches: const [
+          OfficialChargerMatch(
+            station: _previewStation,
+            distanceKm: 1.2,
+            exactPostcode: true,
+          ),
+          OfficialChargerMatch(
+            station: _nearerStation,
+            distanceKm: 2.1,
+            exactPostcode: false,
+          ),
+        ],
+      );
+
+  @override
+  Future<List<OfficialChargerStation>> loadAllStations() async => const [
+        _previewStation,
+        _nearerStation,
+      ];
+}
+
+class _FastPreviewChargerSearchService extends OfficialChargerSearchService {
+  const _FastPreviewChargerSearchService();
+
+  @override
+  Future<OfficialChargerSearchResult> search({
+    required String query,
+    PlaceSuggestion? center,
+  }) async =>
+      OfficialChargerSearchResult(
+        source: 'BEE test inventory',
+        sourceUrl: 'https://example.test/chargers',
+        asOf: DateTime.utc(2026, 8, 16),
+        totalStationCount: 29251,
+        radiusKm: 15,
+        matches: const [],
+      );
+}
+
+const _previewStationId = 'preview-500079';
+const _previewStation = OfficialChargerStation(
+  operatorName: 'PIN Charge',
+  ownership: 'Private',
+  state: 'Telangana',
+  district: 'Hyderabad',
+  city: 'Hyderabad',
+  address: 'Karmanghat, Hyderabad 500079',
+  latitude: 17.3366,
+  longitude: 78.5349,
+  postcodes: ['500079'],
+  connectors: [
+    OfficialChargerConnector(type: 'CCS-II', ratingKw: 60, count: 2),
+  ],
+  providerStationId: _previewStationId,
+  sourceNames: ['BEE test inventory'],
+);
+
+const _nearerStation = OfficialChargerStation(
+  operatorName: 'Nearby Charge',
+  ownership: 'Private',
+  state: 'Telangana',
+  district: 'Hyderabad',
+  city: 'Hyderabad',
+  address: 'Hyderabad 500035',
+  latitude: 17.35,
+  longitude: 78.52,
+  postcodes: ['500035'],
+  connectors: [
+    OfficialChargerConnector(type: 'Type-II AC', ratingKw: 22, count: 1),
+  ],
+  providerStationId: 'nearer-500035',
+  sourceNames: ['BEE test inventory'],
+);
 
 Future<void> _waitForRoutePlan(WidgetTester tester) async {
   for (var attempt = 0; attempt < 100; attempt++) {

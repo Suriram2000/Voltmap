@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -43,9 +45,19 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
   double rangeKm = 325;
   _RoutePlan? route;
   bool _planning = false;
+  Timer? _stationPreviewDebounce;
+  OfficialChargerSearchResult? _stationPreview;
+  PlaceSuggestion? _stationPreviewPlace;
+  String? _stationPreviewQuery;
+  String? _stationPreviewError;
+  bool _stationPreviewLoading = false;
+  bool _showAllPreviewStations = false;
+  int _stationPreviewRequestId = 0;
+  final Set<String> _selectedPreviewStationIds = {};
 
   @override
   void dispose() {
+    _stationPreviewDebounce?.cancel();
     originController.dispose();
     destinationController.dispose();
     super.dispose();
@@ -88,7 +100,16 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                         hint: 'Search any city, area, address, or PIN',
                         prefixIcon: Icons.my_location,
                         searchService: widget.searchService,
-                        onSelected: (place) => originPlace = place,
+                        onSelected: (place) {
+                          originPlace = place;
+                          if (place != null) {
+                            _queueStationPreview(
+                              place.displayName,
+                              selected: place,
+                            );
+                          }
+                        },
+                        onChanged: (value) => _queueStationPreview(value),
                         textInputAction: TextInputAction.next,
                       ),
                       const SizedBox(height: 14),
@@ -98,7 +119,16 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                         hint: 'Try “ban” for Bengaluru and more places',
                         prefixIcon: Icons.flag,
                         searchService: widget.searchService,
-                        onSelected: (place) => destinationPlace = place,
+                        onSelected: (place) {
+                          destinationPlace = place;
+                          if (place != null) {
+                            _queueStationPreview(
+                              place.displayName,
+                              selected: place,
+                            );
+                          }
+                        },
+                        onChanged: (value) => _queueStationPreview(value),
                         textInputAction: TextInputAction.done,
                         onSubmitted: (_) => _planRoute(),
                       ),
@@ -115,6 +145,10 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                           ),
                         ],
                       ),
+                      if (_stationPreviewQuery != null) ...[
+                        const SizedBox(height: 14),
+                        _buildStationPreview(),
+                      ],
                       const SizedBox(height: 18),
                       Row(
                         children: [
@@ -291,6 +325,7 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
     final stopIds = selectChargingStops(
       stopCount: stopCount,
       routeChargers: routeChargers,
+      preferredStationIds: _selectedPreviewStationIds,
     );
     final averageSpeedKmh = distance <= 50
         ? 35.0
@@ -313,8 +348,239 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
         corridorKm: corridorKm,
         locationBased: true,
         chargerDataError: chargerDataError,
+        userSelectedStationIds: routeChargers
+            .where(
+              (candidate) =>
+                  _selectedPreviewStationIds.contains(candidate.stationId),
+            )
+            .map((candidate) => candidate.stationId)
+            .toList(growable: false),
       );
     });
+  }
+
+  void _queueStationPreview(
+    String rawQuery, {
+    PlaceSuggestion? selected,
+  }) {
+    _stationPreviewDebounce?.cancel();
+    final query = rawQuery.trim();
+    final requestId = ++_stationPreviewRequestId;
+    if (query.length < 3) {
+      setState(() {
+        _stationPreview = null;
+        _stationPreviewPlace = null;
+        _stationPreviewQuery = null;
+        _stationPreviewError = null;
+        _stationPreviewLoading = false;
+        _selectedPreviewStationIds.clear();
+      });
+      return;
+    }
+    setState(() {
+      _stationPreviewQuery = query;
+      _stationPreviewError = null;
+      _stationPreviewLoading = true;
+      _showAllPreviewStations = false;
+    });
+    final isPin = RegExp(r'^[1-9]\d{5}$').hasMatch(query);
+    _stationPreviewDebounce = Timer(
+      Duration(milliseconds: isPin || selected != null ? 120 : 420),
+      () => _loadStationPreview(
+        query,
+        selected: selected,
+        requestId: requestId,
+      ),
+    );
+  }
+
+  Future<void> _loadStationPreview(
+    String query, {
+    PlaceSuggestion? selected,
+    int? requestId,
+  }) async {
+    final activeRequestId = requestId ?? ++_stationPreviewRequestId;
+    if (requestId == null) {
+      setState(() {
+        _stationPreviewLoading = true;
+        _stationPreviewError = null;
+      });
+    }
+    try {
+      final resolved = await _resolvePlace(query, selected);
+      if (resolved == null) {
+        throw StateError(
+          'Choose an India PIN, city, or area suggestion to load chargers.',
+        );
+      }
+      final result = await widget.chargerDataService.search(
+        query: query,
+        center: resolved,
+      );
+      if (!mounted || activeRequestId != _stationPreviewRequestId) return;
+      final availableIds = result.matches
+          .map((match) => match.station.feedbackStationId)
+          .toSet();
+      setState(() {
+        _stationPreview = result;
+        _stationPreviewPlace = resolved;
+        _stationPreviewError = null;
+        _stationPreviewLoading = false;
+        _selectedPreviewStationIds.retainAll(availableIds);
+      });
+    } catch (error) {
+      if (!mounted || activeRequestId != _stationPreviewRequestId) return;
+      setState(() {
+        _stationPreview = null;
+        _stationPreviewPlace = null;
+        _stationPreviewLoading = false;
+        _stationPreviewError = error is StateError
+            ? error.message
+            : 'Charging stations could not be loaded. Check your connection and retry.';
+      });
+    }
+  }
+
+  Widget _buildStationPreview() {
+    final query = _stationPreviewQuery!;
+    if (_stationPreviewLoading) {
+      return const Card(
+        key: Key('routeStationPreviewLoading'),
+        child: ListTile(
+          leading: CircularProgressIndicator(strokeWidth: 2),
+          title: Text('Finding charging stations'),
+          subtitle:
+              Text('Matching chargers will appear before route planning.'),
+        ),
+      );
+    }
+    final error = _stationPreviewError;
+    if (error != null) {
+      return Card(
+        key: const Key('routeStationPreviewError'),
+        child: ListTile(
+          leading: Icon(
+            Icons.sync_problem_rounded,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          title: const Text('Could not load charging stations'),
+          subtitle: Text(error),
+          trailing: TextButton(
+            key: const Key('retryRouteStationPreview'),
+            onPressed: () => _loadStationPreview(
+              query,
+              selected: _stationPreviewPlace,
+            ),
+            child: const Text('Retry'),
+          ),
+        ),
+      );
+    }
+    final result = _stationPreview;
+    if (result == null) return const SizedBox.shrink();
+    if (result.matches.isEmpty) {
+      return Card(
+        key: const Key('routeStationPreviewEmpty'),
+        child: ListTile(
+          leading: const Icon(Icons.ev_station_outlined),
+          title: Text('No charging stations found near $query'),
+          subtitle: const Text(
+            'Try another PIN, city, or area. The map will never be left blank.',
+          ),
+        ),
+      );
+    }
+    const initialCount = 8;
+    final visibleMatches = _showAllPreviewStations
+        ? result.matches
+        : result.matches.take(initialCount).toList(growable: false);
+    final exactLabel = result.exactPostcodeCount == 0
+        ? ''
+        : ' ${result.exactPostcodeCount} exact PIN match${result.exactPostcodeCount == 1 ? '' : 'es'}.';
+    return Card(
+      key: const Key('routeStationPreview'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 12, 10, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              leading: const CircleAvatar(
+                child: Icon(Icons.ev_station_rounded),
+              ),
+              title: Text(
+                'Charging stations near ${_stationPreviewPlace?.primaryText ?? query}',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              subtitle: Text(
+                '${result.matches.length} matching station${result.matches.length == 1 ? '' : 's'} found.$exactLabel Select preferred stations before Plan route.',
+              ),
+            ),
+            for (final match in visibleMatches)
+              CheckboxListTile(
+                key: ValueKey(
+                  'routePreviewStation_${match.station.feedbackStationId}',
+                ),
+                value: _selectedPreviewStationIds.contains(
+                  match.station.feedbackStationId,
+                ),
+                controlAffinity: ListTileControlAffinity.leading,
+                title: Text(match.station.displayName),
+                subtitle: Text(
+                  '${match.station.address.isEmpty ? match.station.areaLabel : match.station.address}\n'
+                  '${match.distanceKm == null ? 'Distance unavailable' : '${match.distanceKm!.toStringAsFixed(1)} km away'} · ${match.station.sourceLabel}',
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                secondary: IconButton(
+                  tooltip: 'Review charger details',
+                  onPressed: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => OfficialChargerDetailsScreen(
+                        station: match.station,
+                        distanceKm: match.distanceKm,
+                        distanceContext: 'from the selected route location',
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.chevron_right_rounded),
+                ),
+                onChanged: (selected) {
+                  setState(() {
+                    if (selected == true) {
+                      _selectedPreviewStationIds.add(
+                        match.station.feedbackStationId,
+                      );
+                    } else {
+                      _selectedPreviewStationIds.remove(
+                        match.station.feedbackStationId,
+                      );
+                    }
+                  });
+                },
+              ),
+            if (result.matches.length > initialCount)
+              TextButton.icon(
+                key: const Key('toggleAllRoutePreviewStations'),
+                onPressed: () => setState(
+                  () => _showAllPreviewStations = !_showAllPreviewStations,
+                ),
+                icon: Icon(
+                  _showAllPreviewStations
+                      ? Icons.expand_less_rounded
+                      : Icons.expand_more_rounded,
+                ),
+                label: Text(
+                  _showAllPreviewStations
+                      ? 'Show fewer stations'
+                      : 'Show all ${result.matches.length} stations',
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<PlaceSuggestion?> _resolvePlace(
@@ -570,6 +836,9 @@ class _RouteResultState extends State<_RouteResult> {
                   recommended: route.stopStationIds.contains(
                     routeCharger.stationId,
                   ),
+                  userSelected: route.userSelectedStationIds.contains(
+                    routeCharger.stationId,
+                  ),
                   onTap: () => Navigator.of(context).push<void>(
                     _stationDetailsRoute(
                       routeCharger.station,
@@ -670,11 +939,13 @@ class _RouteChargerTile extends StatelessWidget {
   const _RouteChargerTile({
     required this.routeCharger,
     required this.recommended,
+    required this.userSelected,
     required this.onTap,
   });
 
   final RouteChargerCandidate routeCharger;
   final bool recommended;
+  final bool userSelected;
   final VoidCallback onTap;
 
   @override
@@ -732,6 +1003,11 @@ class _RouteChargerTile extends StatelessWidget {
                   'RECOMMENDED',
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
                 ),
+              if (userSelected)
+                const Text(
+                  'YOUR SELECTION',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+                ),
             ],
           ),
           const SizedBox(width: 4),
@@ -754,6 +1030,7 @@ class _RoutePlan {
     required this.routeChargers,
     required this.corridorKm,
     required this.locationBased,
+    required this.userSelectedStationIds,
     this.chargerDataError,
   });
 
@@ -767,6 +1044,7 @@ class _RoutePlan {
   final List<RouteChargerCandidate> routeChargers;
   final double corridorKm;
   final bool locationBased;
+  final List<String> userSelectedStationIds;
   final String? chargerDataError;
 
   OfficialChargerStation? stationForId(String id) {

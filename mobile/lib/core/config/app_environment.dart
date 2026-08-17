@@ -48,6 +48,24 @@ abstract final class AppRuntimeConfig {
   static bool _isSecureApiUrl(String value) {
     if (value.isEmpty) return false;
     final uri = Uri.tryParse(value);
-    return uri != null && uri.scheme == 'https' && uri.host.isNotEmpty;
+    if (uri == null ||
+        uri.scheme != 'https' ||
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty ||
+        uri.hasQuery ||
+        uri.hasFragment) {
+      return false;
+    }
+    final host = uri.host.toLowerCase();
+    if (host == 'localhost' ||
+        host == '127.0.0.1' ||
+        host == '::1' ||
+        host.endsWith('.localhost') ||
+        host.endsWith('.test') ||
+        host.endsWith('.example') ||
+        host.endsWith('.invalid')) {
+      return false;
+    }
+    return true;
   }
 }

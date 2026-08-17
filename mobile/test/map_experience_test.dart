@@ -349,6 +349,43 @@ void main() {
         find.textContaining('without using device location'), findsOneWidget);
   });
 
+  testWidgets('Map keeps location enabled while searching another PIN in place',
+      (
+    tester,
+  ) async {
+    _useViewport(tester, const Size(1200, 900));
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MapScreen(
+          locationLoader: _fakeLocation,
+          placeSearchService: _ManualPlaceSearchService(),
+          chargerSearchService: _FakeChargerSearchService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final toggle = find.byKey(const Key('mapLocationToggle'));
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+
+    final searchField = find.byKey(
+      const ValueKey('locationField_Search map'),
+    );
+    expect(searchField, findsOneWidget);
+    await tester.enterText(searchField, '500079');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+    expect(find.byKey(const Key('mapLocationSearch')), findsOneWidget);
+    expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
+    expect(find.byKey(const Key('nearbyChargerPanel')), findsOneWidget);
+    expect(find.textContaining('showing chargers near'), findsOneWidget);
+    expect(find.text('Alpha Charge - Hyderabad'), findsOneWidget);
+  });
+
   testWidgets('Map explains a valid empty nearby result', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
