@@ -20,7 +20,7 @@ class FavoritesScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Favorites')),
       body: favorites.isEmpty
           ? Center(
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.all(28),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

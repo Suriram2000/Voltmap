@@ -569,13 +569,17 @@ class _DiscoveryHero extends StatelessWidget {
                             children: [
                               _PulseDot(),
                               SizedBox(width: 8),
-                              Text(
-                                'LIVE DEMO NETWORK',
-                                style: TextStyle(
-                                  color: Color(0xFFD8FFE9),
-                                  fontSize: 11,
-                                  letterSpacing: 1.2,
-                                  fontWeight: FontWeight.w800,
+                              Flexible(
+                                child: Text(
+                                  'LIVE DEMO NETWORK',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Color(0xFFD8FFE9),
+                                    fontSize: 11,
+                                    letterSpacing: 1,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
                             ],
@@ -602,12 +606,16 @@ class _DiscoveryHero extends StatelessWidget {
                                 size: 17,
                               ),
                               SizedBox(width: 5),
-                              Text(
-                                'Across India',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
+                              Flexible(
+                                child: Text(
+                                  'Across India',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
                             ],
@@ -823,12 +831,16 @@ class _NationalCoverageCard extends StatelessWidget {
                         children: [
                           Icon(Icons.verified_rounded, size: 16),
                           SizedBox(width: 6),
-                          Text(
-                            'GOVERNMENT OF INDIA DATA',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.8,
+                          Flexible(
+                            child: Text(
+                              'GOVERNMENT OF INDIA DATA',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.7,
+                              ),
                             ),
                           ),
                         ],
@@ -1212,33 +1224,59 @@ class _HeroMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.3;
     return SizedBox(
       width: 220,
-      child: Row(
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppTheme.brandLime,
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
+      child: largeText
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: AppTheme.brandLime,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFFACC2B8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: AppTheme.brandLime,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFFACC2B8),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 7),
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFFACC2B8),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

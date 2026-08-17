@@ -4,7 +4,7 @@ Prepared for submission `558a4224-2f0a-4e68-b74d-11a3ceaa8440`, which Apple
 rejected under Guideline 2.1 on 15 August 2026 because additional review
 information was required. The rejected item was version 1.12.0 build 15.
 
-The next review build is version 1.13.3 build 22. It exposes a clearly labeled
+The next review build is version 1.13.3 build 23. It exposes a clearly labeled
 local demo account so App Review can inspect favorites, saved trips, profile
 controls, and account deletion without relying on an unconfigured SMS service.
 The demo does not send SMS, move money, or use private account data.
@@ -72,7 +72,10 @@ production payment-unavailable state.
 - [ADD EVERY OTHER PHYSICAL DEVICE AND OS ACTUALLY TESTED]
 - CI also runs Flutter analysis, the complete automated test suite, an unsigned
   iOS release build, and a signed App Store package build with Xcode 26 and the
-  iOS 26 SDK. CI is supplemental and is not represented as physical testing.
+  iOS 26 SDK. Automated layout coverage spans 320x568 through 440x956 iPhone
+  viewports, compact and current-device portrait layouts, SE and current-device
+  landscape layouts, 200% Dynamic Type, and enabled-location Map sheets. CI is
+  supplemental and is not represented as physical testing.
 
 3. **Functions, audience, problem, and value**
 
@@ -150,7 +153,7 @@ Thank you.
 
 ## Submission checklist
 
-- [ ] Install build 22 through TestFlight on each declared physical device.
+- [ ] Install build 23 through TestFlight on each declared physical device.
 - [ ] Test with location not determined, allowed while using, denied, and
       denied permanently.
 - [ ] Test `500079` Discover search and `500081` to `500079` route planning.

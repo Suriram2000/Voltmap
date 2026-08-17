@@ -102,13 +102,17 @@ class _AddChargerScreenState extends ConsumerState<AddChargerScreen> {
                                     size: 15,
                                   ),
                                   SizedBox(width: 6),
-                                  Text(
-                                    'NO SIGNUP REQUIRED',
-                                    style: TextStyle(
-                                      color: Color(0xFFD8FFE9),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 0.8,
+                                  Flexible(
+                                    child: Text(
+                                      'NO SIGNUP REQUIRED',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Color(0xFFD8FFE9),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.7,
+                                      ),
                                     ),
                                   ),
                                 ],
