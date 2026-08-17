@@ -4,7 +4,7 @@ Prepared for submission `558a4224-2f0a-4e68-b74d-11a3ceaa8440`, which Apple
 rejected under Guideline 2.1 on 15 August 2026 because additional review
 information was required. The rejected item was version 1.12.0 build 15.
 
-The next review build is version 1.14.0 build 24. It exposes a clearly labeled
+The next review build is version 1.14.1 build 25. It exposes a clearly labeled
 local demo account so App Review can inspect favorites, saved trips, profile
 controls, and account deletion without relying on an unconfigured SMS service.
 The demo does not send SMS, move money, or use private account data.
@@ -153,7 +153,7 @@ Thank you.
 
 ## Submission checklist
 
-- [ ] Install build 24 through TestFlight on each declared physical device.
+- [ ] Install build 25 through TestFlight on each declared physical device.
 - [ ] Test with location not determined, allowed while using, denied, and
       denied permanently.
 - [ ] Test `500079` Discover search and `500081` to `500079` route planning.

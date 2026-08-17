@@ -45,19 +45,13 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
   double rangeKm = 325;
   _RoutePlan? route;
   bool _planning = false;
-  Timer? _stationPreviewDebounce;
-  OfficialChargerSearchResult? _stationPreview;
-  PlaceSuggestion? _stationPreviewPlace;
-  String? _stationPreviewQuery;
-  String? _stationPreviewError;
-  bool _stationPreviewLoading = false;
-  bool _showAllPreviewStations = false;
-  int _stationPreviewRequestId = 0;
-  final Set<String> _selectedPreviewStationIds = {};
+  Timer? _autoPlanDebounce;
+  int _routeRequestId = 0;
+  String? _routeInputError;
 
   @override
   void dispose() {
-    _stationPreviewDebounce?.cancel();
+    _autoPlanDebounce?.cancel();
     originController.dispose();
     destinationController.dispose();
     super.dispose();
@@ -103,13 +97,13 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                         onSelected: (place) {
                           originPlace = place;
                           if (place != null) {
-                            _queueStationPreview(
-                              place.displayName,
-                              selected: place,
-                            );
+                            _scheduleAutoPlan(immediate: true);
                           }
                         },
-                        onChanged: (value) => _queueStationPreview(value),
+                        onChanged: (_) {
+                          originPlace = null;
+                          _scheduleAutoPlan();
+                        },
                         textInputAction: TextInputAction.next,
                       ),
                       const SizedBox(height: 14),
@@ -122,13 +116,13 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                         onSelected: (place) {
                           destinationPlace = place;
                           if (place != null) {
-                            _queueStationPreview(
-                              place.displayName,
-                              selected: place,
-                            );
+                            _scheduleAutoPlan(immediate: true);
                           }
                         },
-                        onChanged: (value) => _queueStationPreview(value),
+                        onChanged: (_) {
+                          destinationPlace = null;
+                          _scheduleAutoPlan();
+                        },
                         textInputAction: TextInputAction.done,
                         onSubmitted: (_) => _planRoute(),
                       ),
@@ -139,15 +133,34 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                           SizedBox(width: 7),
                           Expanded(
                             child: Text(
-                              'Type 2+ letters for India-wide city, locality, address, and PIN suggestions.',
+                              'Route data updates automatically after both locations are typed. PIN, city, locality, and address searches are supported.',
                               style: TextStyle(fontSize: 12),
                             ),
                           ),
                         ],
                       ),
-                      if (_stationPreviewQuery != null) ...[
-                        const SizedBox(height: 14),
-                        _buildStationPreview(),
+                      if (_routeInputError != null) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          key: const Key('autoRouteInputError'),
+                          children: [
+                            Icon(
+                              Icons.info_outline_rounded,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _routeInputError!,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                       const SizedBox(height: 18),
                       Row(
@@ -168,6 +181,8 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
                                   label: '${rangeKm.round()} km',
                                   onChanged: (value) =>
                                       setState(() => rangeKm = value),
+                                  onChangeEnd: (_) =>
+                                      _scheduleAutoPlan(immediate: true),
                                 ),
                               ],
                             ),
@@ -266,35 +281,76 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
     );
   }
 
-  Future<void> _planRoute() async {
-    FocusScope.of(context).unfocus();
+  void _scheduleAutoPlan({bool immediate = false}) {
+    _autoPlanDebounce?.cancel();
+    final requestId = ++_routeRequestId;
+    final origin = originController.text.trim();
+    final destination = destinationController.text.trim();
+    final ready = origin.length >= 3 && destination.length >= 3;
+    setState(() {
+      _planning = ready;
+      _routeInputError = null;
+      route = null;
+    });
+    if (!ready) return;
+
+    final pinInput = RegExp(r'^\d{5,6}$').hasMatch(origin) ||
+        RegExp(r'^\d{5,6}$').hasMatch(destination);
+    _autoPlanDebounce = Timer(
+      Duration(milliseconds: immediate ? 40 : (pinInput ? 180 : 500)),
+      () => _planRoute(
+        showValidation: false,
+        requestId: requestId,
+      ),
+    );
+  }
+
+  Future<void> _planRoute({
+    bool showValidation = true,
+    int? requestId,
+  }) async {
+    _autoPlanDebounce?.cancel();
+    if (showValidation) FocusScope.of(context).unfocus();
+    final activeRequestId = requestId ?? ++_routeRequestId;
     final origin = originController.text.trim();
     final destination = destinationController.text.trim();
     if (origin.isEmpty || destination.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Enter both a starting point and destination.'),
-        ),
-      );
+      if (mounted) setState(() => _planning = false);
+      if (showValidation) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Enter both a starting point and destination.'),
+          ),
+        );
+      }
       return;
     }
 
-    setState(() => _planning = true);
+    if (requestId == null) {
+      setState(() {
+        _planning = true;
+        _routeInputError = null;
+      });
+    }
     final resolvedOrigin = await _resolvePlace(origin, originPlace);
     final resolvedDestination =
         await _resolvePlace(destination, destinationPlace);
-    if (!mounted) return;
+    if (!mounted || activeRequestId != _routeRequestId) return;
     final hasCoordinates =
         resolvedOrigin != null && resolvedDestination != null;
     if (!hasCoordinates) {
-      setState(() => _planning = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Select both places from the suggestions so VoltMapEV can calculate the route corridor accurately.',
-          ),
-        ),
-      );
+      const message =
+          'Enter a valid India PIN, city, area, or address for both route fields.';
+      setState(() {
+        _planning = false;
+        _routeInputError = message;
+        route = null;
+      });
+      if (showValidation) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(message)),
+        );
+      }
       return;
     }
     originPlace = resolvedOrigin;
@@ -321,11 +377,10 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
       chargerDataError =
           'The national charger inventory could not be loaded. Retry before travelling.';
     }
-    if (!mounted) return;
+    if (!mounted || activeRequestId != _routeRequestId) return;
     final stopIds = selectChargingStops(
       stopCount: stopCount,
       routeChargers: routeChargers,
-      preferredStationIds: _selectedPreviewStationIds,
     );
     final averageSpeedKmh = distance <= 50
         ? 35.0
@@ -336,6 +391,7 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
 
     setState(() {
       _planning = false;
+      _routeInputError = null;
       route = _RoutePlan(
         origin: resolvedOrigin.primaryText,
         destination: resolvedDestination.primaryText,
@@ -348,246 +404,16 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
         corridorKm: corridorKm,
         locationBased: true,
         chargerDataError: chargerDataError,
-        userSelectedStationIds: routeChargers
-            .where(
-              (candidate) =>
-                  _selectedPreviewStationIds.contains(candidate.stationId),
-            )
-            .map((candidate) => candidate.stationId)
-            .toList(growable: false),
       );
     });
-  }
-
-  void _queueStationPreview(
-    String rawQuery, {
-    PlaceSuggestion? selected,
-  }) {
-    _stationPreviewDebounce?.cancel();
-    final query = rawQuery.trim();
-    final requestId = ++_stationPreviewRequestId;
-    if (query.length < 3) {
-      setState(() {
-        _stationPreview = null;
-        _stationPreviewPlace = null;
-        _stationPreviewQuery = null;
-        _stationPreviewError = null;
-        _stationPreviewLoading = false;
-        _selectedPreviewStationIds.clear();
-      });
-      return;
-    }
-    setState(() {
-      _stationPreviewQuery = query;
-      _stationPreviewError = null;
-      _stationPreviewLoading = true;
-      _showAllPreviewStations = false;
-    });
-    final isPin = RegExp(r'^[1-9]\d{5}$').hasMatch(query);
-    _stationPreviewDebounce = Timer(
-      Duration(milliseconds: isPin || selected != null ? 120 : 420),
-      () => _loadStationPreview(
-        query,
-        selected: selected,
-        requestId: requestId,
-      ),
-    );
-  }
-
-  Future<void> _loadStationPreview(
-    String query, {
-    PlaceSuggestion? selected,
-    int? requestId,
-  }) async {
-    final activeRequestId = requestId ?? ++_stationPreviewRequestId;
-    if (requestId == null) {
-      setState(() {
-        _stationPreviewLoading = true;
-        _stationPreviewError = null;
-      });
-    }
-    try {
-      final resolved = await _resolvePlace(query, selected);
-      if (resolved == null) {
-        throw StateError(
-          'Choose an India PIN, city, or area suggestion to load chargers.',
-        );
-      }
-      final result = await widget.chargerDataService.search(
-        query: query,
-        center: resolved,
-      );
-      if (!mounted || activeRequestId != _stationPreviewRequestId) return;
-      final availableIds = result.matches
-          .map((match) => match.station.feedbackStationId)
-          .toSet();
-      setState(() {
-        _stationPreview = result;
-        _stationPreviewPlace = resolved;
-        _stationPreviewError = null;
-        _stationPreviewLoading = false;
-        _selectedPreviewStationIds.retainAll(availableIds);
-      });
-    } catch (error) {
-      if (!mounted || activeRequestId != _stationPreviewRequestId) return;
-      setState(() {
-        _stationPreview = null;
-        _stationPreviewPlace = null;
-        _stationPreviewLoading = false;
-        _stationPreviewError = error is StateError
-            ? error.message
-            : 'Charging stations could not be loaded. Check your connection and retry.';
-      });
-    }
-  }
-
-  Widget _buildStationPreview() {
-    final query = _stationPreviewQuery!;
-    if (_stationPreviewLoading) {
-      return const Card(
-        key: Key('routeStationPreviewLoading'),
-        child: ListTile(
-          leading: CircularProgressIndicator(strokeWidth: 2),
-          title: Text('Finding charging stations'),
-          subtitle:
-              Text('Matching chargers will appear before route planning.'),
-        ),
-      );
-    }
-    final error = _stationPreviewError;
-    if (error != null) {
-      return Card(
-        key: const Key('routeStationPreviewError'),
-        child: ListTile(
-          leading: Icon(
-            Icons.sync_problem_rounded,
-            color: Theme.of(context).colorScheme.error,
-          ),
-          title: const Text('Could not load charging stations'),
-          subtitle: Text(error),
-          trailing: TextButton(
-            key: const Key('retryRouteStationPreview'),
-            onPressed: () => _loadStationPreview(
-              query,
-              selected: _stationPreviewPlace,
-            ),
-            child: const Text('Retry'),
-          ),
-        ),
-      );
-    }
-    final result = _stationPreview;
-    if (result == null) return const SizedBox.shrink();
-    if (result.matches.isEmpty) {
-      return Card(
-        key: const Key('routeStationPreviewEmpty'),
-        child: ListTile(
-          leading: const Icon(Icons.ev_station_outlined),
-          title: Text('No charging stations found near $query'),
-          subtitle: const Text(
-            'Try another PIN, city, or area. The map will never be left blank.',
-          ),
-        ),
-      );
-    }
-    const initialCount = 8;
-    final visibleMatches = _showAllPreviewStations
-        ? result.matches
-        : result.matches.take(initialCount).toList(growable: false);
-    final exactLabel = result.exactPostcodeCount == 0
-        ? ''
-        : ' ${result.exactPostcodeCount} exact PIN match${result.exactPostcodeCount == 1 ? '' : 'es'}.';
-    return Card(
-      key: const Key('routeStationPreview'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 12, 10, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-              leading: const CircleAvatar(
-                child: Icon(Icons.ev_station_rounded),
-              ),
-              title: Text(
-                'Charging stations near ${_stationPreviewPlace?.primaryText ?? query}',
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-              subtitle: Text(
-                '${result.matches.length} matching station${result.matches.length == 1 ? '' : 's'} found.$exactLabel Select preferred stations before Plan route.',
-              ),
-            ),
-            for (final match in visibleMatches)
-              CheckboxListTile(
-                key: ValueKey(
-                  'routePreviewStation_${match.station.feedbackStationId}',
-                ),
-                value: _selectedPreviewStationIds.contains(
-                  match.station.feedbackStationId,
-                ),
-                controlAffinity: ListTileControlAffinity.leading,
-                title: Text(match.station.displayName),
-                subtitle: Text(
-                  '${match.station.address.isEmpty ? match.station.areaLabel : match.station.address}\n'
-                  '${match.distanceKm == null ? 'Distance unavailable' : '${match.distanceKm!.toStringAsFixed(1)} km away'} · ${match.station.sourceLabel}',
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                secondary: IconButton(
-                  tooltip: 'Review charger details',
-                  onPressed: () => Navigator.of(context).push<void>(
-                    MaterialPageRoute<void>(
-                      builder: (_) => OfficialChargerDetailsScreen(
-                        station: match.station,
-                        distanceKm: match.distanceKm,
-                        distanceContext: 'from the selected route location',
-                      ),
-                    ),
-                  ),
-                  icon: const Icon(Icons.chevron_right_rounded),
-                ),
-                onChanged: (selected) {
-                  setState(() {
-                    if (selected == true) {
-                      _selectedPreviewStationIds.add(
-                        match.station.feedbackStationId,
-                      );
-                    } else {
-                      _selectedPreviewStationIds.remove(
-                        match.station.feedbackStationId,
-                      );
-                    }
-                  });
-                },
-              ),
-            if (result.matches.length > initialCount)
-              TextButton.icon(
-                key: const Key('toggleAllRoutePreviewStations'),
-                onPressed: () => setState(
-                  () => _showAllPreviewStations = !_showAllPreviewStations,
-                ),
-                icon: Icon(
-                  _showAllPreviewStations
-                      ? Icons.expand_less_rounded
-                      : Icons.expand_more_rounded,
-                ),
-                label: Text(
-                  _showAllPreviewStations
-                      ? 'Show fewer stations'
-                      : 'Show all ${result.matches.length} stations',
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
   }
 
   Future<PlaceSuggestion?> _resolvePlace(
     String input,
     PlaceSuggestion? selected,
   ) async {
-    final normalizedInput = _normalizePlace(input);
+    final lookupInput = _expandedPinLookup(input);
+    final normalizedInput = _normalizePlace(lookupInput);
     if (selected != null) {
       final selectedText = _normalizePlace(selected.displayName);
       if (selectedText.contains(normalizedInput) ||
@@ -595,10 +421,17 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
         return selected;
       }
     }
-    final suggestions = await widget.searchService.searchIndia(input);
-    if (suggestions.isEmpty) return null;
     final postcode =
-        RegExp(r'(?<!\d)([1-9]\d{5})(?!\d)').firstMatch(input)?.group(1);
+        RegExp(r'(?<!\d)([1-9]\d{5})(?!\d)').firstMatch(lookupInput)?.group(1);
+    if (postcode != null) {
+      final localSuggestions = widget.searchService.localSuggestions(postcode);
+      for (final suggestion in localSuggestions) {
+        if (suggestion.displayName.contains(postcode)) return suggestion;
+      }
+    }
+
+    final suggestions = await widget.searchService.searchIndia(lookupInput);
+    if (suggestions.isEmpty) return null;
     if (postcode != null) {
       for (final suggestion in suggestions) {
         if (suggestion.displayName.contains(postcode)) return suggestion;
@@ -610,6 +443,22 @@ class _TripPlannerScreenState extends ConsumerState<TripPlannerScreen> {
       }
     }
     return suggestions.first;
+  }
+
+  String _expandedPinLookup(String input) {
+    final trimmed = input.trim();
+    if (!RegExp(r'^\d{5}$').hasMatch(trimmed)) return trimmed;
+
+    final matches = <String>{};
+    for (var index = 0; index <= trimmed.length; index++) {
+      final candidate =
+          '${trimmed.substring(0, index)}0${trimmed.substring(index)}';
+      final hasExactLocalPin = widget.searchService
+          .localSuggestions(candidate)
+          .any((place) => place.displayName.contains(candidate));
+      if (hasExactLocalPin) matches.add(candidate);
+    }
+    return matches.length == 1 ? matches.single : trimmed;
   }
 
   String _normalizePlace(String value) =>
@@ -836,9 +685,6 @@ class _RouteResultState extends State<_RouteResult> {
                   recommended: route.stopStationIds.contains(
                     routeCharger.stationId,
                   ),
-                  userSelected: route.userSelectedStationIds.contains(
-                    routeCharger.stationId,
-                  ),
                   onTap: () => Navigator.of(context).push<void>(
                     _stationDetailsRoute(
                       routeCharger.station,
@@ -939,13 +785,11 @@ class _RouteChargerTile extends StatelessWidget {
   const _RouteChargerTile({
     required this.routeCharger,
     required this.recommended,
-    required this.userSelected,
     required this.onTap,
   });
 
   final RouteChargerCandidate routeCharger;
   final bool recommended;
-  final bool userSelected;
   final VoidCallback onTap;
 
   @override
@@ -1003,11 +847,6 @@ class _RouteChargerTile extends StatelessWidget {
                   'RECOMMENDED',
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
                 ),
-              if (userSelected)
-                const Text(
-                  'YOUR SELECTION',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
-                ),
             ],
           ),
           const SizedBox(width: 4),
@@ -1030,7 +869,6 @@ class _RoutePlan {
     required this.routeChargers,
     required this.corridorKm,
     required this.locationBased,
-    required this.userSelectedStationIds,
     this.chargerDataError,
   });
 
@@ -1044,7 +882,6 @@ class _RoutePlan {
   final List<RouteChargerCandidate> routeChargers;
   final double corridorKm;
   final bool locationBased;
-  final List<String> userSelectedStationIds;
   final String? chargerDataError;
 
   OfficialChargerStation? stationForId(String id) {
