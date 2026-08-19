@@ -226,26 +226,16 @@ class _MapScreenState extends State<MapScreen> {
         ),
       ),
     );
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxHeight < 220) {
-          return ListView(
-            key: const Key('mapSearchableStatus'),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            children: [
-              search,
-              SizedBox(height: 140, child: status),
-            ],
-          );
-        }
-        return Column(
-          key: const Key('mapSearchableStatus'),
-          children: [
-            search,
-            Expanded(child: status),
-          ],
-        );
-      },
+    return CustomScrollView(
+      key: const Key('mapSearchableStatus'),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      slivers: [
+        SliverToBoxAdapter(child: search),
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: status,
+        ),
+      ],
     );
   }
 

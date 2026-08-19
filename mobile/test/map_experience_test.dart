@@ -361,6 +361,49 @@ void main() {
         find.textContaining('without using device location'), findsOneWidget);
   });
 
+  testWidgets('Map search keeps keyboard focus as the mobile viewport shrinks',
+      (
+    tester,
+  ) async {
+    _useViewport(tester, const Size(390, 650));
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MapScreen(
+          locationLoader: _fakeLocation,
+          placeSearchService: _ManualPlaceSearchService(),
+          chargerSearchService: _FakeChargerSearchService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final searchField = find.byKey(
+      const ValueKey('locationField_Search chargers by area or PIN'),
+    );
+    await tester.tap(searchField);
+    await tester.pump();
+
+    expect(tester.testTextInput.isVisible, isTrue);
+    expect(tester.widget<TextField>(searchField).focusNode?.hasFocus, isTrue);
+
+    // Mobile browsers reduce the app viewport when the software keyboard
+    // appears. The focused field must not be replaced by a different layout.
+    tester.view.physicalSize = const Size(390, 260);
+    await tester.pump();
+
+    expect(find.byKey(const Key('mapSearchableStatus')), findsOneWidget);
+    expect(searchField, findsOneWidget);
+    expect(tester.testTextInput.isVisible, isTrue);
+    expect(tester.widget<TextField>(searchField).focusNode?.hasFocus, isTrue);
+
+    await tester.enterText(searchField, '500079');
+    await tester.pump(const Duration(milliseconds: 240));
+    tester.view.physicalSize = const Size(390, 650);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
+    expect(find.text('Alpha Charge - Hyderabad'), findsOneWidget);
+  });
+
   testWidgets('Map keeps location enabled while searching another PIN in place',
       (
     tester,
