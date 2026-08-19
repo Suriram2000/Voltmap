@@ -146,23 +146,23 @@ class _PhoneVerificationScreenState
               ),
             ),
           ),
-          if (AppRuntimeConfig.isSandbox) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                key: const Key('appReviewDemoButton'),
-                onPressed: _submitting ? null : _enterDemoAccount,
-                icon: const Icon(Icons.visibility_outlined),
-                label: const Text('Explore with demo account'),
-              ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const Key('appReviewDemoButton'),
+              onPressed: _submitting ? null : _enterDemoAccount,
+              icon: const Icon(Icons.visibility_outlined),
+              label: const Text('Explore with demo account'),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Sandbox only. No WhatsApp message, real payment, or private account data is used.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            AppRuntimeConfig.isSandbox
+                ? 'Sandbox demo. No WhatsApp message, real payment, or private account data is used.'
+                : 'Local demo access for App Review and evaluation. No WhatsApp message, real payment, or private account data is used.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           const SizedBox(height: 14),
           _OtpDisclosure(isPreview: AppRuntimeConfig.isSandbox),
         ],
