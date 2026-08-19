@@ -1,13 +1,17 @@
 # VoltMapEV Apple App Review response package
 
-Prepared for submission `558a4224-2f0a-4e68-b74d-11a3ceaa8440`, which Apple
-rejected under Guideline 2.1 on 15 August 2026 because additional review
-information was required. The rejected item was version 1.12.0 build 15.
+Prepared for the Guideline 2.1 correction after App Review could not fully
+inspect the app's saved features. The previous release build unintentionally
+showed **Explore with demo account** only in sandbox/test mode even though the
+review notes said it was available in the submitted production binary.
 
-The next review build is version 1.14.1 build 27. It exposes a clearly labeled
-local demo account so App Review can inspect favorites, saved trips, profile
-controls, and account deletion without relying on an unconfigured SMS service.
-The demo does not send SMS, move money, or use private account data.
+The corrected review build is version 1.15.1 build 29. It exposes the clearly
+labeled local demo account in the production App Store binary so App Review can
+inspect favorites, saved trips, profile controls, and account deletion without
+depending on an unconfigured WhatsApp service. The demo does not send a
+message, move money, enable a live charging session, or use private account
+data. A production-mode automated test prevents reviewer access from being
+hidden again.
 
 ## Owner-supplied evidence still required
 
@@ -60,11 +64,11 @@ VoltMapEV is below.
 
 Video: [ADD REVIEWER-ACCESSIBLE VIDEO URL]
 
-The recording begins with a fresh launch on a physical device running the
-latest operating system and demonstrates charger search, station details,
-optional location permission, the nearby map/list, route planning, the local
-review demo, favorites, saved trips, account deletion, Addstation, and the
-production payment-unavailable state.
+The recording begins with a fresh launch of version 1.15.1 build 29 on a
+physical device running the latest operating system and demonstrates charger
+search, station details, optional location permission, the nearby map/list,
+route planning, the local review demo, favorites, saved trips, account
+deletion, Addstation, and the production payment-unavailable state.
 
 2. **Devices and operating systems tested**
 
@@ -96,10 +100,11 @@ the source does not provide those facts.
 - Route example: open Trips and plan from `500081` to `500079`.
 - Location: open Map and enable the location-sharing switch. The app requests
   foreground access only. If access is denied, use the area/PIN search.
-- Saved-feature review: attempt to save a trip or favorite, then tap
-  **Explore with demo account** on the Verify phone screen. No username,
-  password, SMS, or private data is required. The demo identity is displayed as
-  `demo@voltmapev.com`.
+- Saved-feature review: attempt to save a trip or favorite. On **Verify phone**,
+  tap **Explore with demo account** below the WhatsApp button. This control is
+  present in build 29 even when production services are unavailable. No
+  username, password, OTP, message, or private data is required. The demo
+  identity is displayed as `demo@voltmapev.com`.
 - Account deletion: while using the demo, open Profile and choose the account
   and local-data deletion control.
 - The submitted production build has no live payment, in-app purchase,
@@ -153,11 +158,12 @@ Thank you.
 
 ## Submission checklist
 
-- [ ] Install build 27 through TestFlight on each declared physical device.
+- [ ] Install build 29 through TestFlight on each declared physical device.
 - [ ] Test with location not determined, allowed while using, denied, and
       denied permanently.
 - [ ] Test `500079` Discover search and `500081` to `500079` route planning.
-- [ ] Verify the demo path can save a trip/favorite and can delete local data.
+- [ ] Verify **Explore with demo account** is visible in the TestFlight build,
+      can save a trip/favorite, and can delete local data.
 - [ ] Confirm production Charge & Pay remains fail-closed and requests no real
       payment data.
 - [ ] Record the exact physical-device flow above on the latest OS.

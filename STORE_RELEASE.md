@@ -8,7 +8,7 @@ Prepared: 17 August 2026
 - Android application ID: `in.voltmap.voltmap`
 - Apple bundle ID: `in.voltmap.voltmap`
 - Minimum iOS version: `15.0`
-- Version: `1.15.0` (`28`)
+- Version: `1.15.1` (`29`)
 - Website: `https://voltmapev.com/`
 - Support: `skotla100@gmail.com`, `+91 93927 88714`
 - Privacy: `https://voltmapev.com/privacy-policy.html`
@@ -48,8 +48,13 @@ travel. The current payment flow is a clearly marked sandbox and does not move
 real money. Production payments remain unavailable until a verified provider,
 charger-meter integration, and server-side webhook verification are configured.
 
-### Version 1.15.0 release notes
+### Version 1.15.1 release notes
 
+- App Review demo access now remains available in production builds so the
+  reviewer can inspect saved trips, favorites, profile controls, and local-data
+  deletion without a live WhatsApp dependency
+- Map search retains keyboard focus when the iOS software keyboard changes the
+  available viewport height
 - India phone verification uses a server-issued WhatsApp OTP, with expiry,
   resend timing, attempt limits, rate limits, and no client-side provider secret
 - Guest charging checkout verifies the receipt destination, opens only the
