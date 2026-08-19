@@ -394,7 +394,7 @@ class _AuthStory extends StatelessWidget {
             const _StoryPoint(
               icon: Icons.receipt_long_outlined,
               title: 'Your charging workspace',
-              subtitle: 'Keep trips, favorites, and demo receipts together',
+              subtitle: 'Keep trips and favorites together on this device',
             ),
           ],
         ],

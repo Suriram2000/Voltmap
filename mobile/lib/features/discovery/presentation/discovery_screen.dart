@@ -571,7 +571,7 @@ class _DiscoveryHero extends StatelessWidget {
                               SizedBox(width: 8),
                               Flexible(
                                 child: Text(
-                                  'LIVE DEMO NETWORK',
+                                  'STATION DATA',
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -694,11 +694,11 @@ class _DiscoveryHero extends StatelessWidget {
                         ),
                         _HeroMetric(
                           value: '${sampleStations.length}',
-                          label: 'detailed demos',
+                          label: 'station records',
                         ),
                         _HeroMetric(
                           value: '$availableConnectors',
-                          label: 'demo connectors ready',
+                          label: 'connectors',
                         ),
                       ],
                     ),
@@ -1044,7 +1044,7 @@ class _FilterRow extends StatelessWidget {
         ),
         Chip(
           avatar: const Icon(Icons.tune_rounded, size: 17),
-          label: const Text('45 detailed demos'),
+          label: const Text('45 stations'),
           side: BorderSide.none,
           backgroundColor: Theme.of(context).colorScheme.surface,
         ),
@@ -1072,7 +1072,7 @@ class _ResultsHeader extends StatelessWidget {
               Text(
                 query.trim().isEmpty
                     ? 'Detailed VoltMapEV locations'
-                    : 'Detailed demo matches',
+                    : 'Station matches',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 4),
@@ -1094,7 +1094,7 @@ class _ResultsHeader extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text(
-            '$count ${count == 1 ? 'demo' : 'demos'}',
+            '$count found',
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
@@ -1162,7 +1162,7 @@ class _EmptySearch extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Text(
-              'No demo stations match that search',
+              'No stations match that search',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 6),

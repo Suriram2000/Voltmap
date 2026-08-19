@@ -281,7 +281,7 @@ class _InstallAppScreenState extends State<InstallAppScreen> {
   String _installationDisclosure(InstallAppPlatform? platform) {
     return switch (platform) {
       InstallAppPlatform.ios =>
-        'The Apple button opens only the official VoltMapEV App Store listing. It never redirects to an Android installer.',
+        'The Apple button opens only the official VoltMapEV App Store listing for this device.',
       InstallAppPlatform.android =>
         'The Google Play button opens only the VoltMapEV Android package. Chrome may also install the secure website from voltmapev.com.',
       _ =>

@@ -95,6 +95,9 @@ class _PhoneVerificationScreenState
   }
 
   Widget _buildPhoneStep() {
+    if (AppRuntimeConfig.isAppleAppStoreBuild) {
+      return _buildLocalProfileStep();
+    }
     return Form(
       key: _phoneFormKey,
       child: Column(
@@ -167,6 +170,37 @@ class _PhoneVerificationScreenState
           _OtpDisclosure(isPreview: AppRuntimeConfig.isSandbox),
         ],
       ),
+    );
+  }
+
+  Widget _buildLocalProfileStep() {
+    return Column(
+      key: const ValueKey('localProfileStep'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _header(Icons.person_outline_rounded, 'Continue with a local profile'),
+        const SizedBox(height: 12),
+        Text(
+          'No account is required. Continue to use ${widget.feature}, saved trips, profile controls, and local data deletion on this device.',
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            key: const Key('appReviewDemoButton'),
+            onPressed: _submitting ? null : _enterDemoAccount,
+            icon: const Icon(Icons.arrow_forward_rounded),
+            label: const Text('Continue on this device'),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'No phone number, password, OTP, payment, or private account data is required.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
     );
   }
 

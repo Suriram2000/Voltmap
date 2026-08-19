@@ -73,7 +73,7 @@ class AboutScreen extends StatelessWidget {
                 icon: Icons.verified_outlined,
                 title: 'Data transparency',
                 text:
-                    'Official search results show their government source and data date. Bundled station availability, prices, ratings, route stops, and payments are demonstration data and are clearly labelled for verification before travel.',
+                    'Official search results show their government source and data date. Reference station availability, prices, ratings, and route stops are clearly labelled for verification with the station operator before travel.',
               ),
               const SizedBox(height: 24),
               Text(

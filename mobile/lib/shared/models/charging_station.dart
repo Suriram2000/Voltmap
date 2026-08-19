@@ -18,8 +18,8 @@ class ChargingStation {
     required this.rating,
     required this.amenities,
     this.searchAliases = const [],
-    this.dataSource = 'VoltMapEV demonstration catalog',
-    this.dataUpdatedLabel = 'Demonstration data — not live',
+    this.dataSource = 'VoltMapEV reference catalog',
+    this.dataUpdatedLabel = 'Reference data — not live; verify with operator',
     this.availabilityIsLive = false,
     this.pricingIsLive = false,
   });

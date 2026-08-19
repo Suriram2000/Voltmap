@@ -1,6 +1,10 @@
 enum AppEnvironment { sandbox, production }
 
 abstract final class AppRuntimeConfig {
+  static const isAppleAppStoreBuild = bool.fromEnvironment(
+    'VOLTMAP_APP_STORE_BUILD',
+  );
+
   static const _configuredEnvironment = String.fromEnvironment(
     'VOLTMAP_ENV',
   );
@@ -43,6 +47,13 @@ abstract final class AppRuntimeConfig {
 
   static bool get hasRealtimeChargerBackend {
     return !isSandbox && _isSecureApiUrl(realtimeChargerApiBaseUrl);
+  }
+
+  static bool get canOfferChargingPayment {
+    return isSandbox ||
+        (hasSecurePaymentBackend &&
+            hasSecureIdentityBackend &&
+            hasRealtimeChargerBackend);
   }
 
   static bool _isSecureApiUrl(String value) {

@@ -399,7 +399,7 @@ class _DesktopNavigation extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Demo network online',
+                              'Station data',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700,
@@ -408,7 +408,7 @@ class _DesktopNavigation extends StatelessWidget {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'India-wide demo coverage',
+                              'India-wide coverage',
                               style: TextStyle(
                                 color: Color(0xFF9FB7AD),
                                 fontSize: 11,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/state/app_state.dart';
 import '../../about/presentation/about_screen.dart';
@@ -65,7 +66,7 @@ class ProfileScreen extends ConsumerWidget {
                           children: [
                             Text(
                               appState.isDemoAccount
-                                  ? 'DEMO DRIVER PROFILE'
+                                  ? 'LOCAL DRIVER PROFILE'
                                   : 'DRIVER PROFILE',
                               style: const TextStyle(
                                 color: AppTheme.brandLime,
@@ -246,7 +247,7 @@ class ProfileScreen extends ConsumerWidget {
                             const Icon(Icons.admin_panel_settings_outlined),
                         title: const Text('Admin dashboard'),
                         subtitle: const Text(
-                          'Local users, activity, reports, and demo payments',
+                          'Local users, activity, and station reports',
                         ),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => Navigator.push(
@@ -258,28 +259,30 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       const Divider(height: 1),
                     ],
-                    ListTile(
-                      key: const Key('paymentHistoryTile'),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 5,
-                      ),
-                      leading: const Icon(Icons.receipt_long_outlined),
-                      title: const Text('Payments & receipts'),
-                      subtitle: Text(
-                        appState.chargingReceipts.isEmpty
-                            ? 'No demo charging payments yet'
-                            : '${appState.chargingReceipts.length} saved demo receipt${appState.chargingReceipts.length == 1 ? '' : 's'}',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (_) => const PaymentHistoryScreen(),
+                    if (AppRuntimeConfig.canOfferChargingPayment) ...[
+                      ListTile(
+                        key: const Key('paymentHistoryTile'),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 5,
+                        ),
+                        leading: const Icon(Icons.receipt_long_outlined),
+                        title: const Text('Payments & receipts'),
+                        subtitle: Text(
+                          appState.chargingReceipts.isEmpty
+                              ? 'No charging receipts yet'
+                              : '${appState.chargingReceipts.length} saved receipt${appState.chargingReceipts.length == 1 ? '' : 's'}',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => const PaymentHistoryScreen(),
+                          ),
                         ),
                       ),
-                    ),
-                    const Divider(height: 1),
+                      const Divider(height: 1),
+                    ],
                     ListTile(
                       key: const Key('installVoltMapEVTile'),
                       contentPadding: const EdgeInsets.symmetric(
@@ -289,7 +292,7 @@ class ProfileScreen extends ConsumerWidget {
                       leading: const Icon(Icons.install_mobile_rounded),
                       title: const Text('Install VoltMapEV'),
                       subtitle: const Text(
-                        'Add the app to your iPhone, iPad, or Android home screen',
+                        'Install the official app for this device',
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => Navigator.push(
@@ -383,9 +386,9 @@ class ProfileScreen extends ConsumerWidget {
                         vertical: 5,
                       ),
                       leading: Icon(Icons.info_outline),
-                      title: Text('VoltMapEV demo'),
+                      title: Text('VoltMapEV'),
                       subtitle: Text(
-                        'Android, iOS & browser-ready',
+                        'EV charger discovery and route planning',
                       ),
                     ),
                   ],
@@ -428,7 +431,7 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 9),
                       const Text(
-                        'Charger lookup, maps, charger details, and trip planning are public. Create a browser-local account only for favorites, saved trips, charger reports, and demo payments.',
+                        'Charger lookup, maps, charger details, and trip planning are public. Continue with a local profile only when you want to save favorites, trips, and charger reports.',
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 22),
@@ -473,7 +476,7 @@ class ProfileScreen extends ConsumerWidget {
                   leading: const Icon(Icons.install_mobile_rounded),
                   title: const Text('Install VoltMapEV'),
                   subtitle: const Text(
-                    'Add the app to your iPhone, iPad, or Android home screen',
+                    'Install the official app for this device',
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.push(
@@ -647,7 +650,7 @@ class ProfileScreen extends ConsumerWidget {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Sign out of VoltMapEV?'),
         content: const Text(
-          'Your browser keeps this demo account and saved app data so you can sign in again.',
+          'This device keeps the local profile and saved app data so you can continue later.',
         ),
         actions: [
           TextButton(

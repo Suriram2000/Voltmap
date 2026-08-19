@@ -266,7 +266,7 @@ void main() {
 
     await tester.tap(find.text('Profile'));
     await tester.pumpAndSettle();
-    expect(find.text('DEMO DRIVER PROFILE'), findsOneWidget);
+    expect(find.text('LOCAL DRIVER PROFILE'), findsOneWidget);
     expect(find.text('demo@voltmapev.com'), findsOneWidget);
   });
 
@@ -403,7 +403,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('ChargeZone Hitech City'), findsOneWidget);
     expect(find.text('Tata Power Madhapur'), findsOneWidget);
-    expect(find.text('2 demos'), findsOneWidget);
+    expect(find.text('2 found'), findsOneWidget);
 
     await tester.enterText(
       find.byKey(const Key('locationField_Search across India')),
@@ -449,12 +449,12 @@ void main() {
     await tester.enterText(discoverySearch, '110001');
     await tester.pumpAndSettle();
     expect(find.text('Statiq Connaught Place'), findsOneWidget);
-    expect(find.text('1 demo'), findsOneWidget);
+    expect(find.text('1 found'), findsOneWidget);
 
     await tester.enterText(discoverySearch, '400-051');
     await tester.pumpAndSettle();
     expect(find.text('Tata Power BKC'), findsOneWidget);
-    expect(find.text('1 demo'), findsOneWidget);
+    expect(find.text('1 found'), findsOneWidget);
 
     await tester.enterText(discoverySearch, 'Whitefield');
     await tester.pumpAndSettle();
@@ -463,12 +463,12 @@ void main() {
     await tester.enterText(discoverySearch, 'Bangalore');
     await tester.pumpAndSettle();
     expect(find.text('Ather Grid Whitefield'), findsOneWidget);
-    expect(find.text('3 demos'), findsOneWidget);
+    expect(find.text('3 found'), findsOneWidget);
 
     await tester.enterText(discoverySearch, 'Tamil Nadu');
     await tester.pumpAndSettle();
     expect(find.text('Zeon Peelamedu'), findsOneWidget);
-    expect(find.text('3 demos'), findsOneWidget);
+    expect(find.text('3 found'), findsOneWidget);
   });
 
   test('local India suggestions resolve 500079 and partial ben searches', () {
