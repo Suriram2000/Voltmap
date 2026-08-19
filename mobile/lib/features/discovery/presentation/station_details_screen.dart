@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/config/app_environment.dart';
 import '../../../shared/models/charging_receipt.dart';
 import '../../../shared/models/charging_station.dart';
 import '../../../shared/state/app_state.dart';
@@ -371,19 +372,21 @@ class StationDetailsScreen extends ConsumerWidget {
                       label: const Text('Navigate'),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.icon(
-                      key: const Key('openCheckoutButton'),
-                      onPressed: station.available
-                          ? () => _startSession(context)
-                          : null,
-                      icon: const Icon(Icons.bolt_rounded),
-                      label: Text(
-                        station.available ? 'Charge & pay' : 'Unavailable',
+                  if (AppRuntimeConfig.canOfferChargingPayment) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        key: const Key('openCheckoutButton'),
+                        onPressed: station.available
+                            ? () => _startSession(context)
+                            : null,
+                        icon: const Icon(Icons.bolt_rounded),
+                        label: Text(
+                          station.available ? 'Charge & pay' : 'Unavailable',
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),

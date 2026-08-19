@@ -175,11 +175,13 @@ jobs:
             --dart-define=VOLTMAP_PAYMENT_API_BASE_URL=https://api.voltmapev.com \
             --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=https://api.voltmapev.com
           flutter test test/production_app_review_access_test.dart \
-            --dart-define=VOLTMAP_ENV=production
+            --dart-define=VOLTMAP_ENV=production \
+            --dart-define=VOLTMAP_APP_STORE_BUILD=true
       - name: Build signed iOS package
         working-directory: mobile
         run: >-
           flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+          --dart-define=VOLTMAP_APP_STORE_BUILD=true
           --dart-define=VOLTMAP_PAYMENT_API_BASE_URL=${{ vars.VOLTMAP_PAYMENT_API_BASE_URL }}
           --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=${{ vars.VOLTMAP_IDENTITY_API_BASE_URL }}
           --dart-define=VOLTMAP_REALTIME_CHARGER_API_BASE_URL=${{ vars.VOLTMAP_REALTIME_CHARGER_API_BASE_URL }}

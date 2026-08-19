@@ -14,7 +14,7 @@ const moduleCatalog = [
   'Live Provider Networks',
   'AI Routing',
   'Monitoring & Analytics',
-  'Android Auto & CarPlay',
+  'In-car route planning',
   'Wearables',
   'Enterprise API & SDK',
   'Internationalization',

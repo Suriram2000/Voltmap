@@ -8,7 +8,7 @@ Prepared: 17 August 2026
 - Android application ID: `in.voltmap.voltmap`
 - Apple bundle ID: `in.voltmap.voltmap`
 - Minimum iOS version: `15.0`
-- Version: `1.15.1` (`29`)
+- Version: `1.15.2` (`30`)
 - Website: `https://voltmapev.com/`
 - Support: `skotla100@gmail.com`, `+91 93927 88714`
 - Privacy: `https://voltmapev.com/privacy-policy.html`
@@ -39,38 +39,28 @@ near the journey instead of browsing an unrelated nationwide list.
 - Plan range-aware trips with route-relevant charging stops
 - Use current location only when you choose
 - Verify important stations and directions before travel
-- Save favorites and trips after phone verification
+- Save favorites and trips in a private local profile
 - Submit charger corrections or additions for review
 
 Station availability, tariffs, connector status, and route estimates can
 change. Confirm important charging stops with the station operator before
-travel. The current payment flow is a clearly marked sandbox and does not move
-real money. Production payments remain unavailable until a verified provider,
-charger-meter integration, and server-side webhook verification are configured.
+travel. VoltMapEV does not sell electricity or process charging payments in
+this release.
 
-### Version 1.15.1 release notes
+### Version 1.15.2 release notes
 
-- App Review demo access now remains available in production builds so the
-  reviewer can inspect saved trips, favorites, profile controls, and local-data
-  deletion without a live WhatsApp dependency
+- Saved features can be reviewed through a private local profile without a
+  phone number, password, OTP, or external account
+- Removed third-party platform references from the iPhone and iPad experience
+- Removed unavailable charging-payment controls from the App Store build
 - Map search retains keyboard focus when the iOS software keyboard changes the
   available viewport height
-- India phone verification uses a server-issued WhatsApp OTP, with expiry,
-  resend timing, attempt limits, rate limits, and no client-side provider secret
-- Guest charging checkout verifies the receipt destination, opens only the
-  provider-hosted payment page, and waits for webhook plus meter confirmation
-- Verified receipts can be viewed, downloaded, and safely retried after a
-  temporary email or WhatsApp delivery failure
 - Map markers and the nearby list can consume timestamped operator
   availability and tariffs, with an explicit dated-inventory fallback
 - Clearer location permission explanations and nearby-map error states
 - Data-source, freshness, availability, and estimated-price labels
 - Easier reporting of incorrect station information to VoltMapEV support
-- Platform-correct App Store and Google Play installation links
-- Adaptive, round, and Android 13 themed launcher icons
-- Android 12 launch screen and predictive-back integration
-- Android network and backup hardening for private local app data
-- Expanded receipt details and secure production payment safeguards
+- Platform-correct Apple App Store installation links
 - Reliability and performance improvements across charger search and maps
 
 ### Ethical discoverability plan

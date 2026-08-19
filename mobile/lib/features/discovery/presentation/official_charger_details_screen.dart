@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/config/app_environment.dart';
 import '../../../shared/models/charging_station.dart';
 import '../../payments/presentation/production_charging_checkout_screen.dart';
 import '../data/official_charger_station.dart';
@@ -308,12 +309,7 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
                     icon: const Icon(Icons.navigation_rounded),
                     label: const Text('Navigate'),
                   );
-                  final chargeButton = FilledButton.icon(
-                    key: const Key('chargeOfficialStationButton'),
-                    onPressed: () => _openSecureCheckout(context),
-                    icon: const Icon(Icons.bolt_rounded),
-                    label: const Text('Charge & pay'),
-                  );
+                  final showCharge = AppRuntimeConfig.canOfferChargingPayment;
                   if (constraints.maxWidth < 520) {
                     return Column(
                       mainAxisSize: MainAxisSize.min,
@@ -322,8 +318,15 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
                         verifyButton,
                         const SizedBox(height: 8),
                         navigateButton,
-                        const SizedBox(height: 8),
-                        chargeButton,
+                        if (showCharge) ...[
+                          const SizedBox(height: 8),
+                          FilledButton.icon(
+                            key: const Key('chargeOfficialStationButton'),
+                            onPressed: () => _openSecureCheckout(context),
+                            icon: const Icon(Icons.bolt_rounded),
+                            label: const Text('Charge & pay'),
+                          ),
+                        ],
                       ],
                     );
                   }
@@ -332,8 +335,17 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
                       Expanded(child: verifyButton),
                       const SizedBox(width: 12),
                       Expanded(child: navigateButton),
-                      const SizedBox(width: 12),
-                      Expanded(child: chargeButton),
+                      if (showCharge) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton.icon(
+                            key: const Key('chargeOfficialStationButton'),
+                            onPressed: () => _openSecureCheckout(context),
+                            icon: const Icon(Icons.bolt_rounded),
+                            label: const Text('Charge & pay'),
+                          ),
+                        ),
+                      ],
                     ],
                   );
                 },

@@ -27,6 +27,7 @@ void main() {
     expect(find.text('Get VoltMapEV for iPhone or iPad'), findsOneWidget);
     expect(find.byKey(const Key('openAppleAppStoreButton')), findsOneWidget);
     expect(find.textContaining('Google Play'), findsNothing);
+    expect(find.textContaining('Android'), findsNothing);
     expect(find.textContaining('Add to Home Screen'), findsNothing);
     expect(find.byKey(const Key('installVoltMapEVButton')), findsNothing);
     await tester.scrollUntilVisible(

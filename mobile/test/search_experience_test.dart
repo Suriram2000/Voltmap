@@ -210,7 +210,7 @@ void main() {
     expect(find.text('Detailed VoltMapEV locations'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 70));
-    expect(find.text('Detailed demo matches'), findsOneWidget);
+    expect(find.text('Station matches'), findsOneWidget);
   });
 
   testWidgets('long location options scroll smoothly and remain selectable', (
