@@ -33,6 +33,7 @@ export function createWorker({fetchImpl = globalThis.fetch} = {}) {
               status: 'ok',
               service: 'voltmapev-identity',
               otpChannels: ['whatsapp', 'email'],
+              pilotMode: isPilotMode(env),
               ready: isConfigured(env),
             },
             200,
@@ -98,6 +99,7 @@ async function createChallenge(request, env, fetchImpl, origin) {
   assertChannelConfigured(env, channel);
 
   const destination = normalizeDestination(channel, body.destination);
+  assertPilotDestinationAllowed(channel, destination, env);
   const destinationKey = await sha256Hex(`${channel}:${destination}`);
   const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
   const ipKey = await sha256Hex(ip);
@@ -476,6 +478,41 @@ function assertChannelConfigured(env, channel) {
   }
 }
 
+function assertPilotDestinationAllowed(channel, destination, env) {
+  if (channel !== 'whatsapp' || !isPilotMode(env)) return;
+
+  const allowed = pilotWhatsAppDestinations(env);
+  if (allowed.size === 0) {
+    throw new ApiError(
+      503,
+      'whatsapp_pilot_not_configured',
+      'The WhatsApp production pilot is not configured.',
+    );
+  }
+  if (!allowed.has(destination)) {
+    throw new ApiError(
+      403,
+      'whatsapp_pilot_destination_not_allowed',
+      'WhatsApp verification is restricted during the production pilot.',
+    );
+  }
+}
+
+function isPilotMode(env) {
+  return String(env.OTP_PILOT_MODE ?? '').trim().toLowerCase() === 'true';
+}
+
+function pilotWhatsAppDestinations(env) {
+  const configured = String(env.WHATSAPP_PILOT_ALLOWLIST ?? '');
+  return new Set(
+    configured
+      .split(',')
+      .map((value) => value.replace(/\D/g, ''))
+      .map((value) => value.length === 10 ? `91${value}` : value)
+      .filter((value) => /^91[6-9]\d{9}$/.test(value)),
+  );
+}
+
 function isConfigured(env) {
   return Boolean(
     env.OTP_CHALLENGES &&
@@ -485,6 +522,7 @@ function isConfigured(env) {
       env.WHATSAPP_PHONE_NUMBER_ID &&
       env.WHATSAPP_AUTH_TEMPLATE &&
       env.WHATSAPP_GRAPH_API_VERSION &&
+      (!isPilotMode(env) || pilotWhatsAppDestinations(env).size > 0) &&
       env.RESEND_API_KEY &&
       env.OTP_FROM_EMAIL,
   );

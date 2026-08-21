@@ -33,6 +33,8 @@ function environment() {
     WHATSAPP_AUTH_TEMPLATE: 'voltmapev_authentication',
     WHATSAPP_GRAPH_API_VERSION: 'v23.0',
     WHATSAPP_TEMPLATE_LANGUAGE: 'en',
+    OTP_PILOT_MODE: 'true',
+    WHATSAPP_PILOT_ALLOWLIST: '919000000001',
     RESEND_API_KEY: 'test-email-token',
     OTP_FROM_EMAIL: 'VoltMapEV <verify@voltmapev.com>',
   };
@@ -61,7 +63,7 @@ test('sends a WhatsApp authentication template without exposing the OTP', async 
   const response = await worker.fetch(
     jsonRequest('/v1/identity/otp/challenges', {
       channel: 'whatsapp',
-      destination: '9392788714',
+      destination: '9000000001',
       purpose: 'account_sign_in',
     }),
     env,
@@ -70,9 +72,9 @@ test('sends a WhatsApp authentication template without exposing the OTP', async 
   const sentCode = providerBody.template.components[0].parameters[0].text;
 
   assert.equal(response.status, 201);
-  assert.equal(body.destination, '9392788714');
+  assert.equal(body.destination, '9000000001');
   assert.equal(providerBody.messaging_product, 'whatsapp');
-  assert.equal(providerBody.to, '919392788714');
+  assert.equal(providerBody.to, '919000000001');
   assert.match(sentCode, /^\d{6}$/);
   assert.equal(JSON.stringify(body).includes(sentCode), false);
   const stored = await env.OTP_CHALLENGES.get(
@@ -92,7 +94,7 @@ test('sends a WhatsApp authentication template without exposing the OTP', async 
   assert.equal(verified.status, 200);
   assert.equal(verifiedBody.verified, true);
   assert.match(verifiedBody.verifiedContactToken, /^v1\.[^.]+\.[^.]+$/);
-  assert.equal(verifiedBody.destination, '+91 ••••••8714');
+  assert.equal(verifiedBody.destination, '+91 ••••••0001');
   assert.equal(
     await env.OTP_CHALLENGES.get(`challenge:${body.challengeId}`),
     null,
@@ -106,7 +108,7 @@ test('rejects legacy SMS requests and invalid India numbers', async () => {
   const sms = await worker.fetch(
     jsonRequest('/v1/identity/otp/challenges', {
       channel: 'sms',
-      destination: '9392788714',
+      destination: '9000000001',
       purpose: 'account_sign_in',
     }),
     env,
@@ -126,6 +128,55 @@ test('rejects legacy SMS requests and invalid India numbers', async () => {
   assert.equal((await invalid.json()).code, 'invalid_phone');
 });
 
+test('production pilot rejects every non-allowlisted WhatsApp number', async () => {
+  let called = false;
+  const worker = createWorker({
+    fetchImpl: async () => {
+      called = true;
+      return new Response('{}', {status: 200});
+    },
+  });
+  const response = await worker.fetch(
+    jsonRequest('/v1/identity/otp/challenges', {
+      channel: 'whatsapp',
+      destination: '9876543210',
+      purpose: 'account_sign_in',
+    }),
+    environment(),
+  );
+
+  assert.equal(response.status, 403);
+  assert.equal(
+    (await response.json()).code,
+    'whatsapp_pilot_destination_not_allowed',
+  );
+  assert.equal(called, false);
+});
+
+test('production pilot fails closed when its allowlist secret is missing', async () => {
+  let called = false;
+  const worker = createWorker({
+    fetchImpl: async () => {
+      called = true;
+      return new Response('{}', {status: 200});
+    },
+  });
+  const env = environment();
+  delete env.WHATSAPP_PILOT_ALLOWLIST;
+  const response = await worker.fetch(
+    jsonRequest('/v1/identity/otp/challenges', {
+      channel: 'whatsapp',
+      destination: '9000000001',
+      purpose: 'account_sign_in',
+    }),
+    env,
+  );
+
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).code, 'whatsapp_pilot_not_configured');
+  assert.equal(called, false);
+});
+
 test('enforces resend delay without sending a second message', async () => {
   const env = environment();
   let sends = 0;
@@ -137,7 +188,7 @@ test('enforces resend delay without sending a second message', async () => {
   });
   const payload = {
     channel: 'whatsapp',
-    destination: '9392788714',
+    destination: '9000000001',
     purpose: 'account_sign_in',
   };
 
@@ -164,7 +215,7 @@ test('decrements attempts and never accepts an incorrect code', async () => {
   const created = await worker.fetch(
     jsonRequest('/v1/identity/otp/challenges', {
       channel: 'whatsapp',
-      destination: '9392788714',
+      destination: '9000000001',
       purpose: 'account_sign_in',
     }),
     env,
@@ -197,7 +248,7 @@ test('fails closed before provider calls when secrets are missing', async () => 
   const response = await worker.fetch(
     jsonRequest('/v1/identity/otp/challenges', {
       channel: 'whatsapp',
-      destination: '9392788714',
+      destination: '9000000001',
       purpose: 'account_sign_in',
     }),
     env,
