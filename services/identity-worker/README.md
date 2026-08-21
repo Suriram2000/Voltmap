@@ -17,6 +17,9 @@ delivery. Provider credentials and OTP values never enter the Flutter client.
 - The service fails closed when any provider secret or KV binding is missing.
 - Browser CORS is restricted to VoltMapEV origins. Native iOS and Android calls
   do not depend on CORS.
+- The initial production pilot is fail-closed and sends WhatsApp OTPs only to
+  destinations stored in the `WHATSAPP_PILOT_ALLOWLIST` Worker secret. The
+  allowlist is never returned by `/health` or committed to the repository.
 
 KV rate limiting reduces routine abuse. Before a public production launch, add
 Cloudflare WAF/rate-limiting rules and Meta business/provider fraud controls as
@@ -37,6 +40,8 @@ an additional enforcement layer; KV is eventually consistent.
    - `OTP_HMAC_SECRET`
    - `WHATSAPP_ACCESS_TOKEN`
    - `WHATSAPP_PHONE_NUMBER_ID`
+   - `WHATSAPP_PILOT_ALLOWLIST` (comma-separated E.164 numbers; use one number
+     for the initial pilot)
    - `RESEND_API_KEY`
 
 7. Deploy the Worker and route `api.voltmapev.com` to it. Confirm `/health`
