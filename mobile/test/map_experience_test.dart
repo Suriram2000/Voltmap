@@ -26,7 +26,7 @@ void main() {
     );
   });
 
-  testWidgets('Map requests location only after opt-in and shows every charger',
+  testWidgets('Map locates on open and immediately shows every nearby charger',
       (
     tester,
   ) async {
@@ -50,20 +50,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(locationRequests, 0);
-    expect(find.byKey(const Key('nearbyChargerLocationOff')), findsOneWidget);
     final locationToggle = find.byKey(const Key('mapLocationToggle'));
-    expect(
-      tester
-          .widget<SwitchListTile>(
-            locationToggle,
-          )
-          .value,
-      isFalse,
-    );
-    await tester.tap(locationToggle);
-    await tester.pumpAndSettle();
-
     expect(locationRequests, 1);
     expect(tester.widget<SwitchListTile>(locationToggle).value, isTrue);
     expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
@@ -102,6 +89,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: MapScreen(
+          autoLocateOnOpen: false,
           locationLoader: () async {
             locationRequests++;
             return _fakeLocation();
@@ -153,6 +141,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: MapScreen(
+            autoLocateOnOpen: false,
             locationLoader: _fakeLocation,
             placeSearchService: _FakePlaceSearchService(),
             chargerSearchService: _FakeChargerSearchService(),
@@ -181,6 +170,7 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: MapScreen(
+          autoLocateOnOpen: false,
           locationLoader: _fakeLocation,
           placeSearchService: _FakePlaceSearchService(),
           chargerSearchService: _FakeChargerSearchService(),
@@ -209,6 +199,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: MapScreen(
+          autoLocateOnOpen: false,
           locationLoader: () async => throw Exception('location unavailable'),
           placeSearchService: const _FakePlaceSearchService(),
           chargerSearchService: const _FakeChargerSearchService(),
@@ -232,6 +223,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: MapScreen(
+          autoLocateOnOpen: false,
           locationLoader: () async =>
               throw const MapLocationPermissionException(
             'Location is blocked for this test.',
@@ -273,6 +265,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: MapScreen(
+          autoLocateOnOpen: false,
           locationLoader: () async =>
               throw const MapLocationPermissionException(
             'Location is blocked for this test.',
@@ -328,6 +321,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: MapScreen(
+          autoLocateOnOpen: false,
           locationLoader: () async => throw Exception('must not be requested'),
           placeSearchService: const _ManualPlaceSearchService(),
           chargerSearchService: const _FakeChargerSearchService(),
@@ -369,6 +363,7 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: MapScreen(
+          autoLocateOnOpen: false,
           locationLoader: _fakeLocation,
           placeSearchService: _ManualPlaceSearchService(),
           chargerSearchService: _FakeChargerSearchService(),
@@ -412,6 +407,7 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: MapScreen(
+          autoLocateOnOpen: false,
           locationLoader: _fakeLocation,
           placeSearchService: _ManualPlaceSearchService(),
           chargerSearchService: _FakeChargerSearchService(),
@@ -445,6 +441,7 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: MapScreen(
+          autoLocateOnOpen: false,
           locationLoader: _fakeLocation,
           placeSearchService: _FakePlaceSearchService(),
           chargerSearchService: _EmptyChargerSearchService(),
