@@ -43,11 +43,13 @@ class MapScreen extends StatefulWidget {
     this.locationLoader,
     this.placeSearchService = const PlaceSearchService(),
     this.chargerSearchService,
+    this.autoLocateOnOpen = true,
   });
 
   final MapLocationLoader? locationLoader;
   final PlaceSearchService placeSearchService;
   final OfficialChargerSearchService? chargerSearchService;
+  final bool autoLocateOnOpen;
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -77,6 +79,11 @@ class _MapScreenState extends State<MapScreen> {
         (AppRuntimeConfig.hasRealtimeChargerBackend
             ? RealtimeChargerSearchService()
             : const OfficialChargerSearchService());
+    if (widget.autoLocateOnOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _requestLocationAccess();
+      });
+    }
   }
 
   @override
