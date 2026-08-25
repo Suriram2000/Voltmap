@@ -1,4 +1,4 @@
-# VoltMapEV App Review response — version 1.15.2 build 30
+# VoltMapEV App Review response — version 1.15.2 build 31
 
 Prepared for submission `558a4224-2f0a-4e68-b74d-11a3ceaa8440` after the
 19 August 2026 rejection of version 1.13.3 build 23.
@@ -39,7 +39,8 @@ Prepared for submission `558a4224-2f0a-4e68-b74d-11a3ceaa8440` after the
 1. Search Discover for `500079`.
 2. Open any station to review its source, address, connector, and power details.
 3. Open Map. Location is optional; area/PIN search works when permission is
-   denied.
+   denied. When permission is granted, the map centers on the device and loads
+   nearby chargers immediately.
 4. Open Trips and plan from `500081` to `500079`.
 5. Save a favorite or trip and choose **Continue on this device**.
 6. Open Profile to inspect the local profile and **Delete account & local data**.
@@ -49,7 +50,7 @@ Prepared for submission `558a4224-2f0a-4e68-b74d-11a3ceaa8440` after the
 Hello App Review,
 
 Thank you for identifying the issues in version 1.13.3 build 23. We corrected
-all three findings in version 1.15.2 build 30.
+all three findings in version 1.15.2 build 31.
 
 For Guideline 2.3.10, the iPhone and iPad experience no longer displays
 third-party mobile-platform references. The Apple installation screen contains

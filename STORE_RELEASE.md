@@ -8,7 +8,7 @@ Prepared: 17 August 2026
 - Android application ID: `in.voltmap.voltmap`
 - Apple bundle ID: `in.voltmap.voltmap`
 - Minimum iOS version: `15.0`
-- Version: `1.15.2` (`30`)
+- Version: `1.15.2` (`31`)
 - Website: `https://voltmapev.com/`
 - Support: `skotla100@gmail.com`, `+91 93927 88714`
 - Privacy: `https://voltmapev.com/privacy-policy.html`
@@ -49,6 +49,8 @@ this release.
 
 ### Version 1.15.2 release notes
 
+- Map requests location on open and immediately centers on the device and shows
+  nearby chargers after permission is granted
 - Saved features can be reviewed through a private local profile without a
   phone number, password, OTP, or external account
 - Removed third-party platform references from the iPhone and iPad experience
