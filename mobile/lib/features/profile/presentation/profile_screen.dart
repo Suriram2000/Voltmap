@@ -18,7 +18,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final appState = ref.watch(appStateProvider);
     if (!appState.canUseSavedFeatures) {
-      return _buildGuestProfile(context);
+      return _buildGuestProfile(context, appState);
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Profile & settings')),
@@ -125,8 +125,9 @@ class ProfileScreen extends ConsumerWidget {
                               children: [
                                 Text(
                                   'Your saved workspace',
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
                                 ),
                                 Text(
                                   'Available after login on this device',
@@ -134,9 +135,9 @@ class ProfileScreen extends ConsumerWidget {
                                       .textTheme
                                       .bodySmall
                                       ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                       ),
                                 ),
                               ],
@@ -200,8 +201,10 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 28),
-              Text('Preferences',
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'Preferences',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 10),
               Card(
                 child: Column(
@@ -243,8 +246,9 @@ class ProfileScreen extends ConsumerWidget {
                           horizontal: 20,
                           vertical: 5,
                         ),
-                        leading:
-                            const Icon(Icons.admin_panel_settings_outlined),
+                        leading: const Icon(
+                          Icons.admin_panel_settings_outlined,
+                        ),
                         title: const Text('Admin dashboard'),
                         subtitle: const Text(
                           'Local users, activity, and station reports',
@@ -387,9 +391,7 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       leading: Icon(Icons.info_outline),
                       title: Text('VoltMapEV'),
-                      subtitle: Text(
-                        'EV charger discovery and route planning',
-                      ),
+                      subtitle: Text('EV charger discovery and route planning'),
                     ),
                   ],
                 ),
@@ -401,7 +403,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildGuestProfile(BuildContext context) {
+  Widget _buildGuestProfile(BuildContext context, AppState appState) {
     return Scaffold(
       appBar: AppBar(title: const Text('Profile & settings')),
       body: Center(
@@ -422,7 +424,9 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Explore first. Sign up when you save.',
+                        AppRuntimeConfig.isAppleAppStoreBuild
+                            ? 'Explore first. Save when ready.'
+                            : 'Explore first. Sign up when you save.',
                         textAlign: TextAlign.center,
                         style: Theme.of(context)
                             .textTheme
@@ -431,40 +435,54 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 9),
                       const Text(
-                        'Charger lookup, maps, charger details, and trip planning are public. Continue with a local profile only when you want to save favorites, trips, and charger reports.',
+                        AppRuntimeConfig.isAppleAppStoreBuild
+                            ? 'Charger lookup, maps, charger details, and trip planning are public. Continue on this device to save favorites, trips, and charger reports without credentials.'
+                            : 'Charger lookup, maps, charger details, and trip planning are public. Continue with a local profile only when you want to save favorites, trips, and charger reports.',
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 22),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          key: const Key('profileSignUpButton'),
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) =>
-                                  const AuthScreen(initialSignUp: true),
-                            ),
+                      if (AppRuntimeConfig.isAppleAppStoreBuild)
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            key: const Key('profileAppReviewContinueButton'),
+                            onPressed: appState.enterDemoAccount,
+                            icon: const Icon(Icons.arrow_forward_rounded),
+                            label: const Text('Continue on this device'),
                           ),
-                          icon: const Icon(Icons.person_add_alt_1_rounded),
-                          label: const Text('Create account'),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          key: const Key('profileSignInButton'),
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) => const AuthScreen(),
+                        )
+                      else ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            key: const Key('profileSignUpButton'),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    const AuthScreen(initialSignUp: true),
+                              ),
                             ),
+                            icon: const Icon(Icons.person_add_alt_1_rounded),
+                            label: const Text('Create account'),
                           ),
-                          icon: const Icon(Icons.login_rounded),
-                          label: const Text('Sign in'),
                         ),
-                      ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            key: const Key('profileSignInButton'),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => const AuthScreen(),
+                              ),
+                            ),
+                            icon: const Icon(Icons.login_rounded),
+                            label: const Text('Sign in'),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -520,8 +538,9 @@ class ProfileScreen extends ConsumerWidget {
 
   Future<void> _editProfile(BuildContext context, AppState appState) async {
     final nameController = TextEditingController(text: appState.userName);
-    final identifierController =
-        TextEditingController(text: appState.userIdentifier);
+    final identifierController = TextEditingController(
+      text: appState.userIdentifier,
+    );
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -641,10 +660,7 @@ class ProfileScreen extends ConsumerWidget {
     nameController.dispose();
   }
 
-  Future<void> _confirmSignOut(
-    BuildContext context,
-    AppState appState,
-  ) async {
+  Future<void> _confirmSignOut(BuildContext context, AppState appState) async {
     final shouldSignOut = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(

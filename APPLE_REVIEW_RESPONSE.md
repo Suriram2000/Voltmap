@@ -1,7 +1,8 @@
-# VoltMapEV App Review response — version 1.15.2 build 31
+# VoltMapEV App Review response — version 1.15.2 build 32
 
 Prepared for submission `558a4224-2f0a-4e68-b74d-11a3ceaa8440` after the
-19 August 2026 rejection of version 1.13.3 build 23.
+23 August 2026 Guideline 2.1 rejection of version 1.15.2 build 30. The reviewer
+could not use the credentials previously entered in App Store Connect.
 
 ## Corrections
 
@@ -15,10 +16,9 @@ Prepared for submission `558a4224-2f0a-4e68-b74d-11a3ceaa8440` after the
 
 ### Guideline 2.1 — Review access
 
-- Saved features no longer depend on external credentials or OTP delivery in
-  the App Store build.
-- When a reviewer saves a favorite or trip, the access screen presents
-  **Continue on this device**.
+- The App Store build no longer presents a username or password form.
+- Profile and every saved-feature access screen present one clear
+  **Continue on this device** action.
 - This creates a private local profile and provides access to Favorites, saved
   Trips, Profile, settings, and **Delete account & local data**.
 - No username, password, phone number, OTP, payment, or private account data is
@@ -42,26 +42,27 @@ Prepared for submission `558a4224-2f0a-4e68-b74d-11a3ceaa8440` after the
    denied. When permission is granted, the map centers on the device and loads
    nearby chargers immediately.
 4. Open Trips and plan from `500081` to `500079`.
-5. Save a favorite or trip and choose **Continue on this device**.
+5. Open Profile, or save a favorite or trip, and choose
+   **Continue on this device**. Do not enter credentials; none are required.
 6. Open Profile to inspect the local profile and **Delete account & local data**.
 
 ## Reply to App Review
 
 Hello App Review,
 
-Thank you for identifying the issues in version 1.13.3 build 23. We corrected
-all three findings in version 1.15.2 build 31.
+Thank you for identifying the review-access issue in version 1.15.2 build 30.
+We corrected it in version 1.15.2 build 32.
 
 For Guideline 2.3.10, the iPhone and iPad experience no longer displays
 third-party mobile-platform references. The Apple installation screen contains
 only the official Apple App Store action. We also removed payment imagery and
 claims because charging payments are not offered in this release.
 
-For Guideline 2.1, no credentials are required. To inspect saved features,
-save a favorite or trip and tap **Continue on this device**. This local profile
-provides access to Favorites, saved Trips, Profile, settings, and account/local
-data deletion without a username, password, phone number, OTP, payment, or
-private data.
+For Guideline 2.1, no credentials are required. The App Store build no longer
+shows the ordinary username/password form. Open Profile, or save a favorite or
+trip, and tap **Continue on this device**. This local profile provides access
+to Favorites, saved Trips, Profile, settings, and account/local data deletion
+without a username, password, phone number, OTP, payment, or private data.
 
 For Guideline 2.2, unavailable WhatsApp verification and charging-payment
 controls are not shown in the App Store build. The remaining public and saved

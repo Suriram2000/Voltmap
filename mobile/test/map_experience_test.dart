@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:voltmap/core/config/app_environment.dart';
 import 'package:voltmap/features/discovery/data/official_charger_search_service.dart';
 import 'package:voltmap/features/discovery/data/official_charger_station.dart';
 import 'package:voltmap/features/map/presentation/map_screen.dart';
@@ -78,7 +79,10 @@ void main() {
       find.byKey(const Key('officialChargerDetailsScreen')),
       findsOneWidget,
     );
-    expect(find.text('Charge & pay'), findsOneWidget);
+    expect(
+      find.text('Charge & pay'),
+      AppRuntimeConfig.canOfferChargingPayment ? findsOneWidget : findsNothing,
+    );
   });
 
   testWidgets('Map location can be disabled and re-enabled in place', (

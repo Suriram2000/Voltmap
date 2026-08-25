@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voltmap/core/config/app_environment.dart';
+import 'package:voltmap/features/auth/presentation/auth_screen.dart';
 import 'package:voltmap/features/auth/presentation/phone_verification_screen.dart';
 import 'package:voltmap/features/discovery/presentation/station_details_screen.dart';
 import 'package:voltmap/features/profile/presentation/profile_screen.dart';
@@ -30,9 +31,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            appStateProvider.overrideWith((ref) => appState),
-          ],
+          overrides: [appStateProvider.overrideWith((ref) => appState)],
           child: MaterialApp(
             home: Builder(
               builder: (context) => Scaffold(
@@ -76,9 +75,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            appStateProvider.overrideWith((ref) => appState),
-          ],
+          overrides: [appStateProvider.overrideWith((ref) => appState)],
           child: const MaterialApp(home: ProfileScreen()),
         ),
       );
@@ -96,9 +93,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            appStateProvider.overrideWith((ref) => appState),
-          ],
+          overrides: [appStateProvider.overrideWith((ref) => appState)],
           child: const MaterialApp(
             home: StationDetailsScreen(
               station: ChargingStation(
@@ -131,4 +126,79 @@ void main() {
       expect(find.byKey(const Key('openCheckoutButton')), findsNothing);
     },
   );
+
+  testWidgets(
+    'App Store Profile provides one-tap local access without credentials',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      _setReviewViewport(tester, const Size(820, 1180));
+      final appState = AppState();
+      await appState.load();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appStateProvider.overrideWith((ref) => appState)],
+          child: const MaterialApp(home: ProfileScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('profileAppReviewContinueButton')),
+        findsOneWidget,
+      );
+      expect(find.text('Continue on this device'), findsOneWidget);
+      expect(find.byKey(const Key('profileSignUpButton')), findsNothing);
+      expect(find.byKey(const Key('profileSignInButton')), findsNothing);
+      expect(find.text('Password'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('profileAppReviewContinueButton')));
+      await tester.pumpAndSettle();
+
+      expect(appState.isDemoAccount, isTrue);
+      expect(find.text('LOCAL DRIVER PROFILE'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  for (final viewport in const [Size(390, 844), Size(820, 1180)]) {
+    testWidgets(
+      'App Store access hides credential fields at ${viewport.width.toInt()}px',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        _setReviewViewport(tester, viewport);
+        final appState = AppState();
+        await appState.load();
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [appStateProvider.overrideWith((ref) => appState)],
+            child: const MaterialApp(home: AuthScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final continueButton = find.byKey(const Key('appReviewContinueButton'));
+        await tester.ensureVisible(continueButton);
+        await tester.pumpAndSettle();
+        expect(continueButton, findsOneWidget);
+        expect(find.byKey(const Key('authIdentifierField')), findsNothing);
+        expect(find.byKey(const Key('authPasswordField')), findsNothing);
+        expect(find.textContaining('No username or password'), findsOneWidget);
+
+        await tester.tap(continueButton);
+        await tester.pumpAndSettle();
+
+        expect(appState.isDemoAccount, isTrue);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+}
+
+void _setReviewViewport(WidgetTester tester, Size size) {
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
 }
