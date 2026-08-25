@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/state/app_state.dart';
 
@@ -87,6 +88,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Widget _buildForm(AppState appState, {bool compact = false}) {
+    if (AppRuntimeConfig.isAppleAppStoreBuild) {
+      return _buildAppStoreAccess(appState, compact: compact);
+    }
     return Padding(
       padding: EdgeInsets.all(compact ? 24 : 42),
       child: Form(
@@ -104,11 +108,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               _signUp
                   ? 'Save favorites, trips, charging receipts, and preferences on this browser.'
                   : appState.hasLocalAccount
-                      ? 'Sign in to continue to your saved VoltMapEV workspace.'
-                      : 'Create an account only when you want to save personal activity.',
+                  ? 'Sign in to continue to your saved VoltMapEV workspace.'
+                  : 'Create an account only when you want to save personal activity.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 26),
             SegmentedButton<bool>(
@@ -179,17 +183,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   ? const [AutofillHints.newPassword]
                   : const [AutofillHints.password],
               obscureText: _obscurePassword,
-              textInputAction:
-                  _signUp ? TextInputAction.next : TextInputAction.done,
+              textInputAction: _signUp
+                  ? TextInputAction.next
+                  : TextInputAction.done,
               onFieldSubmitted: _signUp ? null : (_) => _submit(appState),
               decoration: InputDecoration(
                 labelText: 'Password',
                 prefixIcon: const Icon(Icons.lock_outline_rounded),
                 suffixIcon: IconButton(
                   tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                  onPressed: () => setState(
-                    () => _obscurePassword = !_obscurePassword,
-                  ),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                   icon: Icon(
                     _obscurePassword
                         ? Icons.visibility_outlined
@@ -202,7 +206,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 if (!_signUp) {
                   return password.isEmpty ? 'Enter your password' : null;
                 }
-                final strongEnough = password.length >= 8 &&
+                final strongEnough =
+                    password.length >= 8 &&
                     RegExp('[A-Z]').hasMatch(password) &&
                     RegExp('[a-z]').hasMatch(password) &&
                     RegExp('[0-9]').hasMatch(password);
@@ -284,8 +289,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   child: Text(
                     'Privacy: your salted password hash and account data stay in this browser. Never enter payment credentials you use elsewhere.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],
@@ -294,6 +299,93 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildAppStoreAccess(AppState appState, {required bool compact}) {
+    return Padding(
+      padding: EdgeInsets.all(compact ? 24 : 42),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.verified_user_outlined,
+            size: 42,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Continue on this device',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'No username or password is required. Continue to use favorites, saved trips, profile settings, station reports, and local data deletion.',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const Key('appReviewContinueButton'),
+              onPressed: _submitting ? null : () => _continueOnDevice(appState),
+              icon: _submitting
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.arrow_forward_rounded),
+              label: const Text('Continue on this device'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const Key('continueWithoutAccountButton'),
+              onPressed: _submitting
+                  ? null
+                  : () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.explore_outlined),
+              label: const Text('Continue without saved features'),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.shield_outlined,
+                size: 18,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'This private local profile works offline and does not send credentials, OTPs, payments, or personal data.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _continueOnDevice(AppState appState) async {
+    setState(() => _submitting = true);
+    await appState.enterDemoAccount();
+    if (!mounted) return;
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+    setState(() => _submitting = false);
   }
 
   Future<void> _submit(AppState appState) async {
@@ -365,17 +457,17 @@ class _AuthStory extends StatelessWidget {
           Text(
             'VoltMapEV',
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: Colors.white,
-                  fontSize: compact ? 36 : 52,
-                ),
+              color: Colors.white,
+              fontSize: compact ? 36 : 52,
+            ),
           ),
           const SizedBox(height: 10),
           Text(
             'Discover India’s verified charging footprint and plan your next charge with confidence.',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: const Color(0xFFC4D8CF),
-                  fontSize: compact ? 15 : 18,
-                ),
+              color: const Color(0xFFC4D8CF),
+              fontSize: compact ? 15 : 18,
+            ),
           ),
           if (!compact) ...[
             const SizedBox(height: 32),
@@ -442,10 +534,7 @@ class _StoryPoint extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(
-                  color: Color(0xFF9FB7AD),
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Color(0xFF9FB7AD), fontSize: 12),
               ),
             ],
           ),
