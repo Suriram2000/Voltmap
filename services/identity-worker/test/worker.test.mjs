@@ -292,3 +292,37 @@ test('allows only configured website origins', async () => {
   assert.equal(response.status, 403);
   assert.equal(response.headers.get('access-control-allow-origin'), null);
 });
+
+test('health reports only configured channels and WhatsApp readiness', async () => {
+  const env = environment();
+  delete env.RESEND_API_KEY;
+  const worker = createWorker();
+  const response = await worker.fetch(
+    new Request('https://api.voltmapev.com/health'),
+    env,
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.ready, true);
+  assert.deepEqual(body.otpChannels, ['whatsapp']);
+  assert.deepEqual(body.configuration, {
+    storage: true,
+    channels: {whatsapp: true, email: false},
+  });
+});
+
+test('health fails closed when the WhatsApp pilot is not configured', async () => {
+  const env = environment();
+  delete env.WHATSAPP_PILOT_ALLOWLIST;
+  const worker = createWorker();
+  const response = await worker.fetch(
+    new Request('https://api.voltmapev.com/health'),
+    env,
+  );
+  const body = await response.json();
+
+  assert.equal(body.ready, false);
+  assert.deepEqual(body.otpChannels, ['email']);
+  assert.equal(body.configuration.channels.whatsapp, false);
+});

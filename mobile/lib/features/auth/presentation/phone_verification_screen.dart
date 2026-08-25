@@ -95,7 +95,9 @@ class _PhoneVerificationScreenState
   }
 
   Widget _buildPhoneStep() {
-    if (AppRuntimeConfig.isAppleAppStoreBuild) {
+    if (AppRuntimeConfig.isAppleAppStoreBuild ||
+        (!AppRuntimeConfig.isSandbox &&
+            !AppRuntimeConfig.hasSecureIdentityBackend)) {
       return _buildLocalProfileStep();
     }
     return Form(
@@ -174,15 +176,23 @@ class _PhoneVerificationScreenState
   }
 
   Widget _buildLocalProfileStep() {
+    const isStoreReview = AppRuntimeConfig.isAppleAppStoreBuild;
     return Column(
       key: const ValueKey('localProfileStep'),
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _header(Icons.person_outline_rounded, 'Continue with a local profile'),
+        _header(
+          Icons.person_outline_rounded,
+          isStoreReview
+              ? 'Continue with a local profile'
+              : 'Continue on this device',
+        ),
         const SizedBox(height: 12),
         Text(
-          'No account is required. Continue to use ${widget.feature}, saved trips, profile controls, and local data deletion on this device.',
+          isStoreReview
+              ? 'No account is required. Continue to use ${widget.feature}, saved trips, profile controls, and local data deletion on this device.'
+              : 'WhatsApp verification is temporarily unavailable. Continue to use ${widget.feature} and save data privately on this device.',
           style: Theme.of(context).textTheme.bodyLarge,
         ),
         const SizedBox(height: 20),
@@ -197,7 +207,9 @@ class _PhoneVerificationScreenState
         ),
         const SizedBox(height: 10),
         Text(
-          'No phone number, password, OTP, payment, or private account data is required.',
+          isStoreReview
+              ? 'No phone number, password, OTP, payment, or private account data is required.'
+              : 'No OTP was sent. VoltMapEV will show WhatsApp verification only after the verified production service is connected.',
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
