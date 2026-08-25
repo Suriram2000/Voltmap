@@ -39,6 +39,7 @@ void main() {
       const ProviderScope(
         child: VoltMapApp(
           chargerDataService: _FakeOfficialChargerSearchService(),
+          autoLocateDiscoverOnOpen: false,
         ),
       ),
     );
@@ -177,6 +178,7 @@ void main() {
       const ProviderScope(
         child: VoltMapApp(
           chargerDataService: _FakeOfficialChargerSearchService(),
+          autoLocateDiscoverOnOpen: false,
         ),
       ),
     );
@@ -239,6 +241,7 @@ void main() {
       const ProviderScope(
         child: VoltMapApp(
           chargerDataService: _FakeOfficialChargerSearchService(),
+          autoLocateDiscoverOnOpen: false,
         ),
       ),
     );
@@ -289,7 +292,11 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     _useDesktopViewport(tester);
 
-    await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: VoltMapApp(autoLocateDiscoverOnOpen: false),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Addstation'), findsOneWidget);
     expect(find.byIcon(Icons.add_location_alt_outlined), findsOneWidget);
@@ -309,7 +316,11 @@ void main() {
     _useDesktopViewport(tester);
 
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: AppShell())),
+      const ProviderScope(
+        child: MaterialApp(
+          home: AppShell(autoLocateDiscoverOnOpen: false),
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -389,6 +400,7 @@ void main() {
       const ProviderScope(
         child: VoltMapApp(
           chargerDataService: _FakeOfficialChargerSearchService(),
+          autoLocateDiscoverOnOpen: false,
         ),
       ),
     );
@@ -441,7 +453,11 @@ void main() {
     tester,
   ) async {
     _useDesktopViewport(tester);
-    await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: VoltMapApp(autoLocateDiscoverOnOpen: false),
+      ),
+    );
     await tester.pumpAndSettle();
 
     final discoverySearch =
@@ -613,7 +629,11 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: VoltMapApp(autoLocateDiscoverOnOpen: false),
+      ),
+    );
     await tester.pumpAndSettle();
 
     final navigation = find.byType(NavigationBar);

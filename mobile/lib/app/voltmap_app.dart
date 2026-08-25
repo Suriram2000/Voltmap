@@ -13,9 +13,11 @@ class VoltMapApp extends ConsumerWidget {
   const VoltMapApp({
     super.key,
     this.chargerDataService = const OfficialChargerSearchService(),
+    this.autoLocateDiscoverOnOpen = true,
   });
 
   final OfficialChargerSearchService chargerDataService;
+  final bool autoLocateDiscoverOnOpen;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -33,7 +35,10 @@ class VoltMapApp extends ConsumerWidget {
       scrollBehavior: const VoltMapScrollBehavior(),
       home: !settings.isReady
           ? const _AppLoadingScreen()
-          : AppShell(chargerDataService: chargerDataService),
+          : AppShell(
+              chargerDataService: chargerDataService,
+              autoLocateDiscoverOnOpen: autoLocateDiscoverOnOpen,
+            ),
     );
   }
 }

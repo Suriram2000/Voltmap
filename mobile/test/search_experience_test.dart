@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -91,12 +92,136 @@ void main() {
     expect(result.totalStationCount, 29251);
   });
 
+  testWidgets('Discover searches from device location on first load', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    var locationRequests = 0;
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(
+            locationLoader: () async {
+              locationRequests++;
+              return const DiscoveryUserLocation(
+                latitude: 17.385,
+                longitude: 78.4867,
+              );
+            },
+            placeSearchService: const _CurrentLocationPlaceSearchService(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await _pumpUntilFound(
+      tester,
+      find.byKey(const Key('inlineOfficialChargerResults')),
+    );
+
+    expect(locationRequests, 1);
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const Key('locationField_Search across India')),
+          )
+          .controller
+          ?.text,
+      'Hyderabad, Telangana, India',
+    );
+    expect(find.text('Showing chargers near Hyderabad'), findsOneWidget);
+    expect(
+      find.byKey(const Key('inlineOfficialChargerResults')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('manual Discover search stays available when location fails', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(
+            locationLoader: () async => throw Exception(
+              'Location permission is off. Enter an area or PIN.',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Location permission is off. Enter an area or PIN.'),
+      findsOneWidget,
+    );
+    final searchField =
+        find.byKey(const Key('locationField_Search across India'));
+    await tester.enterText(searchField, '500079');
+    await tester.pump(const Duration(milliseconds: 130));
+    await tester.tap(find.text('Karmanghat / Vaishalinagar - 500079'));
+    await tester.pump();
+    await _pumpUntilFound(
+      tester,
+      find.byKey(const Key('inlineOfficialChargerResults')),
+    );
+
+    expect(
+      find.byKey(const Key('inlineOfficialChargerResults')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('manual input wins over a pending automatic location request', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    final location = Completer<DiscoveryUserLocation>();
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(locationLoader: () => location.future),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final searchField =
+        find.byKey(const Key('locationField_Search across India'));
+    await tester.enterText(searchField, '500079');
+    await tester.pump(const Duration(milliseconds: 130));
+    location.complete(
+      const DiscoveryUserLocation(
+        latitude: 17.385,
+        longitude: 78.4867,
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.widget<TextField>(searchField).controller?.text, '500079');
+    expect(
+      tester
+          .widget<IconButton>(
+            find.byKey(const Key('useCurrentLocationButton')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    expect(find.byKey(const Key('inlineOfficialChargerResults')), findsNothing);
+  });
+
   testWidgets('selecting a PIN shows official chargers on Discover', (
     tester,
   ) async {
     _useDesktopViewport(tester);
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: DiscoveryScreen())),
+      const ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(autoLocateOnOpen: false),
+        ),
+      ),
     );
     await tester.pump();
 
@@ -136,7 +261,11 @@ void main() {
   ) async {
     _useDesktopViewport(tester);
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: DiscoveryScreen())),
+      const ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(autoLocateOnOpen: false),
+        ),
+      ),
     );
     await tester.pump();
 
@@ -172,7 +301,11 @@ void main() {
   ) async {
     _useDesktopViewport(tester);
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: DiscoveryScreen())),
+      const ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(autoLocateOnOpen: false),
+        ),
+      ),
     );
     await tester.pump();
 
@@ -198,7 +331,11 @@ void main() {
   ) async {
     _useDesktopViewport(tester);
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: DiscoveryScreen())),
+      const ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(autoLocateOnOpen: false),
+        ),
+      ),
     );
     await tester.pump();
 
@@ -313,6 +450,24 @@ class _ManyPlacesService extends PlaceSearchService {
         longitude: 78.5 + index / 1000,
         type: 'locality',
       ),
+    );
+  }
+}
+
+class _CurrentLocationPlaceSearchService extends PlaceSearchService {
+  const _CurrentLocationPlaceSearchService();
+
+  @override
+  Future<PlaceSuggestion?> reverseIndia({
+    required double latitude,
+    required double longitude,
+  }) async {
+    return const PlaceSuggestion(
+      primaryText: 'Hyderabad',
+      secondaryText: 'Telangana, India',
+      latitude: 17.385,
+      longitude: 78.4867,
+      type: 'current_location',
     );
   }
 }

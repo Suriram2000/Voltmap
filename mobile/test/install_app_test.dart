@@ -102,7 +102,12 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        child: MaterialApp(home: AppShell(installController: controller)),
+        child: MaterialApp(
+          home: AppShell(
+            installController: controller,
+            autoLocateDiscoverOnOpen: false,
+          ),
+        ),
       ),
     );
     expect(find.byKey(const Key('installAppBottomBanner')), findsNothing);
