@@ -28,13 +28,17 @@ export function createWorker({fetchImpl = globalThis.fetch} = {}) {
 
         const url = new URL(request.url);
         if (request.method === 'GET' && url.pathname === '/health') {
+          const readiness = configurationReadiness(env);
           return response(
             {
               status: 'ok',
               service: 'voltmapev-identity',
-              otpChannels: ['whatsapp', 'email'],
+              otpChannels: Object.entries(readiness.channels)
+                .filter(([, configured]) => configured)
+                .map(([channel]) => channel),
               pilotMode: isPilotMode(env),
-              ready: isConfigured(env),
+              ready: readiness.storage && readiness.channels.whatsapp,
+              configuration: readiness,
             },
             200,
             origin,
@@ -513,19 +517,22 @@ function pilotWhatsAppDestinations(env) {
   );
 }
 
-function isConfigured(env) {
-  return Boolean(
+function configurationReadiness(env) {
+  const storage = Boolean(
     env.OTP_CHALLENGES &&
       env.OTP_RATE_LIMITS &&
-      env.OTP_HMAC_SECRET &&
-      env.WHATSAPP_ACCESS_TOKEN &&
+      typeof env.OTP_HMAC_SECRET === 'string' &&
+      env.OTP_HMAC_SECRET.length >= 32,
+  );
+  const whatsapp = Boolean(
+    env.WHATSAPP_ACCESS_TOKEN &&
       env.WHATSAPP_PHONE_NUMBER_ID &&
       env.WHATSAPP_AUTH_TEMPLATE &&
-      env.WHATSAPP_GRAPH_API_VERSION &&
-      (!isPilotMode(env) || pilotWhatsAppDestinations(env).size > 0) &&
-      env.RESEND_API_KEY &&
-      env.OTP_FROM_EMAIL,
+      /^v\d+\.\d+$/.test(env.WHATSAPP_GRAPH_API_VERSION ?? '') &&
+      (!isPilotMode(env) || pilotWhatsAppDestinations(env).size > 0),
   );
+  const email = Boolean(env.RESEND_API_KEY && env.OTP_FROM_EMAIL);
+  return {storage, channels: {whatsapp, email}};
 }
 
 function assertAllowedOrigin(origin, env) {

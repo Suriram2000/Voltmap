@@ -8,7 +8,7 @@ Prepared: 17 August 2026
 - Android application ID: `in.voltmap.voltmap`
 - Apple bundle ID: `in.voltmap.voltmap`
 - Minimum iOS version: `15.0`
-- Version: `1.15.2` (`31`)
+- Version: `1.15.3` (`33`)
 - Website: `https://voltmapev.com/`
 - Support: `skotla100@gmail.com`, `+91 93927 88714`
 - Privacy: `https://voltmapev.com/privacy-policy.html`
@@ -47,7 +47,7 @@ change. Confirm important charging stops with the station operator before
 travel. VoltMapEV does not sell electricity or process charging payments in
 this release.
 
-### Version 1.15.2 release notes
+### Version 1.15.3 release notes
 
 - Map requests location on open and immediately centers on the device and shows
   nearby chargers after permission is granted
@@ -64,6 +64,11 @@ this release.
 - Easier reporting of incorrect station information to VoltMapEV support
 - Platform-correct Apple App Store installation links
 - Reliability and performance improvements across charger search and maps
+- WhatsApp OTP is shown only when the secure production identity endpoint is
+  configured; otherwise protected features use an explicit local-device path
+  and never claim that a message was sent
+- Identity-service health checks now report WhatsApp and email readiness
+  separately and fail closed when the production pilot is incomplete
 
 ### Ethical discoverability plan
 
