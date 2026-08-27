@@ -8,7 +8,7 @@ Prepared: 17 August 2026
 - Android application ID: `in.voltmap.voltmap`
 - Apple bundle ID: `in.voltmap.voltmap`
 - Minimum iOS version: `15.0`
-- Version: `1.15.3` (`33`)
+- Version: `1.15.4` (`34`)
 - Website: `https://voltmapev.com/`
 - Support: `skotla100@gmail.com`, `+91 93927 88714`
 - Privacy: `https://voltmapev.com/privacy-policy.html`
@@ -47,10 +47,14 @@ change. Confirm important charging stops with the station operator before
 travel. VoltMapEV does not sell electricity or process charging payments in
 this release.
 
-### Version 1.15.3 release notes
+### Version 1.15.4 release notes
 
+- Discover requests location on first open and immediately shows nearby
+  chargers without requiring the driver to know or enter a PIN code or area
 - Map requests location on open and immediately centers on the device and shows
   nearby chargers after permission is granted
+- Manual PIN, city, and area search remains available and always takes priority
+  over a pending automatic location request
 - Saved features can be reviewed through a private local profile without a
   phone number, password, OTP, or external account
 - Removed third-party platform references from the iPhone and iPad experience
