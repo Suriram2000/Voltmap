@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voltmap/core/config/app_environment.dart';
@@ -83,6 +85,59 @@ void main() {
       find.text('Charge & pay'),
       AppRuntimeConfig.canOfferChargingPayment ? findsOneWidget : findsNothing,
     );
+  });
+
+  testWidgets('Map searches from exact device coordinates, not city centroid', (
+    tester,
+  ) async {
+    final chargerService = _CapturingChargerSearchService();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MapScreen(
+          locationLoader: () async => const MapUserLocation(
+            latitude: 17.3366,
+            longitude: 78.5349,
+          ),
+          placeSearchService: const _FakePlaceSearchService(),
+          chargerSearchService: chargerService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(chargerService.center?.latitude, 17.3366);
+    expect(chargerService.center?.longitude, 78.5349);
+    expect(chargerService.center?.type, 'current_location');
+    expect(chargerService.center?.primaryText, 'Hyderabad');
+  });
+
+  testWidgets('Map still loads chargers when reverse geocoding hangs', (
+    tester,
+  ) async {
+    final chargerService = _CapturingChargerSearchService();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MapScreen(
+          locationLoader: () async => const MapUserLocation(
+            latitude: 17.3366,
+            longitude: 78.5349,
+          ),
+          placeSearchService: const _HangingPlaceSearchService(),
+          chargerSearchService: chargerService,
+          reverseLookupTimeout: const Duration(milliseconds: 20),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 30));
+    await tester.pumpAndSettle();
+
+    expect(chargerService.center?.latitude, 17.3366);
+    expect(chargerService.center?.longitude, 78.5349);
+    expect(chargerService.center?.primaryText, 'Current location');
+    expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
   });
 
   testWidgets('Map location can be disabled and re-enabled in place', (
@@ -441,7 +496,9 @@ void main() {
     expect(find.text('Alpha Charge - Hyderabad'), findsOneWidget);
   });
 
-  testWidgets('Map explains a valid empty nearby result', (tester) async {
+  testWidgets('Map stays visible and explains a valid empty nearby result', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: MapScreen(
@@ -459,7 +516,8 @@ void main() {
 
     expect(find.byKey(const Key('nearbyChargerNoResults')), findsOneWidget);
     expect(find.text('No nearby chargers found'), findsOneWidget);
-    expect(find.byKey(const Key('nearbyChargerMap')), findsNothing);
+    expect(find.byKey(const Key('nearbyChargerMap')), findsOneWidget);
+    expect(find.byKey(const Key('nearbyChargerPanel')), findsOneWidget);
   });
 }
 
@@ -484,6 +542,17 @@ class _FakePlaceSearchService extends PlaceSearchService {
       type: 'city',
     );
   }
+}
+
+class _HangingPlaceSearchService extends PlaceSearchService {
+  const _HangingPlaceSearchService();
+
+  @override
+  Future<PlaceSuggestion?> reverseIndia({
+    required double latitude,
+    required double longitude,
+  }) =>
+      Completer<PlaceSuggestion?>().future;
 }
 
 class _ManualPlaceSearchService extends _FakePlaceSearchService {
@@ -581,6 +650,19 @@ class _EmptyChargerSearchService extends OfficialChargerSearchService {
         radiusKm: 25,
         matches: const [],
       );
+}
+
+class _CapturingChargerSearchService extends _FakeChargerSearchService {
+  PlaceSuggestion? center;
+
+  @override
+  Future<OfficialChargerSearchResult> search({
+    required String query,
+    PlaceSuggestion? center,
+  }) {
+    this.center = center;
+    return super.search(query: query, center: center);
+  }
 }
 
 void _useViewport(WidgetTester tester, Size size) {

@@ -16,7 +16,11 @@ class ApiError extends Error {
   }
 }
 
-export function createWorker({fetchImpl = globalThis.fetch} = {}) {
+export function createWorker({
+  fetchImpl = globalThis.fetch,
+  sleepImpl = sleep,
+  logImpl = console.warn,
+} = {}) {
   return {
     async fetch(request, env) {
       const origin = request.headers.get('origin');
@@ -50,7 +54,14 @@ export function createWorker({fetchImpl = globalThis.fetch} = {}) {
           request.method === 'POST' &&
           url.pathname === '/v1/identity/otp/challenges'
         ) {
-          return await createChallenge(request, env, fetchImpl, origin);
+          return await createChallenge(
+            request,
+            env,
+            fetchImpl,
+            sleepImpl,
+            logImpl,
+            origin,
+          );
         }
 
         const verifyMatch = url.pathname.match(
@@ -85,7 +96,14 @@ export function createWorker({fetchImpl = globalThis.fetch} = {}) {
   };
 }
 
-async function createChallenge(request, env, fetchImpl, origin) {
+async function createChallenge(
+  request,
+  env,
+  fetchImpl,
+  sleepImpl,
+  logImpl,
+  origin,
+) {
   assertStorageConfigured(env);
   const body = await readJson(request);
   const channel = String(body.channel ?? '').toLowerCase();
@@ -167,7 +185,15 @@ async function createChallenge(request, env, fetchImpl, origin) {
   });
 
   try {
-    await sendProviderOtp(channel, destination, otp, env, fetchImpl);
+    await sendProviderOtp(
+      channel,
+      destination,
+      otp,
+      env,
+      fetchImpl,
+      sleepImpl,
+      logImpl,
+    );
   } catch (error) {
     await Promise.all([
       env.OTP_CHALLENGES.delete(`challenge:${id}`),
@@ -268,7 +294,15 @@ async function verifyChallenge(request, env, challengeId, origin) {
   );
 }
 
-async function sendProviderOtp(channel, destination, otp, env, fetchImpl) {
+async function sendProviderOtp(
+  channel,
+  destination,
+  otp,
+  env,
+  fetchImpl,
+  sleepImpl,
+  logImpl,
+) {
   if (channel === 'whatsapp') {
     const graphVersion = env.WHATSAPP_GRAPH_API_VERSION;
     if (!/^v\d+\.\d+$/.test(graphVersion)) {
@@ -278,46 +312,84 @@ async function sendProviderOtp(channel, destination, otp, env, fetchImpl) {
         'WhatsApp verification is not configured.',
       );
     }
-    const result = await fetchImpl(
-      `https://graph.facebook.com/${graphVersion}/${encodeURIComponent(env.WHATSAPP_PHONE_NUMBER_ID)}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          authorization: `Bearer ${env.WHATSAPP_ACCESS_TOKEN}`,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          recipient_type: 'individual',
-          to: destination,
-          type: 'template',
-          template: {
-            name: env.WHATSAPP_AUTH_TEMPLATE,
-            language: {code: env.WHATSAPP_TEMPLATE_LANGUAGE ?? 'en'},
-            components: [
-              {
-                type: 'body',
-                parameters: [{type: 'text', text: otp}],
-              },
-              {
-                type: 'button',
-                sub_type: 'url',
-                index: '0',
-                parameters: [{type: 'text', text: otp}],
-              },
-            ],
-          },
-        }),
+    const requestUrl =
+      `https://graph.facebook.com/${graphVersion}/` +
+      `${encodeURIComponent(env.WHATSAPP_PHONE_NUMBER_ID)}/messages`;
+    const requestInit = {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${env.WHATSAPP_ACCESS_TOKEN}`,
+        'content-type': 'application/json',
       },
-    );
-    if (!result.ok) {
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: destination,
+        type: 'template',
+        template: {
+          name: env.WHATSAPP_AUTH_TEMPLATE,
+          language: {code: env.WHATSAPP_TEMPLATE_LANGUAGE ?? 'en'},
+          components: [
+            {
+              type: 'body',
+              parameters: [{type: 'text', text: otp}],
+            },
+            {
+              type: 'button',
+              sub_type: 'url',
+              index: '0',
+              parameters: [{type: 'text', text: otp}],
+            },
+          ],
+        },
+      }),
+    };
+
+    const maximumAttempts = 3;
+    for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+      let result;
+      try {
+        result = await fetchImpl(requestUrl, requestInit);
+      } catch (_) {
+        logImpl(JSON.stringify({
+          event: 'whatsapp_otp_delivery_failed',
+          attempt,
+          failure: 'network',
+        }));
+        if (attempt < maximumAttempts) {
+          await sleepImpl(250 * attempt);
+          continue;
+        }
+        throw new ApiError(
+          502,
+          'whatsapp_delivery_failed',
+          'WhatsApp could not deliver the verification code. Try again.',
+        );
+      }
+      if (result.ok) return;
+
+      const providerBody = await result.json().catch(() => null);
+      const providerCode = providerBody?.error?.code;
+      logImpl(JSON.stringify({
+        event: 'whatsapp_otp_delivery_failed',
+        attempt,
+        status: result.status,
+        providerCode: Number.isFinite(providerCode) ? providerCode : null,
+      }));
+      const retryable =
+        result.status === 408 ||
+        result.status === 429 ||
+        result.status >= 500;
+      if (retryable && attempt < maximumAttempts) {
+        await sleepImpl(250 * attempt);
+        continue;
+      }
       throw new ApiError(
         502,
         'whatsapp_delivery_failed',
         'WhatsApp could not deliver the verification code. Try again.',
       );
     }
-    return;
   }
 
   if (!env.RESEND_API_KEY || !env.OTP_FROM_EMAIL) {
@@ -633,6 +705,10 @@ function base64Url(bytes) {
     .replaceAll('+', '-')
     .replaceAll('/', '_')
     .replaceAll('=', '');
+}
+
+function sleep(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function response(body, status, origin, env) {

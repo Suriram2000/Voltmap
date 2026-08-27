@@ -61,6 +61,47 @@ void main() {
     expect(result.exactPostcodeCount, 1);
   });
 
+  test('current location expands transparently when the first radius is empty',
+      () {
+    const center = PlaceSuggestion(
+      primaryText: 'Current location',
+      secondaryText: 'Telangana, India',
+      latitude: 17.385,
+      longitude: 78.4867,
+      type: 'current_location',
+    );
+    final nearest = _officialStation(
+      operatorName: 'Nearest Published Charger',
+      latitude: 17.9,
+      longitude: 78.4867,
+      postcode: '500100',
+    );
+    final tooFar = _officialStation(
+      operatorName: 'Outside Expanded Radius',
+      latitude: 19.0,
+      longitude: 78.4867,
+      postcode: '500200',
+    );
+
+    final result = searchOfficialChargers(
+      index: OfficialChargerIndex(
+        source: 'BEE',
+        sourceUrl: 'https://example.com',
+        asOf: DateTime(2025, 10, 26),
+        totalStationCount: 2,
+        stations: [tooFar, nearest],
+      ),
+      query: center.displayName,
+      center: center,
+    );
+
+    expect(result.radiusKm, 100);
+    expect(result.matches.single.station.operatorName,
+        'Nearest Published Charger');
+    expect(result.statusMessage, contains('No published station was found'));
+    expect(result.statusMessage, contains('within 100 km'));
+  });
+
   test('Google verification uses the selected PIN area', () {
     final center = const PlaceSearchService().localSuggestions('500079').first;
     final uri = buildGoogleChargerVerificationUri(
@@ -134,6 +175,73 @@ void main() {
       find.byKey(const Key('inlineOfficialChargerResults')),
       findsOneWidget,
     );
+  });
+
+  testWidgets(
+      'Discover uses exact device coordinates when reverse geocoding returns a centroid',
+      (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(
+            locationLoader: () async => const DiscoveryUserLocation(
+              latitude: 17.32001,
+              longitude: 78.55001,
+            ),
+            placeSearchService: const _CurrentLocationPlaceSearchService(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await _pumpUntilFound(
+      tester,
+      find.byKey(const Key('inlineOfficialChargerResults')),
+    );
+
+    final results = tester.widget<OfficialChargerResultsView>(
+      find.byKey(const Key('inlineOfficialChargerResults')),
+    );
+    expect(results.center?.latitude, 17.32001);
+    expect(results.center?.longitude, 78.55001);
+    expect(results.center?.primaryText, 'Hyderabad');
+  });
+
+  testWidgets('Discover falls back to coordinates when reverse geocoding hangs',
+      (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(
+            locationLoader: () async => const DiscoveryUserLocation(
+              latitude: 17.385,
+              longitude: 78.4867,
+            ),
+            placeSearchService: const _HangingReversePlaceSearchService(),
+            reverseLookupTimeout: const Duration(milliseconds: 20),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 30));
+    await _pumpUntilFound(
+      tester,
+      find.byKey(const Key('inlineOfficialChargerResults')),
+    );
+
+    final results = tester.widget<OfficialChargerResultsView>(
+      find.byKey(const Key('inlineOfficialChargerResults')),
+    );
+    expect(results.center?.latitude, 17.385);
+    expect(results.center?.longitude, 78.4867);
+    expect(results.center?.primaryText, 'Current location');
   });
 
   testWidgets('manual Discover search stays available when location fails', (
@@ -470,6 +578,17 @@ class _CurrentLocationPlaceSearchService extends PlaceSearchService {
       type: 'current_location',
     );
   }
+}
+
+class _HangingReversePlaceSearchService extends PlaceSearchService {
+  const _HangingReversePlaceSearchService();
+
+  @override
+  Future<PlaceSuggestion?> reverseIndia({
+    required double latitude,
+    required double longitude,
+  }) =>
+      Completer<PlaceSuggestion?>().future;
 }
 
 void _useDesktopViewport(WidgetTester tester) {

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,11 +39,13 @@ class DiscoveryScreen extends ConsumerStatefulWidget {
     this.locationLoader,
     this.placeSearchService = const PlaceSearchService(),
     this.autoLocateOnOpen = true,
+    this.reverseLookupTimeout = const Duration(seconds: 4),
   });
 
   final DiscoveryLocationLoader? locationLoader;
   final PlaceSearchService placeSearchService;
   final bool autoLocateOnOpen;
+  final Duration reverseLookupTimeout;
 
   @override
   ConsumerState<DiscoveryScreen> createState() => _DiscoveryScreenState();
@@ -442,17 +445,27 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       locationMessage = 'Finding chargers near your current location...';
     });
     try {
-      final location = await (widget.locationLoader?.call() ??
-          _loadDeviceLocation(requestPermission: requestPermission));
+      final locationFuture = widget.locationLoader?.call() ??
+          _loadDeviceLocation(requestPermission: requestPermission);
+      final location = await (kIsWeb
+          ? locationFuture.timeout(
+              const Duration(seconds: 10),
+              onTimeout: () => throw Exception(
+                'Location is taking too long. Check browser location access and try again, or search by area or PIN.',
+              ),
+            )
+          : locationFuture);
       if (!mounted || requestId != _locationRequestId) return;
       if (initiatedAutomatically && searchController.text.trim().isNotEmpty) {
         setState(() => locating = false);
         return;
       }
-      final place = await widget.placeSearchService.reverseIndia(
-        latitude: location.latitude,
-        longitude: location.longitude,
-      );
+      final place = await widget.placeSearchService
+          .reverseIndia(
+            latitude: location.latitude,
+            longitude: location.longitude,
+          )
+          .timeout(widget.reverseLookupTimeout, onTimeout: () => null);
       if (!mounted || requestId != _locationRequestId) return;
       if (initiatedAutomatically && searchController.text.trim().isNotEmpty) {
         setState(() => locating = false);
@@ -460,14 +473,15 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       }
       final displayName = place?.displayName ??
           '${location.latitude.toStringAsFixed(5)}, ${location.longitude.toStringAsFixed(5)}, India';
-      final resolvedPlace = place ??
-          PlaceSuggestion(
-            primaryText: 'Current location',
-            secondaryText: displayName,
-            latitude: location.latitude,
-            longitude: location.longitude,
-            type: 'current_location',
-          );
+      // The reverse-geocoded place is only a friendly label. Its coordinates
+      // can be a city centroid, which would omit chargers near the device.
+      final resolvedPlace = PlaceSuggestion(
+        primaryText: place?.primaryText ?? 'Current location',
+        secondaryText: place?.secondaryText ?? displayName,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        type: 'current_location',
+      );
       searchController
         ..text = displayName
         ..selection = TextSelection.collapsed(offset: displayName.length);

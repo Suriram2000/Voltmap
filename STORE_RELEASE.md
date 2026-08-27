@@ -8,7 +8,7 @@ Prepared: 17 August 2026
 - Android application ID: `in.voltmap.voltmap`
 - Apple bundle ID: `in.voltmap.voltmap`
 - Minimum iOS version: `15.0`
-- Version: `1.15.4` (`34`)
+- Version: `1.15.5` (`35`)
 - Website: `https://voltmapev.com/`
 - Support: `skotla100@gmail.com`, `+91 93927 88714`
 - Privacy: `https://voltmapev.com/privacy-policy.html`
@@ -47,12 +47,16 @@ change. Confirm important charging stops with the station operator before
 travel. VoltMapEV does not sell electricity or process charging payments in
 this release.
 
-### Version 1.15.4 release notes
+### Version 1.15.5 release notes
 
 - Discover requests location on first open and immediately shows nearby
   chargers without requiring the driver to know or enter a PIN code or area
-- Map requests location on open and immediately centers on the device and shows
-  nearby chargers after permission is granted
+- Map searches from the exact device coordinates instead of a reverse-geocoded
+  city centroid
+- When the first 25 km search is empty, Map transparently shows the nearest
+  dated official stations within 100 km with accurate distance labels
+- The current-location marker, map, synchronized list, search box, and clear
+  no-results explanation remain visible even when no inventory match exists
 - Manual PIN, city, and area search remains available and always takes priority
   over a pending automatic location request
 - Saved features can be reviewed through a private local profile without a
@@ -73,6 +77,8 @@ this release.
   and never claim that a message was sent
 - Identity-service health checks now report WhatsApp and email readiness
   separately and fail closed when the production pilot is incomplete
+- WhatsApp delivery retries transient Meta failures and logs only sanitized
+  status metadata; OTP values and phone numbers are never logged
 
 ### Ethical discoverability plan
 

@@ -44,12 +44,14 @@ class MapScreen extends StatefulWidget {
     this.placeSearchService = const PlaceSearchService(),
     this.chargerSearchService,
     this.autoLocateOnOpen = true,
+    this.reverseLookupTimeout = const Duration(seconds: 4),
   });
 
   final MapLocationLoader? locationLoader;
   final PlaceSearchService placeSearchService;
   final OfficialChargerSearchService? chargerSearchService;
   final bool autoLocateOnOpen;
+  final Duration reverseLookupTimeout;
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -250,20 +252,6 @@ class _MapScreenState extends State<MapScreen> {
     OfficialChargerSearchResult result,
     MapUserLocation location,
   ) {
-    if (result.matches.isEmpty) {
-      return _buildSearchableStatus(
-        status: _MapStatusCard(
-          key: const Key('nearbyChargerNoResults'),
-          icon: Icons.ev_station_outlined,
-          title: 'No nearby chargers found',
-          message: result.isRealtime
-              ? 'The live operator feed found no stations near ${_place?.primaryText ?? 'your location'} within ${result.radiusKm.toStringAsFixed(0)} km. Search another area or PIN above.'
-              : 'No stations in the dated BEE inventory were found near ${_place?.primaryText ?? 'your location'} within ${result.radiusKm.toStringAsFixed(0)} km. Search another area or PIN above.',
-          primaryLabel: _locationEnabled ? 'Refresh nearby chargers' : null,
-          onPrimary: _locationEnabled ? _loadNearbyChargers : null,
-        ),
-      );
-    }
     final filteredMatches = result.matches
         .where((match) => _matchesConnectorFilter(match, _connectorFilter))
         .toList(growable: false);
@@ -407,21 +395,34 @@ class _MapScreenState extends State<MapScreen> {
     });
 
     try {
-      final location =
-          await (widget.locationLoader?.call() ?? _loadDeviceLocation());
-      final place = await widget.placeSearchService.reverseIndia(
-        latitude: location.latitude,
-        longitude: location.longitude,
-      );
-      final center = place ??
-          PlaceSuggestion(
-            primaryText: 'Current location',
-            secondaryText:
-                '${location.latitude.toStringAsFixed(5)}, ${location.longitude.toStringAsFixed(5)}, India',
+      final locationFuture =
+          widget.locationLoader?.call() ?? _loadDeviceLocation();
+      final location = await (kIsWeb
+          ? locationFuture.timeout(
+              const Duration(seconds: 10),
+              onTimeout: () => throw const MapLocationPermissionException(
+                'Location is taking too long. Check browser location access and try again, or search by area or PIN.',
+              ),
+            )
+          : locationFuture);
+      final reversePlace = await widget.placeSearchService
+          .reverseIndia(
             latitude: location.latitude,
             longitude: location.longitude,
-            type: 'current_location',
-          );
+          )
+          .timeout(widget.reverseLookupTimeout, onTimeout: () => null);
+      // Keep the device coordinates authoritative. Reverse geocoders may
+      // return a city centroid several kilometres away, which can incorrectly
+      // exclude chargers close to the user. The place text is used only as a
+      // friendly label and for selecting the relevant state inventory.
+      final center = PlaceSuggestion(
+        primaryText: reversePlace?.primaryText ?? 'Current location',
+        secondaryText: reversePlace?.secondaryText ??
+            '${location.latitude.toStringAsFixed(5)}, ${location.longitude.toStringAsFixed(5)}, India',
+        latitude: location.latitude,
+        longitude: location.longitude,
+        type: 'current_location',
+      );
       final result = await _chargerSearchService.search(
         query: center.displayName,
         center: center,
@@ -1706,7 +1707,7 @@ class _NearbyChargerPanel extends StatelessWidget {
         controller: scrollController,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: EdgeInsets.fromLTRB(14, showDragHandle ? 6 : 14, 14, 30),
-        itemCount: result.matches.length + 1,
+        itemCount: result.matches.isEmpty ? 2 : result.matches.length + 1,
         itemBuilder: (context, index) {
           if (index == 0) {
             return _NearbyPanelHeader(
@@ -1714,6 +1715,39 @@ class _NearbyChargerPanel extends StatelessWidget {
               locationLabel: locationLabel,
               activeFilter: activeFilter,
               showDragHandle: showDragHandle,
+            );
+          }
+          if (result.matches.isEmpty) {
+            return Card(
+              key: const Key('nearbyChargerNoResults'),
+              margin: const EdgeInsets.only(top: 14),
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.ev_station_outlined,
+                      size: 34,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'No nearby chargers found',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      result.isRealtime
+                          ? 'The live operator feed found no station in this map area. Keep location enabled and search another area or PIN above.'
+                          : 'The dated official inventory found no station in this map area. Keep location enabled and search another area or PIN above.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
             );
           }
           final matchIndex = index - 1;

@@ -18,7 +18,7 @@ id = "REPLACE_WITH_PRODUCTION_RATE_LIMIT_KV_ID"
 
 [vars]
 ALLOWED_ORIGINS = "https://voltmapev.com,https://www.voltmapev.com,https://suriram2000.github.io"
-WHATSAPP_GRAPH_API_VERSION = "REPLACE_WITH_SUPPORTED_GRAPH_API_VERSION"
+WHATSAPP_GRAPH_API_VERSION = "v23.0"
 WHATSAPP_AUTH_TEMPLATE = "voltmapev_authentication"
 WHATSAPP_TEMPLATE_LANGUAGE = "en"
 OTP_FROM_EMAIL = "VoltMapEV <verify@voltmapev.com>"

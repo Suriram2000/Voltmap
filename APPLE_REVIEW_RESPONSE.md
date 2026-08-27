@@ -1,4 +1,4 @@
-# VoltMapEV App Review response — version 1.15.4 build 34
+# VoltMapEV App Review response — version 1.15.5 build 35
 
 Prepared for the next submission after the 23 August 2026 Guideline 2.1
 rejection of version 1.15.2 build 30. The reviewer could not use the
@@ -51,7 +51,7 @@ credentials previously entered in App Store Connect.
 Hello App Review,
 
 Thank you for identifying the review-access issue in version 1.15.2 build 30.
-We corrected it in version 1.15.4 build 34.
+We corrected it in version 1.15.5 build 35.
 
 For Guideline 2.3.10, the iPhone and iPad experience no longer displays
 third-party mobile-platform references. The Apple installation screen contains
