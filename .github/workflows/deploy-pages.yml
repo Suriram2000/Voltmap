@@ -61,7 +61,7 @@ jobs:
         run: >-
           flutter build web --release --base-href "/"
           --dart-define=VOLTMAP_PAYMENT_API_BASE_URL=${{ vars.VOLTMAP_PAYMENT_API_BASE_URL }}
-          --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=${{ vars.VOLTMAP_IDENTITY_API_BASE_URL }}
+          --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=https://api.voltmapev.com
           --dart-define=VOLTMAP_REALTIME_CHARGER_API_BASE_URL=${{ vars.VOLTMAP_REALTIME_CHARGER_API_BASE_URL }}
 
       - name: Add custom domain marker

@@ -242,7 +242,7 @@ class RealtimeChargerSearchService extends OfficialChargerSearchService {
           : inventory.asOf,
       totalStationCount:
           math.max(realtime.totalStationCount, inventory.totalStationCount),
-      radiusKm: realtime.radiusKm,
+      radiusKm: math.max(realtime.radiusKm, inventory.radiusKm),
       matches: merged,
       isRealtime: true,
       statusMessage:

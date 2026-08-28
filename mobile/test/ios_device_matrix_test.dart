@@ -32,7 +32,11 @@ void main() {
         (tester) async {
       _useIPhoneViewport(tester, device);
 
-      await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: VoltMapApp(autoLocateDiscoverOnOpen: false),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(NavigationBar), findsOneWidget);
@@ -84,7 +88,11 @@ void main() {
       tester.platformDispatcher.clearTextScaleFactorTestValue,
     );
 
-    await tester.pumpWidget(const ProviderScope(child: VoltMapApp()));
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: VoltMapApp(autoLocateDiscoverOnOpen: false),
+      ),
+    );
     await tester.pumpAndSettle();
 
     _expectNoLayoutError(tester, 'small iPhone Discover at 200% text');

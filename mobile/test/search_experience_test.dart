@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -60,6 +61,47 @@ void main() {
     expect(result.exactPostcodeCount, 1);
   });
 
+  test('current location expands transparently when the first radius is empty',
+      () {
+    const center = PlaceSuggestion(
+      primaryText: 'Current location',
+      secondaryText: 'Telangana, India',
+      latitude: 17.385,
+      longitude: 78.4867,
+      type: 'current_location',
+    );
+    final nearest = _officialStation(
+      operatorName: 'Nearest Published Charger',
+      latitude: 17.9,
+      longitude: 78.4867,
+      postcode: '500100',
+    );
+    final tooFar = _officialStation(
+      operatorName: 'Outside Expanded Radius',
+      latitude: 19.0,
+      longitude: 78.4867,
+      postcode: '500200',
+    );
+
+    final result = searchOfficialChargers(
+      index: OfficialChargerIndex(
+        source: 'BEE',
+        sourceUrl: 'https://example.com',
+        asOf: DateTime(2025, 10, 26),
+        totalStationCount: 2,
+        stations: [tooFar, nearest],
+      ),
+      query: center.displayName,
+      center: center,
+    );
+
+    expect(result.radiusKm, 100);
+    expect(result.matches.single.station.operatorName,
+        'Nearest Published Charger');
+    expect(result.statusMessage, contains('No published station was found'));
+    expect(result.statusMessage, contains('within 100 km'));
+  });
+
   test('Google verification uses the selected PIN area', () {
     final center = const PlaceSearchService().localSuggestions('500079').first;
     final uri = buildGoogleChargerVerificationUri(
@@ -91,12 +133,203 @@ void main() {
     expect(result.totalStationCount, 29251);
   });
 
+  testWidgets('Discover searches from device location on first load', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    var locationRequests = 0;
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(
+            locationLoader: () async {
+              locationRequests++;
+              return const DiscoveryUserLocation(
+                latitude: 17.385,
+                longitude: 78.4867,
+              );
+            },
+            placeSearchService: const _CurrentLocationPlaceSearchService(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await _pumpUntilFound(
+      tester,
+      find.byKey(const Key('inlineOfficialChargerResults')),
+    );
+
+    expect(locationRequests, 1);
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const Key('locationField_Search across India')),
+          )
+          .controller
+          ?.text,
+      'Hyderabad, Telangana, India',
+    );
+    expect(find.text('Showing chargers near Hyderabad'), findsOneWidget);
+    expect(
+      find.byKey(const Key('inlineOfficialChargerResults')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+      'Discover uses exact device coordinates when reverse geocoding returns a centroid',
+      (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(
+            locationLoader: () async => const DiscoveryUserLocation(
+              latitude: 17.32001,
+              longitude: 78.55001,
+            ),
+            placeSearchService: const _CurrentLocationPlaceSearchService(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await _pumpUntilFound(
+      tester,
+      find.byKey(const Key('inlineOfficialChargerResults')),
+    );
+
+    final results = tester.widget<OfficialChargerResultsView>(
+      find.byKey(const Key('inlineOfficialChargerResults')),
+    );
+    expect(results.center?.latitude, 17.32001);
+    expect(results.center?.longitude, 78.55001);
+    expect(results.center?.primaryText, 'Hyderabad');
+  });
+
+  testWidgets('Discover falls back to coordinates when reverse geocoding hangs',
+      (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(
+            locationLoader: () async => const DiscoveryUserLocation(
+              latitude: 17.385,
+              longitude: 78.4867,
+            ),
+            placeSearchService: const _HangingReversePlaceSearchService(),
+            reverseLookupTimeout: const Duration(milliseconds: 20),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 30));
+    await _pumpUntilFound(
+      tester,
+      find.byKey(const Key('inlineOfficialChargerResults')),
+    );
+
+    final results = tester.widget<OfficialChargerResultsView>(
+      find.byKey(const Key('inlineOfficialChargerResults')),
+    );
+    expect(results.center?.latitude, 17.385);
+    expect(results.center?.longitude, 78.4867);
+    expect(results.center?.primaryText, 'Current location');
+  });
+
+  testWidgets('manual Discover search stays available when location fails', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(
+            locationLoader: () async => throw Exception(
+              'Location permission is off. Enter an area or PIN.',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Location permission is off. Enter an area or PIN.'),
+      findsOneWidget,
+    );
+    final searchField =
+        find.byKey(const Key('locationField_Search across India'));
+    await tester.enterText(searchField, '500079');
+    await tester.pump(const Duration(milliseconds: 130));
+    await tester.tap(find.text('Karmanghat / Vaishalinagar - 500079'));
+    await tester.pump();
+    await _pumpUntilFound(
+      tester,
+      find.byKey(const Key('inlineOfficialChargerResults')),
+    );
+
+    expect(
+      find.byKey(const Key('inlineOfficialChargerResults')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('manual input wins over a pending automatic location request', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    final location = Completer<DiscoveryUserLocation>();
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(locationLoader: () => location.future),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final searchField =
+        find.byKey(const Key('locationField_Search across India'));
+    await tester.enterText(searchField, '500079');
+    await tester.pump(const Duration(milliseconds: 130));
+    location.complete(
+      const DiscoveryUserLocation(
+        latitude: 17.385,
+        longitude: 78.4867,
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.widget<TextField>(searchField).controller?.text, '500079');
+    expect(
+      tester
+          .widget<IconButton>(
+            find.byKey(const Key('useCurrentLocationButton')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    expect(find.byKey(const Key('inlineOfficialChargerResults')), findsNothing);
+  });
+
   testWidgets('selecting a PIN shows official chargers on Discover', (
     tester,
   ) async {
     _useDesktopViewport(tester);
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: DiscoveryScreen())),
+      const ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(autoLocateOnOpen: false),
+        ),
+      ),
     );
     await tester.pump();
 
@@ -136,7 +369,11 @@ void main() {
   ) async {
     _useDesktopViewport(tester);
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: DiscoveryScreen())),
+      const ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(autoLocateOnOpen: false),
+        ),
+      ),
     );
     await tester.pump();
 
@@ -172,7 +409,11 @@ void main() {
   ) async {
     _useDesktopViewport(tester);
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: DiscoveryScreen())),
+      const ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(autoLocateOnOpen: false),
+        ),
+      ),
     );
     await tester.pump();
 
@@ -198,7 +439,11 @@ void main() {
   ) async {
     _useDesktopViewport(tester);
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: DiscoveryScreen())),
+      const ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(autoLocateOnOpen: false),
+        ),
+      ),
     );
     await tester.pump();
 
@@ -315,6 +560,35 @@ class _ManyPlacesService extends PlaceSearchService {
       ),
     );
   }
+}
+
+class _CurrentLocationPlaceSearchService extends PlaceSearchService {
+  const _CurrentLocationPlaceSearchService();
+
+  @override
+  Future<PlaceSuggestion?> reverseIndia({
+    required double latitude,
+    required double longitude,
+  }) async {
+    return const PlaceSuggestion(
+      primaryText: 'Hyderabad',
+      secondaryText: 'Telangana, India',
+      latitude: 17.385,
+      longitude: 78.4867,
+      type: 'current_location',
+    );
+  }
+}
+
+class _HangingReversePlaceSearchService extends PlaceSearchService {
+  const _HangingReversePlaceSearchService();
+
+  @override
+  Future<PlaceSuggestion?> reverseIndia({
+    required double latitude,
+    required double longitude,
+  }) =>
+      Completer<PlaceSuggestion?>().future;
 }
 
 void _useDesktopViewport(WidgetTester tester) {

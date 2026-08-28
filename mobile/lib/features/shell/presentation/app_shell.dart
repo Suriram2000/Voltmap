@@ -24,10 +24,12 @@ class AppShell extends ConsumerStatefulWidget {
     super.key,
     this.installController = const InstallAppService(),
     this.chargerDataService = const OfficialChargerSearchService(),
+    this.autoLocateDiscoverOnOpen = true,
   });
 
   final InstallAppController installController;
   final OfficialChargerSearchService chargerDataService;
+  final bool autoLocateDiscoverOnOpen;
 
   @override
   ConsumerState<AppShell> createState() => _AppShellState();
@@ -60,7 +62,9 @@ class _AppShellState extends ConsumerState<AppShell> {
   void initState() {
     super.initState();
     screens = List<Widget?>.filled(destinations.length, null);
-    screens[0] = const DiscoveryScreen();
+    screens[0] = DiscoveryScreen(
+      autoLocateOnOpen: widget.autoLocateDiscoverOnOpen,
+    );
     _installBannerTimer = Timer(
       const Duration(milliseconds: 1600),
       _loadInstallBanner,
@@ -190,7 +194,9 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 
   Widget _screenFor(int value) => switch (value) {
-        0 => const DiscoveryScreen(),
+        0 => DiscoveryScreen(
+            autoLocateOnOpen: widget.autoLocateDiscoverOnOpen,
+          ),
         1 => const MapScreen(),
         2 => TripPlannerScreen(
             chargerDataService: widget.chargerDataService,

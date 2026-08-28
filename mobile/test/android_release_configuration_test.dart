@@ -93,7 +93,7 @@ void main() {
       expect(gradle, isNot(contains('signingConfigs.getByName("debug")')));
       expect(
         File('pubspec.yaml').readAsStringSync(),
-        contains('version: 1.15.3+33'),
+        contains('version: 1.15.5+35'),
       );
     });
   });

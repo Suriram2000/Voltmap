@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,8 +21,31 @@ import 'official_charger_results_view.dart';
 import 'station_card.dart';
 import 'station_details_screen.dart';
 
+typedef DiscoveryLocationLoader = Future<DiscoveryUserLocation> Function();
+
+class DiscoveryUserLocation {
+  const DiscoveryUserLocation({
+    required this.latitude,
+    required this.longitude,
+  });
+
+  final double latitude;
+  final double longitude;
+}
+
 class DiscoveryScreen extends ConsumerStatefulWidget {
-  const DiscoveryScreen({super.key});
+  const DiscoveryScreen({
+    super.key,
+    this.locationLoader,
+    this.placeSearchService = const PlaceSearchService(),
+    this.autoLocateOnOpen = true,
+    this.reverseLookupTimeout = const Duration(seconds: 4),
+  });
+
+  final DiscoveryLocationLoader? locationLoader;
+  final PlaceSearchService placeSearchService;
+  final bool autoLocateOnOpen;
+  final Duration reverseLookupTimeout;
 
   @override
   ConsumerState<DiscoveryScreen> createState() => _DiscoveryScreenState();
@@ -31,9 +55,9 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   static const _filterDebounceDuration = Duration(milliseconds: 80);
 
   final searchController = TextEditingController();
-  final placeSearchService = const PlaceSearchService();
   Timer? _filterDebounce;
   int _chargerSearchRequestId = 0;
+  int _locationRequestId = 0;
   String _cachedFilterQuery = '';
   bool _cachedAvailableOnly = false;
   bool _cachedFastOnly = false;
@@ -47,6 +71,21 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   PlaceSuggestion? selectedPlace;
   String? officialResultsQuery;
   PlaceSuggestion? officialResultsCenter;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autoLocateOnOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && searchController.text.trim().isEmpty) {
+          _resolveCurrentLocation(
+            requestPermission: true,
+            initiatedAutomatically: true,
+          );
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -135,7 +174,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                           query: query,
                           onSearchChanged: _handleSearchChanged,
                           onSearchSubmitted: (_) => _showChargerResults(),
-                          searchService: placeSearchService,
+                          searchService: widget.placeSearchService,
                           onLocationSelected: _selectLocation,
                           onUseLocation: () => _resolveCurrentLocation(
                             requestPermission: true,
@@ -255,6 +294,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     setState(() {
       query = '';
       selectedPlace = null;
+      locating = false;
       locationMessage = null;
       resolvingChargerResults = false;
       officialResultsQuery = null;
@@ -268,6 +308,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     setState(() {
       query = '';
       selectedPlace = null;
+      locating = false;
       availableOnly = false;
       fastOnly = false;
       resolvingChargerResults = false;
@@ -279,7 +320,9 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   void _handleSearchChanged(String value) {
     _filterDebounce?.cancel();
     _chargerSearchRequestId++;
+    _locationRequestId++;
     selectedPlace = null;
+    if (locating) setState(() => locating = false);
 
     final mustClearResultsNow = resolvingChargerResults ||
         officialResultsQuery != null ||
@@ -355,9 +398,11 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           break;
         }
       }
-      center ??= placeSearchService.localSuggestions(rawQuery).firstOrNull;
+      center ??=
+          widget.placeSearchService.localSuggestions(rawQuery).firstOrNull;
       if (center == null) {
-        final remoteResults = await placeSearchService.searchIndia(rawQuery);
+        final remoteResults =
+            await widget.placeSearchService.searchIndia(rawQuery);
         center = remoteResults.firstOrNull;
       }
     }
@@ -386,52 +431,57 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   void _cancelPendingSearchWork() {
     _filterDebounce?.cancel();
     _chargerSearchRequestId++;
+    _locationRequestId++;
   }
 
   Future<void> _resolveCurrentLocation({
     required bool requestPermission,
+    bool initiatedAutomatically = false,
   }) async {
     if (locating) return;
+    final requestId = ++_locationRequestId;
     setState(() {
       locating = true;
-      locationMessage = 'Finding your current area...';
+      locationMessage = 'Finding chargers near your current location...';
     });
     try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        throw Exception('Turn on location services, then try again.');
+      final locationFuture = widget.locationLoader?.call() ??
+          _loadDeviceLocation(requestPermission: requestPermission);
+      final location = await (kIsWeb
+          ? locationFuture.timeout(
+              const Duration(seconds: 10),
+              onTimeout: () => throw Exception(
+                'Location is taking too long. Check browser location access and try again, or search by area or PIN.',
+              ),
+            )
+          : locationFuture);
+      if (!mounted || requestId != _locationRequestId) return;
+      if (initiatedAutomatically && searchController.text.trim().isNotEmpty) {
+        setState(() => locating = false);
+        return;
       }
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied && requestPermission) {
-        permission = await Geolocator.requestPermission();
+      final place = await widget.placeSearchService
+          .reverseIndia(
+            latitude: location.latitude,
+            longitude: location.longitude,
+          )
+          .timeout(widget.reverseLookupTimeout, onTimeout: () => null);
+      if (!mounted || requestId != _locationRequestId) return;
+      if (initiatedAutomatically && searchController.text.trim().isNotEmpty) {
+        setState(() => locating = false);
+        return;
       }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        throw Exception(
-          'Location permission is off. Allow it to load your area automatically.',
-        );
-      }
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 12),
-        ),
-      );
-      final place = await placeSearchService.reverseIndia(
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
-      if (!mounted) return;
       final displayName = place?.displayName ??
-          '${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}, India';
-      final resolvedPlace = place ??
-          PlaceSuggestion(
-            primaryText: 'Current location',
-            secondaryText: displayName,
-            latitude: position.latitude,
-            longitude: position.longitude,
-            type: 'current_location',
-          );
+          '${location.latitude.toStringAsFixed(5)}, ${location.longitude.toStringAsFixed(5)}, India';
+      // The reverse-geocoded place is only a friendly label. Its coordinates
+      // can be a city centroid, which would omit chargers near the device.
+      final resolvedPlace = PlaceSuggestion(
+        primaryText: place?.primaryText ?? 'Current location',
+        secondaryText: place?.secondaryText ?? displayName,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        type: 'current_location',
+      );
       searchController
         ..text = displayName
         ..selection = TextSelection.collapsed(offset: displayName.length);
@@ -440,17 +490,49 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
         selectedPlace = resolvedPlace;
         locating = false;
         locationMessage = place == null
-            ? 'Using your current coordinates in India'
-            : 'Near you: ${place.primaryText}';
+            ? 'Searching chargers near your current coordinates'
+            : 'Searching chargers near ${place.primaryText}';
       });
+      await _showChargerResults(preferredCenter: resolvedPlace);
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted || requestId != _locationRequestId) return;
       final message = error.toString().replaceFirst('Exception: ', '');
       setState(() {
         locating = false;
         locationMessage = message;
       });
     }
+  }
+
+  Future<DiscoveryUserLocation> _loadDeviceLocation({
+    required bool requestPermission,
+  }) async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw Exception(
+        'Turn on location services to automatically find chargers near you. You can still search by area or PIN.',
+      );
+    }
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied && requestPermission) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      throw Exception(
+        'Location permission is off. Allow it to search nearby automatically, or enter an area or PIN.',
+      );
+    }
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.medium,
+        timeLimit: Duration(seconds: 12),
+      ),
+    );
+    return DiscoveryUserLocation(
+      latitude: position.latitude,
+      longitude: position.longitude,
+    );
   }
 }
 

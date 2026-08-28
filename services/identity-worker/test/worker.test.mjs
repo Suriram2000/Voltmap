@@ -207,6 +207,84 @@ test('enforces resend delay without sending a second message', async () => {
   assert.equal(sends, 1);
 });
 
+test('retries transient WhatsApp delivery failures without logging OTP data', async () => {
+  const env = environment();
+  let sends = 0;
+  const waits = [];
+  const logs = [];
+  const worker = createWorker({
+    fetchImpl: async () => {
+      sends += 1;
+      if (sends < 3) {
+        return new Response(
+          JSON.stringify({error: {code: 131000}}),
+          {status: 503},
+        );
+      }
+      return new Response(JSON.stringify({messages: [{id: 'wamid.1'}]}), {
+        status: 200,
+      });
+    },
+    sleepImpl: async (milliseconds) => waits.push(milliseconds),
+    logImpl: (message) => logs.push(message),
+  });
+
+  const response = await worker.fetch(
+    jsonRequest('/v1/identity/otp/challenges', {
+      channel: 'whatsapp',
+      destination: '9000000001',
+      purpose: 'account_sign_in',
+    }),
+    env,
+  );
+
+  assert.equal(response.status, 201);
+  assert.equal(sends, 3);
+  assert.deepEqual(waits, [250, 500]);
+  assert.equal(logs.length, 2);
+  assert.equal(logs.every((entry) => entry.includes('131000')), true);
+  assert.equal(logs.some((entry) => entry.includes('9000000001')), false);
+  for (const entry of logs) {
+    assert.deepEqual(Object.keys(JSON.parse(entry)).sort(), [
+      'attempt',
+      'event',
+      'providerCode',
+      'status',
+    ]);
+  }
+});
+
+test('does not retry permanent WhatsApp provider errors', async () => {
+  let sends = 0;
+  const logs = [];
+  const worker = createWorker({
+    fetchImpl: async () => {
+      sends += 1;
+      return new Response(
+        JSON.stringify({error: {code: 100}}),
+        {status: 400},
+      );
+    },
+    sleepImpl: async () => assert.fail('Permanent errors must not be retried.'),
+    logImpl: (message) => logs.push(message),
+  });
+
+  const response = await worker.fetch(
+    jsonRequest('/v1/identity/otp/challenges', {
+      channel: 'whatsapp',
+      destination: '9000000001',
+      purpose: 'account_sign_in',
+    }),
+    environment(),
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 502);
+  assert.equal(body.code, 'whatsapp_delivery_failed');
+  assert.equal(sends, 1);
+  assert.equal(logs.length, 1);
+});
+
 test('decrements attempts and never accepts an incorrect code', async () => {
   const env = environment();
   const worker = createWorker({

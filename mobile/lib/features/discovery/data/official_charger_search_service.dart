@@ -8,6 +8,9 @@ import '../../../shared/models/place_suggestion.dart';
 import 'official_charger_station.dart';
 
 const officialChargerManifestAsset = 'assets/data/bee/manifest.json';
+const _defaultNearbyRadiusKm = 25.0;
+const _postcodeRadiusKm = 15.0;
+const _expandedCurrentLocationRadiusKm = 100.0;
 
 class OfficialChargerSearchService {
   const OfficialChargerSearchService();
@@ -134,9 +137,11 @@ OfficialChargerSearchResult searchOfficialChargers({
 }) {
   final postcode =
       RegExp(r'(?<!\d)([1-9]\d{5})(?!\d)').firstMatch(query)?.group(1);
-  final radiusKm = center?.type == 'postcode' ? 15.0 : 25.0;
+  final radiusKm =
+      center?.type == 'postcode' ? _postcodeRadiusKm : _defaultNearbyRadiusKm;
   final normalizedQuery = _normalize(query);
   final matches = <OfficialChargerMatch>[];
+  final expandedCurrentLocationMatches = <OfficialChargerMatch>[];
 
   for (final station in index.stations) {
     final exactPostcode =
@@ -155,17 +160,27 @@ OfficialChargerSearchResult searchOfficialChargers({
           '${station.district} ${station.state} ${station.postcodes.join(' ')}',
         ).contains(normalizedQuery);
 
+    final match = OfficialChargerMatch(
+      station: station,
+      distanceKm: distanceKm,
+      exactPostcode: exactPostcode,
+    );
     if (exactPostcode ||
         (distanceKm != null && distanceKm <= radiusKm) ||
         (center == null && textMatch)) {
-      matches.add(
-        OfficialChargerMatch(
-          station: station,
-          distanceKm: distanceKm,
-          exactPostcode: exactPostcode,
-        ),
-      );
+      matches.add(match);
+    } else if (center?.type == 'current_location' &&
+        distanceKm != null &&
+        distanceKm <= _expandedCurrentLocationRadiusKm) {
+      expandedCurrentLocationMatches.add(match);
     }
+  }
+
+  final usedExpandedRadius = matches.isEmpty &&
+      center?.type == 'current_location' &&
+      expandedCurrentLocationMatches.isNotEmpty;
+  if (usedExpandedRadius) {
+    matches.addAll(expandedCurrentLocationMatches);
   }
 
   matches.sort((left, right) {
@@ -183,8 +198,11 @@ OfficialChargerSearchResult searchOfficialChargers({
     sourceUrl: index.sourceUrl,
     asOf: index.asOf,
     totalStationCount: index.totalStationCount,
-    radiusKm: radiusKm,
+    radiusKm: usedExpandedRadius ? _expandedCurrentLocationRadiusKm : radiusKm,
     matches: matches,
+    statusMessage: usedExpandedRadius
+        ? 'No published station was found within ${radiusKm.toStringAsFixed(0)} km. Showing the nearest dated official stations within ${_expandedCurrentLocationRadiusKm.toStringAsFixed(0)} km; availability and price are not live.'
+        : null,
   );
 }
 
