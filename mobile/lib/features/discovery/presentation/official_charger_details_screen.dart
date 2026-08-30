@@ -39,17 +39,35 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
 
     return Scaffold(
       key: const Key('officialChargerDetailsScreen'),
-      appBar: AppBar(title: const Text('Charger details')),
+      backgroundColor: const Color(0xFFF4FBF8),
+      appBar: AppBar(
+        title: const Text(
+          'Charger details',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+        ),
+        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFF032A25),
+        surfaceTintColor: Colors.transparent,
+        actions: [
+          IconButton(
+            tooltip: 'Report station information',
+            onPressed: () => _reportCorrection(context),
+            icon: const Icon(Icons.outlined_flag_rounded),
+          ),
+        ],
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 900),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 36),
             children: [
               Text(
                 'Choose the right charger',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: const Color(0xFF032A25),
                       fontWeight: FontWeight.w900,
+                      letterSpacing: -0.6,
                     ),
               ),
               const SizedBox(height: 4),
@@ -59,67 +77,125 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
                       color: colors.onSurfaceVariant,
                     ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               Container(
                 key: const Key('officialChargerDetailsHero'),
-                padding: const EdgeInsets.all(22),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF073D34), Color(0xFF061B31)],
+                    colors: [
+                      Color(0xFF062F2A),
+                      Color(0xFF075C4A),
+                      Color(0xFF061B31),
+                    ],
                   ),
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(
+                    color: const Color(0xFF7BF39E).withValues(alpha: 0.3),
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x44052C25),
+                      blurRadius: 28,
+                      offset: Offset(0, 14),
+                    ),
+                  ],
                 ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Container(
-                      width: 72,
-                      height: 88,
+                      height: 158,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.16),
+                            Colors.white.withValues(alpha: 0.04),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.15),
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.ev_station_rounded,
-                        size: 44,
-                        color: Color(0xFF62E98A),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: const Stack(
+                        alignment: Alignment.center,
                         children: [
-                          Text(
-                            station.displayName,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                ),
+                          Positioned(
+                            left: 20,
+                            bottom: 22,
+                            child: Icon(
+                              Icons.electric_car_rounded,
+                              size: 72,
+                              color: Color(0xFFD9FFF0),
+                            ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            station.ownership.isEmpty
-                                ? station.operatorName
-                                : '${station.operatorName} · ${station.ownership}',
-                            style: const TextStyle(color: Color(0xFFB8CED6)),
+                          Positioned(
+                            right: 24,
+                            bottom: 19,
+                            child: Icon(
+                              Icons.ev_station_rounded,
+                              size: 96,
+                              color: Colors.white,
+                            ),
                           ),
-                          const SizedBox(height: 10),
-                          _StatusBadge(
-                            label: hasLiveAvailability
-                                ? availableNow
-                                    ? '${station.availableConnectors}/${station.totalConnectors} available now'
-                                    : 'Busy or offline'
-                                : 'Published station · verify status',
-                            positive: hasLiveAvailability && availableNow,
+                          Positioned(
+                            right: 53,
+                            top: 23,
+                            child: Icon(
+                              Icons.bolt_rounded,
+                              size: 44,
+                              color: Color(0xFFA6FF62),
+                            ),
+                          ),
+                          Positioned(
+                            left: 18,
+                            top: 16,
+                            child: _HeroVerifiedPill(),
                           ),
                         ],
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      station.displayName,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.35,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      station.ownership.isEmpty
+                          ? station.operatorName
+                          : '${station.operatorName} · ${station.ownership}',
+                      style: const TextStyle(color: Color(0xFFB8CED6)),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _StatusBadge(
+                          label: hasLiveAvailability
+                              ? availableNow
+                                  ? '${station.availableConnectors}/${station.totalConnectors} available now'
+                                  : 'Busy or offline'
+                              : 'Published station · verify status',
+                          positive: hasLiveAvailability && availableNow,
+                        ),
+                        if (distanceKm != null) ...[
+                          _StatusBadge(
+                            label: '${distanceKm!.toStringAsFixed(1)} km away',
+                            positive: false,
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),
@@ -129,13 +205,17 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
                 key: const Key('officialStationDataTransparencyBanner'),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: colors.tertiaryContainer,
+                  color: const Color(0xFFE9F8EF),
                   borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFCDEBDA)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.fact_check_outlined, color: colors.tertiary),
+                    const Icon(
+                      Icons.fact_check_outlined,
+                      color: Color(0xFF0A8D50),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -308,6 +388,14 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
                     onPressed: () => _openDirections(context),
                     icon: const Icon(Icons.navigation_rounded),
                     label: const Text('Navigate'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF079653),
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(52),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
                   );
                   final showCharge = AppRuntimeConfig.canOfferChargingPayment;
                   if (constraints.maxWidth < 520) {
@@ -325,6 +413,14 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
                             onPressed: () => _openSecureCheckout(context),
                             icon: const Icon(Icons.bolt_rounded),
                             label: const Text('Charge & pay'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF032A25),
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size.fromHeight(52),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
                           ),
                         ],
                       ],
@@ -464,7 +560,19 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFDFECE7)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x10052B24),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
       child: Padding(padding: const EdgeInsets.all(18), child: child),
     );
   }
@@ -489,22 +597,74 @@ class _MetricTile extends StatelessWidget {
       width: width,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF3FAF7), Color(0xFFEAF7F0)],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFDCECE5)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: Theme.of(context).colorScheme.primary),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE0F7E9),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: const Color(0xFF078B4E), size: 19),
+              ),
               const SizedBox(height: 10),
-              Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
+              Text(
+                value,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF062D26),
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
               const SizedBox(height: 2),
               Text(label, style: Theme.of(context).textTheme.bodySmall),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _HeroVerifiedPill extends StatelessWidget {
+  const _HeroVerifiedPill();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF08231F).withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.shield_outlined, size: 14, color: Color(0xFFA6FF62)),
+          SizedBox(width: 5),
+          Text(
+            'VoltMapEV station record',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }

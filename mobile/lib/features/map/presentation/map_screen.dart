@@ -98,9 +98,52 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final result = _result;
+    final compact = MediaQuery.sizeOf(context).width < 600;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Find chargers near you'),
+        toolbarHeight: compact ? 58 : null,
+        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFF032A25),
+        surfaceTintColor: Colors.transparent,
+        title: Row(
+          children: [
+            Container(
+              width: compact ? 34 : 38,
+              height: compact ? 34 : 38,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFA6FF62), Color(0xFF18C875)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x5518C875),
+                    blurRadius: 14,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.bolt_rounded,
+                color: Color(0xFF032A25),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Find chargers near you',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
         actions: [
           if (_loading && result != null)
             const Padding(
@@ -117,7 +160,7 @@ class _MapScreenState extends State<MapScreen> {
             tooltip: 'Refresh my location',
             onPressed:
                 _loading || !_locationEnabled ? null : _loadNearbyChargers,
-            icon: const Icon(Icons.my_location_rounded),
+            icon: const Icon(Icons.my_location_rounded, color: Colors.white),
           ),
         ],
       ),
@@ -308,16 +351,18 @@ class _MapScreenState extends State<MapScreen> {
             Positioned.fill(child: _buildMapLayer(map)),
             DraggableScrollableSheet(
               key: const Key('nearbyChargerBottomSheet'),
-              initialChildSize: 0.4,
+              initialChildSize: constraints.maxHeight < 500 ? 0.72 : 0.52,
               minChildSize: 0.2,
               maxChildSize: 0.88,
               snap: true,
-              snapSizes: const [0.4, 0.88],
+              snapSizes: constraints.maxHeight < 500
+                  ? const [0.72, 0.88]
+                  : const [0.52, 0.88],
               builder: (context, scrollController) => Material(
                 elevation: 18,
-                color: Theme.of(context).colorScheme.surface,
+                color: Colors.transparent,
                 borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(26)),
+                    const BorderRadius.vertical(top: Radius.circular(30)),
                 clipBehavior: Clip.antiAlias,
                 child: _NearbyChargerPanel(
                   result: visibleResult,
@@ -344,9 +389,9 @@ class _MapScreenState extends State<MapScreen> {
       children: [
         Positioned.fill(child: map),
         Positioned(
-          top: 14,
-          left: 14,
-          right: 14,
+          top: 12,
+          left: 12,
+          right: 12,
           child: _MapSearchOverlay(
             controller: _mapSearchController,
             locationLabel: _place?.primaryText ?? 'your area',
@@ -363,19 +408,33 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ),
         Positioned(
-          top: 88,
-          right: 16,
-          child: FloatingActionButton.small(
-            key: const Key('mapRecenterButton'),
-            heroTag: 'mapRecenter',
-            tooltip: 'Center on my location',
-            onPressed: _loading ? null : _requestLocationAccess,
-            child: _loading
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.my_location_rounded),
+          top: 86,
+          right: 14,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.97),
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFE2ECF0)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x26052622),
+                  blurRadius: 18,
+                  offset: Offset(0, 7),
+                ),
+              ],
+            ),
+            child: IconButton(
+              key: const Key('mapRecenterButton'),
+              tooltip: 'Center on my location',
+              onPressed: _loading ? null : _requestLocationAccess,
+              color: const Color(0xFF1265E7),
+              icon: _loading
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.my_location_rounded),
+            ),
           ),
         ),
       ],
@@ -839,44 +898,61 @@ class _MapSearchOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: DecoratedBox(
+          child: Container(
             decoration: BoxDecoration(
-              color: colors.surface.withValues(alpha: 0.98),
-              borderRadius: BorderRadius.circular(20),
+              color: Colors.white.withValues(alpha: 0.98),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: const Color(0xFFE0EAEE)),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x22000000),
-                  blurRadius: 20,
-                  offset: Offset(0, 8),
+                  color: Color(0x2B062B25),
+                  blurRadius: 24,
+                  offset: Offset(0, 10),
                 ),
               ],
             ),
-            child: LocationAutocompleteField(
-              key: const Key('mapLocationSearch'),
-              controller: controller,
-              label: 'Search map',
-              hint: 'Area, city or PIN near $locationLabel',
-              prefixIcon: Icons.search_rounded,
-              searchService: searchService,
-              onSelected: onSelected,
-              onChanged: onChanged,
-              shouldHideSuggestions: shouldHideSuggestions,
-              onSubmitted: onSubmitted,
-              textInputAction: TextInputAction.search,
-              suffixIcon: loading
-                  ? const Padding(
-                      padding: EdgeInsets.all(15),
-                      child: SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  : null,
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                inputDecorationTheme:
+                    Theme.of(context).inputDecorationTheme.copyWith(
+                          filled: true,
+                          fillColor: Colors.transparent,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(22),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(22),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+              ),
+              child: LocationAutocompleteField(
+                key: const Key('mapLocationSearch'),
+                controller: controller,
+                label: 'Search map',
+                hint: 'Area, city or PIN near $locationLabel',
+                prefixIcon: Icons.search_rounded,
+                searchService: searchService,
+                onSelected: onSelected,
+                onChanged: onChanged,
+                shouldHideSuggestions: shouldHideSuggestions,
+                onSubmitted: onSubmitted,
+                textInputAction: TextInputAction.search,
+                suffixIcon: loading
+                    ? const Padding(
+                        padding: EdgeInsets.all(15),
+                        child: SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : null,
+              ),
             ),
           ),
         ),
@@ -884,16 +960,17 @@ class _MapSearchOverlay extends StatelessWidget {
         Badge(
           isLabelVisible: activeFilter != 'All',
           child: Material(
-            color: colors.surface.withValues(alpha: 0.98),
-            elevation: 3,
-            shadowColor: Colors.black26,
+            color: Colors.white.withValues(alpha: 0.98),
+            elevation: 5,
+            shadowColor: const Color(0x33052622),
             shape: const CircleBorder(),
-            child: IconButton.filledTonal(
+            child: IconButton(
               key: const Key('mapFilterButton'),
               tooltip: activeFilter == 'All'
                   ? 'Filter chargers'
                   : 'Filter: $activeFilter',
               onPressed: onFilterPressed,
+              color: const Color(0xFF063F36),
               icon: const Icon(Icons.tune_rounded),
             ),
           ),
@@ -922,7 +999,6 @@ class _LocationAccessControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final compact = MediaQuery.sizeOf(context).width < 600;
     final title = permissionFailure
         ? 'Location permission required'
@@ -939,16 +1015,23 @@ class _LocationAccessControl extends StatelessWidget {
                     ? '${enabled ? 'On' : 'Off'} — showing chargers near $placeLabel${enabled ? '; tap the target to return to your location.' : ' without using device location.'}'
                     : 'Off — turn on to request access, or search an area or PIN.';
 
-    return ColoredBox(
-      color: colors.surface,
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF032A25), Color(0xFF075246)],
+        ),
+      ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(12, 2, 12, compact ? 5 : 10),
-        child: Material(
+        padding: EdgeInsets.fromLTRB(12, compact ? 6 : 9, 12, compact ? 7 : 10),
+        child: Container(
           key: const Key('mapLocationControlSurface'),
-          color: enabled
-              ? colors.primaryContainer.withValues(alpha: 0.64)
-              : colors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(compact ? 14 : 18),
+          decoration: BoxDecoration(
+            color: enabled
+                ? Colors.white.withValues(alpha: 0.14)
+                : Colors.white.withValues(alpha: 0.09),
+            borderRadius: BorderRadius.circular(compact ? 16 : 19),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+          ),
           clipBehavior: Clip.antiAlias,
           child: compact
               ? Padding(
@@ -958,11 +1041,10 @@ class _LocationAccessControl extends StatelessWidget {
                       CircleAvatar(
                         radius: 16,
                         backgroundColor: enabled
-                            ? colors.primary
-                            : colors.surfaceContainerHighest,
-                        foregroundColor: enabled
-                            ? colors.onPrimary
-                            : colors.onSurfaceVariant,
+                            ? const Color(0xFF65E986)
+                            : Colors.white.withValues(alpha: 0.15),
+                        foregroundColor:
+                            enabled ? const Color(0xFF063F36) : Colors.white70,
                         child: Icon(
                           enabled
                               ? Icons.near_me_rounded
@@ -981,6 +1063,7 @@ class _LocationAccessControl extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
+                                color: Colors.white,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -990,7 +1073,7 @@ class _LocationAccessControl extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: colors.onSurfaceVariant,
+                                color: Colors.white.withValues(alpha: 0.72),
                                 fontSize: 10.5,
                               ),
                             ),
@@ -1002,39 +1085,51 @@ class _LocationAccessControl extends StatelessWidget {
                         value: enabled,
                         onChanged: onChanged,
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        activeTrackColor: const Color(0xFF65E986),
                       ),
                     ],
                   ),
                 )
-              : SwitchListTile.adaptive(
-                  key: const Key('mapLocationToggle'),
-                  value: enabled,
-                  onChanged: onChanged,
-                  secondary: CircleAvatar(
-                    radius: 20,
-                    backgroundColor: enabled
-                        ? colors.primary
-                        : colors.surfaceContainerHighest,
-                    foregroundColor:
-                        enabled ? colors.onPrimary : colors.onSurfaceVariant,
-                    child: Icon(
-                      enabled
-                          ? Icons.near_me_rounded
-                          : Icons.location_off_rounded,
-                      size: 20,
+              : Material(
+                  color: Colors.transparent,
+                  child: SwitchListTile.adaptive(
+                    key: const Key('mapLocationToggle'),
+                    value: enabled,
+                    onChanged: onChanged,
+                    secondary: CircleAvatar(
+                      radius: 20,
+                      backgroundColor: enabled
+                          ? const Color(0xFF65E986)
+                          : Colors.white.withValues(alpha: 0.15),
+                      foregroundColor:
+                          enabled ? const Color(0xFF063F36) : Colors.white70,
+                      child: Icon(
+                        enabled
+                            ? Icons.near_me_rounded
+                            : Icons.location_off_rounded,
+                        size: 20,
+                      ),
+                    ),
+                    title: Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    subtitle: Text(
+                      status,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.72),
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 2,
                     ),
                   ),
-                  title: Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  subtitle: Text(
-                    status,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                 ),
         ),
       ),
@@ -1695,18 +1790,25 @@ class _NearbyChargerPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          left: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFFFFFFF), Color(0xFFF2FBF7)],
         ),
+        border: Border.all(color: const Color(0xFFDDEAE5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x26051F1B),
+            blurRadius: 28,
+            offset: Offset(0, -8),
+          ),
+        ],
       ),
       child: ListView.builder(
         key: const Key('nearbyChargerPanel'),
         controller: scrollController,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: EdgeInsets.fromLTRB(14, showDragHandle ? 6 : 14, 14, 30),
+        padding: EdgeInsets.fromLTRB(14, showDragHandle ? 7 : 14, 14, 30),
         itemCount: result.matches.isEmpty ? 2 : result.matches.length + 1,
         itemBuilder: (context, index) {
           if (index == 0) {
@@ -1807,12 +1909,16 @@ class _NearbyPanelHeader extends StatelessWidget {
               child: Text(
                 'Nearby Chargers',
                 key: const Key('nearbyChargerCount'),
-                style: Theme.of(context).textTheme.titleLarge,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: const Color(0xFF062D26),
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.4,
+                    ),
               ),
             ),
             DecoratedBox(
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
+                color: const Color(0xFFE5F9E9),
                 borderRadius: BorderRadius.circular(99),
               ),
               child: Padding(
@@ -1821,6 +1927,7 @@ class _NearbyPanelHeader extends StatelessWidget {
                 child: Text(
                   '${result.matches.length} shown',
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: const Color(0xFF087A44),
                         fontWeight: FontWeight.w900,
                       ),
                 ),
@@ -1876,121 +1983,211 @@ class _NearbyStationTile extends StatelessWidget {
         .whereType<double>();
     final maxSpeed =
         speedRatings.isEmpty ? null : speedRatings.reduce(math.max);
-    return Material(
-      key: ValueKey(
-        'nearby_${station.latitude}_${station.longitude}_${station.operatorName}',
+    final availabilityLabel = station.hasLiveAvailability
+        ? '${station.availableConnectors}/${station.totalConnectors} available'
+        : 'Availability: Not published • Price: Not published';
+    final priceLabel = station.hasLivePrice
+        ? '₹${station.pricePerKwh!.toStringAsFixed(2)}/kWh'
+        : 'Tariff not published';
+    return Container(
+      decoration: BoxDecoration(
+        color: selected ? const Color(0xFFE8FAEF) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: selected ? const Color(0xFF5DD98B) : const Color(0xFFE4ECE9),
+          width: selected ? 1.5 : 1,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14042620),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
       ),
-      color: selected
-          ? Theme.of(context).colorScheme.primaryContainer
-          : Theme.of(context).colorScheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: selected
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.surface,
-                child: Icon(
-                  Icons.ev_station_rounded,
-                  size: 20,
-                  color: selected
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : AppTheme.brandGreen,
+      child: Material(
+        key: ValueKey(
+          'nearby_${station.latitude}_${station.longitude}_${station.operatorName}',
+        ),
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 6, 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 62,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF092F2A), Color(0xFF0DA663)],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Icon(
+                        Icons.ev_station_rounded,
+                        size: 34,
+                        color: Colors.white,
+                      ),
+                      Positioned(
+                        top: 7,
+                        right: 7,
+                        child: Icon(
+                          Icons.bolt_rounded,
+                          size: 14,
+                          color: Color(0xFFA6FF62),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      station.displayName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      station.areaLabel,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    if (connectorSummary.isNotEmpty) ...[
-                      const SizedBox(height: 5),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        connectorSummary,
-                        maxLines: 1,
+                        station.displayName,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w900,
+                            ),
                       ),
-                    ],
-                    const SizedBox(height: 5),
-                    Text(
-                      station.hasLiveAvailability
-                          ? '${station.availableConnectors}/${station.totalConnectors} available${station.hasLivePrice ? ' • ₹${station.pricePerKwh!.toStringAsFixed(2)}/kWh' : ' • Price not published'}'
-                          : 'Availability: Not published • Price: Not published',
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      maxSpeed == null
-                          ? 'Charging speed: Not published'
-                          : 'Charging speed: up to ${maxSpeed % 1 == 0 ? maxSpeed.toStringAsFixed(0) : maxSpeed.toStringAsFixed(1)} kW',
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                    if (match.distanceKm != null) ...[
-                      const SizedBox(height: 5),
-                      Text(
-                        '${match.distanceKm!.toStringAsFixed(1)} km away',
-                        style:
-                            Theme.of(context).textTheme.labelMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                      ),
-                    ],
-                    const SizedBox(height: 5),
-                    Text(
-                      'Source: ${station.sourceLabel}${station.operatorVerified ? ' • operator verified' : ' • inventory record'}',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          if (match.distanceKm != null) ...[
+                            Text(
+                              '${match.distanceKm!.toStringAsFixed(1)} km',
+                              style: const TextStyle(
+                                color: Color(0xFF0A8D50),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const Text('  •  ', style: TextStyle(fontSize: 11)),
+                          ],
+                          Expanded(
+                            child: Text(
+                              station.areaLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          _StationInfoPill(
+                            label: availabilityLabel,
+                            positive: station.hasLiveAvailability &&
+                                (station.availableConnectors ?? 0) > 0,
+                          ),
+                          _StationInfoPill(
+                            label: maxSpeed == null
+                                ? 'Charging speed: Not published'
+                                : 'Charging speed: up to ${maxSpeed % 1 == 0 ? maxSpeed.toStringAsFixed(0) : maxSpeed.toStringAsFixed(1)} kW',
+                          ),
+                        ],
+                      ),
+                      if (connectorSummary.isNotEmpty) ...[
+                        const SizedBox(height: 5),
+                        Text(
+                          connectorSummary,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                      ],
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              priceLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: station.hasLivePrice
+                                    ? const Color(0xFF1265E7)
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: Color(0xFF063F36),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Directions in Google Maps',
+                      onPressed: onDirections,
+                      icon: const Icon(Icons.navigation_rounded, size: 19),
+                    ),
+                    IconButton(
+                      key: const Key('reportNearbyStationButton'),
+                      tooltip: 'Report station information privately',
+                      onPressed: onReport,
+                      icon: const Icon(Icons.outlined_flag_rounded, size: 18),
                     ),
                   ],
                 ),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.chevron_right_rounded),
-                  IconButton(
-                    tooltip: 'Directions in Google Maps',
-                    onPressed: onDirections,
-                    icon: const Icon(Icons.directions_rounded),
-                  ),
-                  IconButton(
-                    key: const Key('reportNearbyStationButton'),
-                    tooltip: 'Report station information privately',
-                    onPressed: onReport,
-                    icon: const Icon(Icons.outlined_flag_rounded),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StationInfoPill extends StatelessWidget {
+  const _StationInfoPill({required this.label, this.positive = false});
+
+  final String label;
+  final bool positive;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: positive ? const Color(0xFFE4F8E9) : const Color(0xFFF1F6F4),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: positive
+              ? const Color(0xFF087A44)
+              : Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: 9.5,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );

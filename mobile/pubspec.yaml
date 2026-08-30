@@ -1,7 +1,7 @@
 name: voltmap
 description: Unified EV charger discovery and charging platform.
 publish_to: "none"
-version: 1.15.5+35
+version: 1.15.6+36
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
