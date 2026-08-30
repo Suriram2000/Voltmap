@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/place_suggestion.dart';
 import '../data/official_charger_search_service.dart';
 import '../data/official_charger_station.dart';
+import 'official_charger_details_screen.dart';
 
 class OfficialChargerResultsView extends StatefulWidget {
   const OfficialChargerResultsView({
@@ -87,7 +88,10 @@ class _OfficialChargerResultsViewState
               for (var index = 0; index < visibleCount; index++)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
-                  child: _OfficialStationCard(match: result.matches[index]),
+                  child: _OfficialStationCard(
+                    match: result.matches[index],
+                    onTap: () => _openStationDetails(result.matches[index]),
+                  ),
                 ),
               if (remaining > 0)
                 Padding(
@@ -120,7 +124,10 @@ class _OfficialChargerResultsViewState
             }
             return Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: _OfficialStationCard(match: result.matches[index - 1]),
+              child: _OfficialStationCard(
+                match: result.matches[index - 1],
+                onTap: () => _openStationDetails(result.matches[index - 1]),
+              ),
             );
           },
         );
@@ -141,6 +148,18 @@ class _OfficialChargerResultsViewState
         const SnackBar(content: Text('Could not open Google Maps.')),
       );
     }
+  }
+
+  void _openStationDetails(OfficialChargerMatch match) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => OfficialChargerDetailsScreen(
+          station: match.station,
+          distanceKm: match.distanceKm,
+          distanceContext: 'from the searched location',
+        ),
+      ),
+    );
   }
 }
 
@@ -244,9 +263,10 @@ Uri buildGoogleChargerVerificationUri({
 }
 
 class _OfficialStationCard extends StatelessWidget {
-  const _OfficialStationCard({required this.match});
+  const _OfficialStationCard({required this.match, required this.onTap});
 
   final OfficialChargerMatch match;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -254,99 +274,126 @@ class _OfficialStationCard extends StatelessWidget {
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE1F7E8),
-                    borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        key: ValueKey('officialStationCard_${station.feedbackStationId}'),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE1F7E8),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.ev_station_rounded,
+                      color: AppTheme.brandGreen,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.ev_station_rounded,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          station.displayName,
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          station.areaLabel,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (match.distanceKm != null)
+                    _DistanceBadge(distanceKm: match.distanceKm!),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right_rounded),
+                ],
+              ),
+              const SizedBox(height: 13),
+              Text(station.address),
+              if (match.exactPostcode) ...[
+                const SizedBox(height: 10),
+                const _ExactPinBadge(),
+              ],
+              if (station.connectors.isNotEmpty) ...[
+                const SizedBox(height: 13),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final connectors = station.connectors
+                        .map(
+                          (connector) => _ConnectorBadge(
+                            label: connector.label,
+                            expanded: constraints.maxWidth < 480,
+                          ),
+                        )
+                        .toList(growable: false);
+                    if (constraints.maxWidth < 480) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: connectors
+                            .map(
+                              (connector) => Padding(
+                                padding: const EdgeInsets.only(bottom: 7),
+                                child: connector,
+                              ),
+                            )
+                            .toList(growable: false),
+                      );
+                    }
+                    return Wrap(
+                        spacing: 7, runSpacing: 7, children: connectors);
+                  },
+                ),
+              ],
+              const SizedBox(height: 10),
+              Text(
+                '${station.ownership.isEmpty ? 'Operator' : station.ownership} - '
+                '${station.latitude.toStringAsFixed(6)}, '
+                '${station.longitude.toStringAsFixed(6)}',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    'View charger details',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: AppTheme.brandGreen,
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 18,
                     color: AppTheme.brandGreen,
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        station.displayName,
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        station.areaLabel,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (match.distanceKm != null)
-                  _DistanceBadge(distanceKm: match.distanceKm!),
-              ],
-            ),
-            const SizedBox(height: 13),
-            Text(station.address),
-            if (match.exactPostcode) ...[
-              const SizedBox(height: 10),
-              const _ExactPinBadge(),
-            ],
-            if (station.connectors.isNotEmpty) ...[
-              const SizedBox(height: 13),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final connectors = station.connectors
-                      .map(
-                        (connector) => _ConnectorBadge(
-                          label: connector.label,
-                          expanded: constraints.maxWidth < 480,
-                        ),
-                      )
-                      .toList(growable: false);
-                  if (constraints.maxWidth < 480) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: connectors
-                          .map(
-                            (connector) => Padding(
-                              padding: const EdgeInsets.only(bottom: 7),
-                              child: connector,
-                            ),
-                          )
-                          .toList(growable: false),
-                    );
-                  }
-                  return Wrap(spacing: 7, runSpacing: 7, children: connectors);
-                },
+                ],
               ),
             ],
-            const SizedBox(height: 10),
-            Text(
-              '${station.ownership.isEmpty ? 'Operator' : station.ownership} - '
-              '${station.latitude.toStringAsFixed(6)}, '
-              '${station.longitude.toStringAsFixed(6)}',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ],
+          ),
         ),
       ),
     );

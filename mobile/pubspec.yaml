@@ -1,7 +1,7 @@
 name: voltmap
 description: Unified EV charger discovery and charging platform.
 publish_to: "none"
-version: 1.15.6+36
+version: 1.15.7+37
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -28,3 +28,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/data/bee/
+    - assets/images/

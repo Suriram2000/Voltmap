@@ -81,6 +81,8 @@ void main() {
       find.byKey(const Key('officialChargerDetailsScreen')),
       findsOneWidget,
     );
+    expect(find.byKey(const Key('chargerDetailsPhoto')), findsOneWidget);
+    expect(find.text('Representative station image'), findsOneWidget);
     expect(
       find.text('Charge & pay'),
       AppRuntimeConfig.canOfferChargingPayment ? findsOneWidget : findsNothing,
