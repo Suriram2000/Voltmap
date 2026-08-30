@@ -280,6 +280,21 @@ void main() {
       find.byKey(const Key('inlineOfficialChargerResults')),
       findsOneWidget,
     );
+    await _pumpUntilFound(tester, find.text('View charger details'));
+    expect(find.text('View charger details'), findsWidgets);
+
+    await tester.ensureVisible(find.text('View charger details').first);
+    await tester.pump();
+    await tester.tap(find.text('View charger details').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(
+      find.byKey(const Key('officialChargerDetailsScreen')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('chargerDetailsPhoto')), findsOneWidget);
+    expect(find.text('Representative station image'), findsOneWidget);
   });
 
   testWidgets('manual input wins over a pending automatic location request', (

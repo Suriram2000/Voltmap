@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_environment.dart';
@@ -9,6 +10,7 @@ import '../../../shared/state/app_state.dart';
 import '../../../shared/widgets/registered_account_gate.dart';
 import '../../payments/presentation/charging_checkout_screen.dart';
 import '../../payments/presentation/charging_receipt_screen.dart';
+import 'charger_details_hero.dart';
 import 'station_feedback_dialog.dart';
 
 class StationDetailsScreen extends ConsumerWidget {
@@ -21,6 +23,15 @@ class StationDetailsScreen extends ConsumerWidget {
     final appState = ref.watch(appStateProvider);
     final isFavorite = appState.isFavorite(station.id);
     final colors = Theme.of(context).colorScheme;
+    Future<void> toggleFavorite() async {
+      if (await requireRegisteredAccount(
+        context,
+        appState,
+        'Favorites',
+      )) {
+        await appState.toggleFavorite(station.id);
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -28,15 +39,7 @@ class StationDetailsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: isFavorite ? 'Remove from favorites' : 'Add to favorites',
-            onPressed: () async {
-              if (await requireRegisteredAccount(
-                context,
-                appState,
-                'Favorites',
-              )) {
-                await appState.toggleFavorite(station.id);
-              }
-            },
+            onPressed: toggleFavorite,
             icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
           ),
         ],
@@ -88,88 +91,41 @@ class StationDetailsScreen extends ConsumerWidget {
                     ),
               ),
               const SizedBox(height: 16),
-              Container(
+              SizedBox(
                 key: const Key('chargerDetailsHero'),
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF073D34), Color(0xFF061B31)],
-                  ),
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.primary.withValues(alpha: 0.14),
-                      blurRadius: 28,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
+                child: ChargerDetailsHero(
+                  stationName: station.name,
+                  statusLabel: station.available
+                      ? station.availabilityIsLive
+                          ? '${station.availableConnectors}/${station.totalConnectors} available'
+                          : 'Listed • verify status'
+                      : 'Unavailable',
+                  statusPositive: station.available,
+                  isFavorite: isFavorite,
+                  onFavorite: toggleFavorite,
+                  onShare: () => _shareStation(context),
                 ),
-                child: Row(
+              ),
+              const SizedBox(height: 14),
+              _SectionCard(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 76,
-                      height: 92,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15),
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.ev_station_rounded,
-                        size: 46,
-                        color: Color(0xFF62E98A),
-                      ),
+                    Text(
+                      station.network,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: const Color(0xFF073D34),
+                            fontWeight: FontWeight.w900,
+                          ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            station.name,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            station.network,
-                            style: const TextStyle(color: Color(0xFFB8CED6)),
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              _HeroBadge(
-                                icon: station.available
-                                    ? Icons.check_circle_outline
-                                    : Icons.power_off_rounded,
-                                label: station.available
-                                    ? station.availabilityIsLive
-                                        ? 'Available now'
-                                        : 'Listed • not live'
-                                    : 'Unavailable',
-                                positive: station.available,
-                              ),
-                              _HeroBadge(
-                                icon: Icons.star_rounded,
-                                label:
-                                    '${station.rating.toStringAsFixed(1)} rating',
-                                positive: true,
-                              ),
-                            ],
-                          ),
-                        ],
+                    const SizedBox(height: 7),
+                    Text(station.formattedAddress),
+                    const SizedBox(height: 7),
+                    Text(
+                      '${station.distanceKm.toStringAsFixed(1)} km away',
+                      style: const TextStyle(
+                        color: Color(0xFF079653),
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ],
@@ -204,6 +160,25 @@ class StationDetailsScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'About this charger',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${station.powerKw} kW charging with ${station.connectorTypes.join(' and ')} connectors. '
+                      'Check the operator status and final tariff before arrival.',
                     ),
                   ],
                 ),
@@ -409,6 +384,23 @@ class StationDetailsScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _shareStation(BuildContext context) async {
+    final uri = Uri.https('www.google.com', '/maps/search/', {
+      'api': '1',
+      'query': '${station.latitude},${station.longitude}',
+    });
+    await Clipboard.setData(
+      ClipboardData(
+        text: '${station.name}\n${station.formattedAddress}\n$uri',
+      ),
+    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Charger details copied to share.')),
+      );
+    }
+  }
+
   Future<void> _reportCorrection(BuildContext context) async {
     await showStationFeedbackDialog(
       context: context,
@@ -452,52 +444,6 @@ class _SectionCard extends StatelessWidget {
       child: Padding(padding: const EdgeInsets.all(18), child: child),
     );
   }
-}
-
-class _HeroBadge extends StatelessWidget {
-  const _HeroBadge({
-    required this.icon,
-    required this.label,
-    required this.positive,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool positive;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: (positive ? const Color(0xFF62E98A) : const Color(0xFFFF8B8B))
-              .withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color:
-                  positive ? const Color(0xFF62E98A) : const Color(0xFFFF8B8B),
-            ),
-            const SizedBox(width: 5),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
 }
 
 class _MetricTile extends StatelessWidget {

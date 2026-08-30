@@ -321,6 +321,7 @@ class _MapScreenState extends State<MapScreen> {
           radiusKm: visibleResult.radiusKm,
           selectedIndex: selectedIndex,
           onSelected: (index) => setState(() => _selectedIndex = index),
+          onOpenDetails: _openStationDetails,
         );
         final panel = _NearbyChargerPanel(
           result: visibleResult,
@@ -1339,6 +1340,7 @@ class _NearbyMapCanvas extends StatelessWidget {
     required this.radiusKm,
     required this.selectedIndex,
     required this.onSelected,
+    required this.onOpenDetails,
   });
 
   final MapUserLocation location;
@@ -1347,6 +1349,7 @@ class _NearbyMapCanvas extends StatelessWidget {
   final double radiusKm;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+  final ValueChanged<OfficialChargerMatch> onOpenDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -1382,6 +1385,7 @@ class _NearbyMapCanvas extends StatelessWidget {
                     }
                     if (closestIndex >= 0 && closestDistance <= 28) {
                       onSelected(closestIndex);
+                      onOpenDetails(matches[closestIndex]);
                     }
                   },
             child: Stack(

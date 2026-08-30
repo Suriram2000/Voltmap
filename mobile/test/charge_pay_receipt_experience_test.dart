@@ -30,6 +30,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('chargerDetailsHero')), findsOneWidget);
+    expect(find.byKey(const Key('chargerDetailsPhoto')), findsOneWidget);
+    expect(find.text('Representative station image'), findsOneWidget);
     expect(find.text('Choose the right charger'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Charging speed'),

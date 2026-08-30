@@ -548,6 +548,11 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Check live details before travel'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Estimated price'),
+      280,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Estimated price'), findsOneWidget);
     expect(find.text('Listed ports'), findsOneWidget);
     await tester.scrollUntilVisible(
