@@ -10,11 +10,11 @@ routes = [
 
 [[kv_namespaces]]
 binding = "OTP_CHALLENGES"
-id = "REPLACE_WITH_PRODUCTION_KV_ID"
+id = "dcddb6d9a2284069a4002fc3eca35adb"
 
 [[kv_namespaces]]
 binding = "OTP_RATE_LIMITS"
-id = "REPLACE_WITH_PRODUCTION_RATE_LIMIT_KV_ID"
+id = "4de24e80cb25419faa885c41514d3658"
 
 [vars]
 ALLOWED_ORIGINS = "https://voltmapev.com,https://www.voltmapev.com,https://suriram2000.github.io"
