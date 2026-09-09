@@ -41,13 +41,13 @@ jobs:
         timeout-minutes: 15
         run: |
           # Use Google's SDK directly; keep the repository action allowlist intact.
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "emulator" "system-images;android-35;default;x86_64"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "emulator" "system-images;android-35;google_apis_playstore;x86_64"
           export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
           export ANDROID_USER_HOME="$RUNNER_TEMP/voltmapev-android-user"
           export ANDROID_AVD_HOME="$RUNNER_TEMP/voltmapev-avd"
           mkdir -p "$ANDROID_USER_HOME" "$ANDROID_AVD_HOME"
           adb version
-          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force --name voltmapev-review --path "$ANDROID_AVD_HOME/voltmapev-review.avd" --package "system-images;android-35;default;x86_64" --device pixel_2
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force --name voltmapev-review --path "$ANDROID_AVD_HOME/voltmapev-review.avd" --package "system-images;android-35;google_apis_playstore;x86_64" --device pixel_2
           test -f "$ANDROID_AVD_HOME/voltmapev-review.ini"
           "$ANDROID_HOME/emulator/emulator" -list-avds
           "$ANDROID_HOME/emulator/emulator" -avd voltmapev-review -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot > emulator.log 2>&1 &

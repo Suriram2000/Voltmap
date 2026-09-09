@@ -20,8 +20,9 @@ void main() {
     final submit = find.byKey(const Key('submitChargerSearchButton'));
     await tester.ensureVisible(submit);
     await tester.tap(submit);
-    final detailLink = find.text('View charger details').first;
-    await waitFor(tester, detailLink);
+    final detailLinks = find.text('View charger details');
+    await waitFor(tester, detailLinks);
+    final detailLink = detailLinks.first;
     await tester.ensureVisible(detailLink);
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pump(const Duration(seconds: 2));
