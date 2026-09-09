@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:voltmap/core/config/app_environment.dart';
+import 'package:voltmap/features/discovery/presentation/charger_details_hero.dart';
 import 'package:voltmap/main.dart' as app;
 
 void main() {
@@ -23,18 +24,34 @@ void main() {
     final detailLinks = find.text('View charger details');
     await waitFor(tester, detailLinks);
     final detailLink = detailLinks.first;
-    await tester.ensureVisible(detailLink);
+    final firstCard = find.ancestor(
+      of: detailLink,
+      matching: find.byType(Card),
+    ).first;
+    await tester.ensureVisible(firstCard);
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pump(const Duration(seconds: 2));
     await binding.convertFlutterSurfaceToImage();
     await tester.pump();
     await binding.takeScreenshot('01-discover-android');
 
-    await tester.tap(detailLink);
+    await tester.tap(firstCard);
     await waitFor(
         tester, find.byKey(const Key('officialChargerDetailsScreen')));
-    await waitFor(tester, find.byKey(const Key('chargerDetailsPhoto')));
+    final photo = find.byKey(const Key('chargerDetailsPhoto'));
+    await waitFor(tester, photo);
+    await tester.runAsync(() async {
+      await precacheImage(
+        const AssetImage(ChargerDetailsHero.assetPath),
+        tester.element(photo),
+      ).timeout(const Duration(seconds: 30));
+    });
     await tester.pump(const Duration(seconds: 2));
+    final renderedPhoto = find.descendant(
+      of: photo,
+      matching: find.byType(RawImage),
+    );
+    expect(tester.widget<RawImage>(renderedPhoto).image, isNotNull);
     expect(find.text('Representative station image'), findsOneWidget);
     await binding.takeScreenshot('02-station-details-android');
     expect(tester.takeException(), isNull);
