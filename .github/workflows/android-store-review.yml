@@ -1,0 +1,64 @@
+name: Android store review and screenshots
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - mobile/integration_test/**
+      - mobile/test_driver/**
+      - .github/workflows/android-store-review.yml
+
+permissions:
+  contents: read
+
+jobs:
+  android-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.44.9'
+          channel: stable
+          cache: true
+      - name: Install dependencies and build review test
+        working-directory: mobile
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter build apk --debug --target integration_test/android_store_test.dart --dart-define=VOLTMAP_ENV=production --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=https://api.voltmapev.com
+      - name: Enable runner virtualization
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Exercise actual Android UI with production configuration
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 35
+          arch: x86_64
+          target: default
+          profile: pixel_7
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          disable-animations: true
+          script: |
+            adb install -r mobile/build/app/outputs/flutter-apk/app-debug.apk
+            adb shell pm grant in.voltmap.voltmap android.permission.ACCESS_COARSE_LOCATION
+            adb shell pm grant in.voltmap.voltmap android.permission.ACCESS_FINE_LOCATION
+            adb emu geo fix 78.5349 17.3366
+            cd mobile && flutter drive --driver=test_driver/android_store_driver.dart --target=integration_test/android_store_test.dart --use-application-binary=build/app/outputs/flutter-apk/app-debug.apk --dart-define=VOLTMAP_ENV=production --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=https://api.voltmapev.com
+      - name: Upload genuine Android captures and test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voltmapev-android-review-screenshots
+          path: |
+            mobile/build/android-store-screenshots
+            mobile/build/integration_response_data.json
+          if-no-files-found: warn
+          retention-days: 30
