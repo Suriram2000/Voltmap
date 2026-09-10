@@ -4,17 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Privacy Policy | VoltMapEV</title>
-  <meta name="description" content="How VoltMapEV handles location, account, trip, charger, and payment demonstration data.">
+  <meta name="description" content="How VoltMapEV handles location searches, local profiles, optional verification, and support data.">
   <link rel="canonical" href="https://voltmapev.com/privacy-policy.html">
   <link rel="stylesheet" href="legal.css">
 </head>
 <body>
-  <header><div><a href="/">← VoltMapEV</a><h1>Privacy Policy</h1><p class="updated">Effective 13 August 2026</p></div></header>
+  <header><div><a href="/">← VoltMapEV</a><h1>Privacy Policy</h1><p class="updated">Updated 10 September 2026</p></div></header>
   <main>
-    <div class="card"><strong>Current release:</strong> VoltMapEV is a charger-discovery and trip-planning app. Payments, phone OTP, and receipt delivery are clearly labeled demonstrations until approved production providers are connected.</div>
+    <div class="card"><strong>Current release:</strong> VoltMapEV provides charger discovery and trip planning. Browsing does not require an account. Saved items can use a local-device profile. Android and web builds also offer optional WhatsApp verification through a restricted production pilot; availability depends on provider configuration and the permitted recipient list. An OTP option is not a guarantee of message delivery or public availability.</div>
     <h2>Information handled by the app</h2>
     <p>When you choose to create a local profile, VoltMapEV stores your name, email address or phone identifier, a salted password hash, vehicle details, favorites, saved trips, charging demonstration receipts, charger reports, and preferences on your device. Raw passwords, full card details, CVV values, UPI PINs, and real payment credentials are not stored.</p>
-    <p>When you choose <em>Use current location</em>, the app requests location permission and uses your coordinates to find a nearby Indian area and charging stations. You can deny permission and search manually.</p>
+    <p>When you enable location, the app requests device permission and uses your approximate or precise coordinates, depending on the permission granted, to find nearby charging stations and an area name. It does not request background location access. You can deny permission, turn location off, and search manually. Search terms may include the PIN code, city, area, or route endpoints you enter.</p>
+    <h2>Optional phone and email verification</h2>
+    <p>If you request a verification code, the app sends the phone number or email address you enter, the verification purpose, and later the code you enter to the VoltMapEV identity service over HTTPS. Cloudflare hosts this service. WhatsApp delivery uses Meta's WhatsApp Business platform; email verification, when enabled, uses Resend. Those providers receive the destination and message needed for delivery. Do not submit another person's contact details without permission.</p>
+    <p>The identity service stores a temporary challenge containing the destination, expiry, attempt count, and a keyed code digest in Cloudflare KV for up to five minutes. Raw OTP values are not stored in that database or written to application logs. A challenge is deleted after successful verification or when its attempts are exhausted. Hashed destination and IP-address rate-limit records expire after up to one hour. Successful verification returns a signed contact token valid for one day. These temporary records support authentication, security, and abuse prevention; they are not a synchronized account database.</p>
+    <p>The current iOS App Store build uses local-device access rather than WhatsApp sign-in. On Android and the website, you may choose local access instead of requesting an OTP. Provider failures do not turn a production code into a demonstration code.</p>
     <h2>External services</h2>
     <ul>
       <li>Location searches and reverse geocoding may be sent to the Photon/Komoot service, which uses OpenStreetMap place data.</li>
@@ -22,18 +26,21 @@
       <li>Google Maps opens only when you choose verification or directions.</li>
       <li>A charger report stays on your device unless you choose to open a private, pre-addressed email to the VoltMapEV administrator. VoltMapEV does not send that email itself.</li>
     </ul>
-    <p>These services may process IP addresses, device information, search terms, or coordinates under their own privacy terms. VoltMapEV does not use advertising trackers or sell personal information in the current release.</p>
+    <p>Hosting and external services receive connection information such as an IP address and browser/device request information. Photon receives submitted search terms or coordinates; a configured nearby-charger endpoint receives the search center. These providers may retain service or security records under their own policies. Requests may be processed outside your country. Relevant policies include <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare</a>, <a href="https://www.whatsapp.com/legal/business-data-processing-terms">WhatsApp Business</a>, <a href="https://resend.com/legal/privacy-policy">Resend</a>, <a href="https://www.komoot.com/privacy">Komoot</a>, <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub hosting</a>, and <a href="https://policies.google.com/privacy">Google</a>.</p>
+    <p>VoltMapEV does not include advertising or analytics tracking SDKs or sell personal information in the current release.</p>
     <h2>Purpose and retention</h2>
-    <p>Data is used to provide charger search, trip planning, saved items, local profiles, support, fraud prevention, and payment demonstrations. Local data remains on your device until you delete it, clear app/browser storage, or uninstall the app. If you choose to send a private report by email, your email provider and the recipient control that message’s retention.</p>
+    <p>Data is used for charger search, trip planning, saved items, local profiles, optional verification, support, and abuse prevention. Local data remains on your device until you delete it, clear app/browser storage, or uninstall the app. Search and reverse-geocoding caches in the app are held in memory. Temporary identity-service retention is described above; infrastructure-provider logs have separate retention.</p>
+    <p>If you send support or station feedback by email, the recipient receives your message and sender address. These messages are used to answer the request and maintain correction records, not posted as public reviews. You can request deletion using the contact below; any records that must be retained for security or legal reasons will be explained. The app does not automatically send the prepared email draft.</p>
     <h2>Your choices</h2>
     <p>You can search and plan trips without an account, deny location permission, remove favorites or trips, and delete the local account and its data from <strong>Profile → Delete account &amp; local data</strong>. See the <a href="account-deletion.html">account deletion page</a> for another deletion pathway.</p>
     <h2>Security and children</h2>
-    <p>We use reasonable safeguards and minimize stored payment information, but no device or internet service is completely secure. VoltMapEV is intended for drivers and is not directed to children under 13.</p>
-    <h2>Production service changes</h2>
-    <p>Before real authentication, payment, email, SMS, analytics, or cloud storage is enabled, this policy and the applicable app-store disclosures must be updated to identify the providers, purposes, retention, and user controls.</p>
+    <p>We use reasonable safeguards and minimize stored payment information, but no device or internet service is completely secure. VoltMapEV is intended for adult EV drivers aged 18 and over and is not directed to children.</p>
+    <h2>Payments and service changes</h2>
+    <p>VoltMapEV never asks for or stores raw card numbers, CVVs, UPI PINs, or banking credentials. Production charging and payment services are unavailable unless the required secure integrations are configured. Sandbox payment examples are not real transactions. Before enabling a public payment service or introducing cloud synchronization or analytics, we will update this policy and applicable store disclosures with the provider, data use, retention, and deletion details.</p>
     <h2>Contact</h2>
-    <p>Email <a href="mailto:skotla100@gmail.com">skotla100@gmail.com</a> or call <a href="tel:+919392788714">+91 93927 88714</a> with privacy questions.</p>
+    <p>Email <a href="mailto:skotla100@gmail.com">skotla100@gmail.com</a> with privacy questions.</p>
   </main>
   <footer><div><a href="/">VoltMapEV</a><a href="terms.html">Terms</a><a href="refund-policy.html">Refund policy</a><a href="account-deletion.html">Delete account</a></div></footer>
 </body>
 </html>
+
