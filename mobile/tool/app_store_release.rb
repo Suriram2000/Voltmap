@@ -60,7 +60,7 @@ puts JSON.pretty_generate(versions.fetch('data').map { |v|
     state: v.dig('attributes', 'appStoreState'), release: v.dig('attributes', 'releaseType') }
 })
 builds = get("/v1/builds?filter[app]=#{APP_ID}&sort=-uploadedDate&limit=20&include=preReleaseVersion", token)
-puts JSON.pretty_generate(builds.fetch('data').map { |b|
+puts JSON.pretty_generate(builds.fetch('data').first(5).map { |b|
   { id: b['id'], build: b.dig('attributes', 'version'),
     processing: b.dig('attributes', 'processingState'),
     expired: b.dig('attributes', 'expired'),
@@ -99,6 +99,11 @@ localizations.each do |loc|
     { display: s.dig('attributes', 'screenshotDisplayType'), count: s.dig('relationships', 'appScreenshots', 'data')&.length }
   }, description_present: !loc.dig('attributes', 'description').to_s.empty?)
 end
+review_detail = get("/v1/appStoreVersions/#{version_id}/appStoreReviewDetail", token).fetch('data')
+review_attributes = review_detail&.fetch('attributes', {}) || {}
+puts JSON.generate(review_contact_complete: %w[contactFirstName contactLastName contactPhone contactEmail].all? { |k| !review_attributes[k].to_s.empty? },
+                   review_notes_present: !review_attributes['notes'].to_s.empty?,
+                   demo_account_required: review_attributes['demoAccountRequired'])
 
 prerelease_ids = builds.fetch('included', []).select { |v|
   v['type'] == 'preReleaseVersions' && v.dig('attributes', 'version') == VERSION && v.dig('attributes', 'platform') == 'IOS'
@@ -107,7 +112,8 @@ build = builds.fetch('data').find { |b|
   b.dig('attributes', 'version') == BUILD && prerelease_ids.include?(b.dig('relationships', 'preReleaseVersion', 'data', 'id'))
 }
 if build.nil? || build.dig('attributes', 'processingState') != 'VALID' || build.dig('attributes', 'expired')
-  abort "Build #{VERSION} (#{BUILD}) is not yet valid for submission" unless ACTION == 'inspect'
+  abort "Build #{VERSION} (#{BUILD}) is not yet valid for submission" if ACTION == 'submit'
+  puts "Version metadata prepared; waiting for valid build #{VERSION} (#{BUILD})"
   exit
 end
 if ACTION == 'prepare'
