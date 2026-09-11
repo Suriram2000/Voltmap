@@ -43,7 +43,7 @@ def request(path, token, method = 'GET', body = nil)
     errors = JSON.parse(response.body).fetch('errors', []).map { |e| e.slice('status', 'code', 'title', 'detail', 'source') }
     abort "App Store API #{method} #{path.split('?').first} failed: #{errors.to_json}"
   end
-  JSON.parse(response.body)
+  response.body.to_s.empty? ? {} : JSON.parse(response.body)
 end
 
 def get(path, token)
