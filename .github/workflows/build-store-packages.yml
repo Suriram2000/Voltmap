@@ -11,6 +11,16 @@ on:
           - android
           - ios
           - both
+          - app-store-status
+      app_store_action:
+        description: App Store management action (only with app-store-status)
+        required: false
+        default: inspect
+        type: choice
+        options:
+          - inspect
+          - prepare
+          - submit
       upload_ios_to_testflight:
         description: Upload the signed iOS package to TestFlight
         required: false
@@ -22,6 +32,7 @@ permissions:
 
 jobs:
   identity:
+    if: inputs.platform != 'app-store-status'
     name: Identity service tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -30,6 +41,20 @@ jobs:
       - name: Test WhatsApp and email OTP service
         working-directory: services/identity-worker
         run: node --test test/*.test.mjs
+
+  app-store-status:
+    if: inputs.platform == 'app-store-status'
+    runs-on: macos-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Inspect VoltMapEV App Store release status
+        env:
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          APP_STORE_ACTION: ${{ inputs.app_store_action }}
+        run: ruby mobile/tool/app_store_release.rb
 
   android:
     if: inputs.platform == 'android' || inputs.platform == 'both'

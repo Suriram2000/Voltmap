@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voltmap/app/voltmap_app.dart';
+import 'package:voltmap/features/trips/presentation/trip_planner_screen.dart';
 
 void main() {
   const devices = <_IPhoneLayout>[
@@ -14,6 +15,13 @@ void main() {
     _IPhoneLayout('iPhone 16 Pro Max', Size(440, 956), 3),
     _IPhoneLayout('iPhone SE landscape', Size(568, 320), 2),
     _IPhoneLayout('iPhone 15/16 landscape', Size(852, 393), 3),
+    _IPhoneLayout('iPad mini portrait', Size(744, 1133), 2),
+    _IPhoneLayout('iPad portrait', Size(820, 1180), 2),
+    _IPhoneLayout('iPad Pro 11 portrait', Size(834, 1194), 2),
+    _IPhoneLayout('iPad Pro 13 portrait', Size(1032, 1376), 2),
+    _IPhoneLayout('iPad landscape', Size(1180, 820), 2),
+    _IPhoneLayout('iPad Pro 13 landscape', Size(1376, 1032), 2),
+    _IPhoneLayout('iPad narrow multitasking window', Size(320, 1024), 2),
   ];
 
   setUp(() {
@@ -39,7 +47,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(
+        device.logicalSize.width < 900
+            ? find.byType(NavigationBar)
+            : find.byKey(const Key('primarySideNavigation')),
+        findsOneWidget,
+      );
       expect(find.text('Find the right charger, faster.'), findsOneWidget);
       _expectNoLayoutError(tester, '${device.name} Discover');
 
@@ -77,7 +90,7 @@ void main() {
         expectedText: 'Profile & settings',
       );
       _expectNoLayoutError(tester, '${device.name} Profile');
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
   }
 
   testWidgets('small iPhone remains usable with large accessibility text',
@@ -126,7 +139,58 @@ void main() {
       expectedText: 'Profile & settings',
     );
     _expectNoLayoutError(tester, 'small iPhone Profile at 200% text');
-  });
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  // Representative resizable windows, not claimed iPhone Duo device metrics.
+  testWidgets('iOS resize keeps the selected tab and unfinished trip input',
+      (tester) async {
+    _useIPhoneViewport(tester, devices[3]);
+    await tester.pumpWidget(const ProviderScope(
+      child: VoltMapApp(autoLocateDiscoverOnOpen: false),
+    ));
+    await tester.pumpAndSettle();
+    await _openTab(tester,
+        icon: Icons.route_outlined, expectedText: 'Trip Planner');
+    final tripState = tester.state(find.byType(TripPlannerScreen));
+    final destination = find.descendant(
+      of: find.byType(TripPlannerScreen),
+      matching: find.byType(TextField),
+    ).at(1);
+    await tester.enterText(destination, 'Unfinished destination');
+    tester.testTextInput.hide();
+    await tester.pumpAndSettle();
+
+    for (final size in [
+      const Size(760, 800),
+      const Size(1024, 768),
+      const Size(380, 800),
+      const Size(393, 852),
+    ]) {
+      tester.view.physicalSize = size * 3;
+      await tester.pumpAndSettle();
+      _expectNoLayoutError(tester, 'iOS resize to $size');
+      expect(find.text('Trip Planner'), findsOneWidget);
+      expect(tester.state(find.byType(TripPlannerScreen)), same(tripState));
+      expect(find.text('Unfinished destination'), findsOneWidget);
+    }
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  testWidgets('wide short iOS window keeps every navigation item reachable',
+      (tester) async {
+    _useIPhoneViewport(tester,
+        const _IPhoneLayout('resizable iOS window', Size(1024, 393), 3));
+    await tester.pumpWidget(const ProviderScope(
+      child: VoltMapApp(autoLocateDiscoverOnOpen: false),
+    ));
+    await tester.pumpAndSettle();
+    _expectNoLayoutError(tester, 'wide short iOS window');
+    final profile = find.byIcon(Icons.person_outline);
+    await tester.ensureVisible(profile);
+    await tester.tap(profile);
+    await tester.pumpAndSettle();
+    expect(find.text('Profile & settings'), findsOneWidget);
+    _expectNoLayoutError(tester, 'wide short iOS Profile');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 }
 
 Future<void> _openTab(
@@ -134,9 +198,13 @@ Future<void> _openTab(
   required IconData icon,
   required String expectedText,
 }) async {
-  final navigation = find.byType(NavigationBar);
-  await tester
-      .tap(find.descendant(of: navigation, matching: find.byIcon(icon)));
+  final bottomNavigation = find.byType(NavigationBar);
+  final navigation = bottomNavigation.evaluate().isNotEmpty
+      ? bottomNavigation
+      : find.byKey(const Key('primarySideNavigation'));
+  final destination = find.descendant(of: navigation, matching: find.byIcon(icon));
+  await tester.ensureVisible(destination);
+  await tester.tap(destination);
   await tester.pumpAndSettle();
   expect(find.text(expectedText), findsWidgets);
 }

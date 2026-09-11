@@ -40,6 +40,8 @@ class _AppShellState extends ConsumerState<AppShell> {
       'voltmapev_install_banner_dismissed';
 
   int index = 0;
+  // Keep screen state when resizing moves content between navigation layouts.
+  final _bodyKey = GlobalKey();
   late final List<Widget?> screens;
   Timer? _installBannerTimer;
   InstallAppStatus? _installStatus;
@@ -83,6 +85,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 900;
         final body = Stack(
+          key: _bodyKey,
           children: [
             Column(
               children: [
@@ -350,6 +353,7 @@ class _DesktopNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      key: const Key('primarySideNavigation'),
       width: compact ? 92 : 252,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -372,20 +376,27 @@ class _DesktopNavigation extends StatelessWidget {
             children: [
               _BrandLockup(compact: compact, onTap: onHome),
               const SizedBox(height: 34),
-              for (var itemIndex = 0;
-                  itemIndex < destinations.length;
-                  itemIndex++) ...[
-                _NavItem(
-                  compact: compact,
-                  destination: destinations[itemIndex],
-                  position: itemIndex,
-                  total: destinations.length,
-                  selected: itemIndex == selectedIndex,
-                  onTap: () => onSelected(itemIndex),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      for (var itemIndex = 0;
+                          itemIndex < destinations.length;
+                          itemIndex++) ...[
+                        _NavItem(
+                          compact: compact,
+                          destination: destinations[itemIndex],
+                          position: itemIndex,
+                          total: destinations.length,
+                          selected: itemIndex == selectedIndex,
+                          onTap: () => onSelected(itemIndex),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 8),
-              ],
-              const Spacer(),
+              ),
               if (!compact)
                 Container(
                   padding: const EdgeInsets.all(14),

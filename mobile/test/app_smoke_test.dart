@@ -11,6 +11,7 @@ import 'package:voltmap/features/discovery/presentation/add_charger_screen.dart'
 import 'package:voltmap/features/discovery/presentation/discovery_screen.dart';
 import 'package:voltmap/features/discovery/presentation/station_details_screen.dart';
 import 'package:voltmap/features/map/presentation/map_screen.dart';
+import 'package:voltmap/features/profile/presentation/profile_screen.dart';
 import 'package:voltmap/features/payments/presentation/charging_checkout_screen.dart';
 import 'package:voltmap/features/shell/presentation/app_shell.dart';
 import 'package:voltmap/features/trips/presentation/trip_planner_screen.dart';
@@ -74,6 +75,10 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const Key('signOutTile')),
       260,
+      scrollable: find.descendant(
+        of: find.byType(ProfileScreen),
+        matching: find.byType(Scrollable),
+      ),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('signOutTile')));
