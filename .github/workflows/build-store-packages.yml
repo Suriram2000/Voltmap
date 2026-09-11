@@ -12,6 +12,15 @@ on:
           - ios
           - both
           - app-store-status
+      app_store_action:
+        description: App Store management action (only with app-store-status)
+        required: false
+        default: inspect
+        type: choice
+        options:
+          - inspect
+          - prepare
+          - submit
       upload_ios_to_testflight:
         description: Upload the signed iOS package to TestFlight
         required: false
@@ -44,6 +53,7 @@ jobs:
           API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          APP_STORE_ACTION: ${{ inputs.app_store_action }}
         run: ruby mobile/tool/app_store_release.rb
 
   android:
