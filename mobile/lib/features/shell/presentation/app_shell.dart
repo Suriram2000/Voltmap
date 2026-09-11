@@ -353,6 +353,7 @@ class _DesktopNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      key: const Key('primarySideNavigation'),
       width: compact ? 92 : 252,
       decoration: const BoxDecoration(
         gradient: LinearGradient(

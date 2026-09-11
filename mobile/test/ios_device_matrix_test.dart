@@ -15,6 +15,13 @@ void main() {
     _IPhoneLayout('iPhone 16 Pro Max', Size(440, 956), 3),
     _IPhoneLayout('iPhone SE landscape', Size(568, 320), 2),
     _IPhoneLayout('iPhone 15/16 landscape', Size(852, 393), 3),
+    _IPhoneLayout('iPad mini portrait', Size(744, 1133), 2),
+    _IPhoneLayout('iPad portrait', Size(820, 1180), 2),
+    _IPhoneLayout('iPad Pro 11 portrait', Size(834, 1194), 2),
+    _IPhoneLayout('iPad Pro 13 portrait', Size(1032, 1376), 2),
+    _IPhoneLayout('iPad landscape', Size(1180, 820), 2),
+    _IPhoneLayout('iPad Pro 13 landscape', Size(1376, 1032), 2),
+    _IPhoneLayout('iPad narrow multitasking window', Size(320, 1024), 2),
   ];
 
   setUp(() {
@@ -40,7 +47,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(
+        device.logicalSize.width < 900
+            ? find.byType(NavigationBar)
+            : find.byKey(const Key('primarySideNavigation')),
+        findsOneWidget,
+      );
       expect(find.text('Find the right charger, faster.'), findsOneWidget);
       _expectNoLayoutError(tester, '${device.name} Discover');
 
@@ -186,9 +198,13 @@ Future<void> _openTab(
   required IconData icon,
   required String expectedText,
 }) async {
-  final navigation = find.byType(NavigationBar);
-  await tester
-      .tap(find.descendant(of: navigation, matching: find.byIcon(icon)));
+  final bottomNavigation = find.byType(NavigationBar);
+  final navigation = bottomNavigation.evaluate().isNotEmpty
+      ? bottomNavigation
+      : find.byKey(const Key('primarySideNavigation'));
+  final destination = find.descendant(of: navigation, matching: find.byIcon(icon));
+  await tester.ensureVisible(destination);
+  await tester.tap(destination);
   await tester.pumpAndSettle();
   expect(find.text(expectedText), findsWidgets);
 }
