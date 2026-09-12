@@ -799,7 +799,7 @@ void main() {
     await tester.tap(find.byKey(const Key('chargingDoneButton')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('chargingReceiptScreen')), findsOneWidget);
-    expect(find.text('Session completed'), findsOneWidget);
+    expect(find.text('Charging complete'), findsOneWidget);
     expect(find.text('₹28.13'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Not sent — sandbox contact is not verified'),

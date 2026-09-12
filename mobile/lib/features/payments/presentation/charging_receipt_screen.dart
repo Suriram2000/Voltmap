@@ -100,7 +100,9 @@ class _ChargingReceiptScreenState extends State<ChargingReceiptScreen> {
                   const _SuccessSeal(),
                   const SizedBox(height: 14),
                   Text(
-                    'Session completed',
+                    _isProductionVerified || _isSandbox
+                        ? 'Charging complete'
+                        : 'Charging summary',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           color: Colors.white,
@@ -201,7 +203,7 @@ class _ChargingReceiptScreenState extends State<ChargingReceiptScreen> {
                         ),
                         const Divider(height: 30),
                         _BillingRow(
-                          label: 'Rate per unit',
+                          label: 'Price per unit (1 kWh)',
                           value: _currency(receipt.ratePerKwh, suffix: '/kWh'),
                         ),
                         _BillingRow(

@@ -83,7 +83,7 @@ void main() {
     expect(find.byKey(const Key('chargerDetailsPhoto')), findsOneWidget);
     expect(find.text('Representative station image'), findsOneWidget);
     expect(
-      find.text('Charge here'),
+      find.text('Charge here & pay'),
       findsOneWidget,
     );
   });

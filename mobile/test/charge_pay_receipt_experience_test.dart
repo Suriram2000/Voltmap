@@ -43,7 +43,7 @@ void main() {
     expect(find.text('Estimated price'), findsOneWidget);
     expect(find.text('Listed ports'), findsOneWidget);
     expect(find.text('Navigate'), findsOneWidget);
-    expect(find.text('Charge here'), findsOneWidget);
+    expect(find.text('Charge here & pay'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -93,7 +93,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('chargingReceiptScreen')), findsOneWidget);
-    expect(find.text('Session completed'), findsOneWidget);
+    expect(find.text('Charging complete'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.textContaining('18.40'),
       320,

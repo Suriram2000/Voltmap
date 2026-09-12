@@ -55,9 +55,31 @@ void main() {
       }),
     );
     var receiptRequested = false;
+    var statusChecks = 0;
     final chargingApi = SecureChargingApi(
       baseUrl: 'https://api.voltmapev.test',
       client: MockClient((request) async {
+        if (request.url.path.endsWith('/status')) {
+          statusChecks++;
+          expect(request.headers['authorization'], 'Bearer contact_token_123');
+          return http.Response(
+              jsonEncode({
+                'sessionId': 'session_123',
+                'stationId': 'station-1',
+                'environment': 'production',
+                'currency': 'INR',
+                'status': statusChecks == 1 ? 'charging' : 'completed',
+                'meterReadingConfirmed': true,
+                'energyKwh': 10,
+                'ratePerKwh': 18.5,
+                'energySubtotal': 185,
+                'taxAmount': 0,
+                'serviceFee': 5,
+                'totalAmount': 190,
+                'updatedAt': DateTime.now().toUtc().toIso8601String(),
+              }),
+              200);
+        }
         if (request.method == 'GET') {
           receiptRequested = true;
           return http.Response(jsonEncode(_receipt.toJson()), 200);
@@ -123,9 +145,21 @@ void main() {
 
     expect(launchedUrl, Uri.parse('https://provider.example/checkout/123'));
     expect(
-      find.text('Check verified payment & receipt'),
+      find.text('Refresh charging & payment'),
       findsOneWidget,
     );
+    await tester.tap(find.byKey(const Key('productionCheckoutButton')));
+    await tester.pumpAndSettle();
+
+    expect(receiptRequested, isFalse);
+    await tester.scrollUntilVisible(
+        find.byKey(const Key('chargingProgressCard')), -400,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    expect(find.text('Charging in progress'), findsOneWidget);
+    expect(find.text('Running total'), findsOneWidget);
+    expect(find.text('₹190.00'), findsOneWidget);
+    expect(find.text('Payment and meter reading verified'), findsNothing);
     await tester.tap(find.byKey(const Key('productionCheckoutButton')));
     await tester.pumpAndSettle();
 

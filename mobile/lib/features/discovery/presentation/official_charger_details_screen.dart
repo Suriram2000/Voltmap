@@ -349,7 +349,7 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
                             key: const Key('chargeOfficialStationButton'),
                             onPressed: () => _openSecureCheckout(context),
                             icon: const Icon(Icons.bolt_rounded),
-                            label: const Text('Charge here'),
+                            label: const Text('Charge here & pay'),
                             style: FilledButton.styleFrom(
                               backgroundColor: const Color(0xFF032A25),
                               foregroundColor: Colors.white,
@@ -375,7 +375,7 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
                             key: const Key('chargeOfficialStationButton'),
                             onPressed: () => _openSecureCheckout(context),
                             icon: const Icon(Icons.bolt_rounded),
-                            label: const Text('Charge here'),
+                            label: const Text('Charge here & pay'),
                           ),
                         ),
                       ],
@@ -437,6 +437,8 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
         stationName: station.displayName,
         operatorName: station.operatorName,
         address: station.address.isEmpty ? station.areaLabel : station.address,
+        pricePerKwh: station.hasLivePrice ? station.pricePerKwh : null,
+        pricingIsLive: station.hasLivePrice,
         onDirections: () => _openDirections(context),
       );
       return;

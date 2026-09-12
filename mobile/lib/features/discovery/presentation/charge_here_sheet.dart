@@ -6,6 +6,8 @@ Future<void> showChargeHereSheet({
   required String stationName,
   required String operatorName,
   required String address,
+  double? pricePerKwh,
+  bool pricingIsLive = false,
   required Future<void> Function() onDirections,
 }) {
   return showModalBottomSheet<void>(
@@ -30,6 +32,47 @@ Future<void> showChargeHereSheet({
             Text(operatorName),
             Text(address),
             const SizedBox(height: 20),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Before charging',
+                        style: Theme.of(sheetContext).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    const Text('1 unit = 1 kWh'),
+                    const SizedBox(height: 8),
+                    Text(
+                      pricePerKwh != null &&
+                              pricePerKwh.isFinite &&
+                              pricePerKwh >= 0
+                          ? '₹${pricePerKwh.toStringAsFixed(2)} per unit'
+                          : 'Price per unit: confirm with operator',
+                      key: const Key('chargeHereUnitPrice'),
+                      style: Theme.of(sheetContext).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(pricePerKwh == null
+                        ? 'This station has not supplied a verified tariff. Check the operator app or charger display before paying.'
+                        : pricingIsLive
+                            ? 'Operator-reported energy rate. Confirm taxes, parking, idle fees and the final price before paying.'
+                            : 'Reference estimate, not a confirmed tariff. Check the operator’s current price before paying.'),
+                    if (pricePerKwh != null &&
+                        pricePerKwh.isFinite &&
+                        pricePerKwh >= 0) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                          'Example: 10 units × ₹${pricePerKwh.toStringAsFixed(2)} = ₹${(10 * pricePerKwh).toStringAsFixed(2)} for energy only. Extra charges are not included.'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text('Pay with the operator',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             const Text(
                 '1. Check the connector, availability and final price at the station.'),
             const SizedBox(height: 12),
@@ -38,6 +81,18 @@ Future<void> showChargeHereSheet({
             const SizedBox(height: 12),
             const Text(
                 '3. Follow the operator’s instructions to connect your vehicle, pay and start charging.'),
+            const SizedBox(height: 20),
+            const Text('While charging',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text(
+                'Check units delivered, the price per unit and the running cost in the operator app or on the charger. Live progress is not connected in VoltMapEV at this station.'),
+            const SizedBox(height: 16),
+            const Text('Charging complete',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text(
+                'Stop charging with the operator and wait for confirmation. Check the final units, rate, fees and total on the operator’s receipt before disconnecting.'),
             const SizedBox(height: 20),
             const Text(
                 'Starting and paying for this session happens with the charging operator. VoltMapEV has not started a session or taken payment.'),

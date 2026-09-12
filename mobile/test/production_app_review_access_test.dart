@@ -123,7 +123,7 @@ void main() {
 
       expect(find.text('Navigate'), findsOneWidget);
       expect(find.text('Charge & pay'), findsNothing);
-      expect(find.text('Charge here'), findsOneWidget);
+      expect(find.text('Charge here & pay'), findsOneWidget);
       await tester.tap(find.byKey(const Key('openCheckoutButton')));
       await tester.pumpAndSettle();
       expect(find.text('Charge at this station'), findsOneWidget);

@@ -7,10 +7,12 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../shared/models/charging_station.dart';
+import '../../../shared/models/charging_session_status.dart';
 import '../../../shared/services/secure_charging_api.dart';
 import '../../../shared/services/secure_identity_api.dart';
 import '../../../shared/state/app_state.dart';
 import 'charging_receipt_screen.dart';
+import 'charging_progress_card.dart';
 
 enum _ReceiptChannel { whatsapp, email }
 
@@ -48,6 +50,9 @@ class _ProductionChargingCheckoutScreenState
   ContactOtpChallenge? _challenge;
   VerifiedContact? _verifiedContact;
   String? _sessionId;
+  ChargingSessionStatus? _sessionStatus;
+  Timer? _sessionTimer;
+  String? _authorizationKey;
   bool _busy = false;
   String? _message;
   bool _messageIsError = false;
@@ -69,6 +74,7 @@ class _ProductionChargingCheckoutScreenState
 
   @override
   void dispose() {
+    _sessionTimer?.cancel();
     _otpResendTimer?.cancel();
     _otpExpiryTimer?.cancel();
     _destinationController.dispose();
@@ -90,13 +96,17 @@ class _ProductionChargingCheckoutScreenState
       canPop: !_busy,
       child: Scaffold(
         key: const Key('productionChargingCheckout'),
-        appBar: AppBar(title: const Text('Secure charging payment')),
+        appBar: AppBar(title: const Text('Charge here & pay')),
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 760),
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 132),
               children: [
+                if (_sessionId != null) ...[
+                  ChargingProgressCard(snapshot: _sessionStatus),
+                  const SizedBox(height: 14),
+                ],
                 _section(
                   title: widget.station.name,
                   icon: Icons.ev_station_rounded,
@@ -106,6 +116,9 @@ class _ProductionChargingCheckoutScreenState
                       Text(
                         '${widget.station.powerKw} kW • ₹${widget.station.pricePerKwh.toStringAsFixed(2)}/kWh',
                       ),
+                      const SizedBox(height: 8),
+                      Text(
+                          '1 unit = 1 kWh • ₹${widget.station.pricePerKwh.toStringAsFixed(2)} per unit'),
                       const SizedBox(height: 14),
                       Wrap(
                         spacing: 8,
@@ -115,7 +128,7 @@ class _ProductionChargingCheckoutScreenState
                               (value) => ChoiceChip(
                                 label: Text(value),
                                 selected: _connector == value,
-                                onSelected: _busy
+                                onSelected: _busy || _sessionId != null
                                     ? null
                                     : (_) => setState(() => _connector = value),
                               ),
@@ -135,7 +148,7 @@ class _ProductionChargingCheckoutScreenState
                         min: 5,
                         max: 50,
                         divisions: 9,
-                        onChanged: _busy
+                        onChanged: _busy || _sessionId != null
                             ? null
                             : (value) =>
                                 setState(() => _energyLimitKwh = value),
@@ -183,7 +196,7 @@ class _ProductionChargingCheckoutScreenState
                           ),
                         ],
                         selected: {_channel},
-                        onSelectionChanged: _busy
+                        onSelectionChanged: _busy || _sessionId != null
                             ? null
                             : (value) => _changeChannel(value.single),
                       ),
@@ -227,7 +240,9 @@ class _ProductionChargingCheckoutScreenState
                           title: const Text('Receipt destination verified'),
                           subtitle: Text(_verifiedContact!.destination),
                           trailing: TextButton(
-                            onPressed: _busy ? null : _resetVerification,
+                            onPressed: _busy || _sessionId != null
+                                ? null
+                                : _resetVerification,
                             child: const Text('Change'),
                           ),
                         )
@@ -343,8 +358,8 @@ class _ProductionChargingCheckoutScreenState
                     ),
                     label: Text(
                       _sessionId == null
-                          ? 'Approve & open secure checkout'
-                          : 'Check verified payment & receipt',
+                          ? 'Pay securely with provider'
+                          : 'Refresh charging & payment',
                     ),
                   ),
                 ),
@@ -476,7 +491,7 @@ class _ProductionChargingCheckoutScreenState
     final contact = _verifiedContact;
     if (contact == null) return;
     await _run(() async {
-      final idempotencyKey =
+      final idempotencyKey = _authorizationKey ??=
           'vm-${widget.station.id}-${DateTime.now().microsecondsSinceEpoch}';
       final authorization = await _chargingApi.authorizeSession(
         stationId: widget.station.id,
@@ -503,8 +518,14 @@ class _ProductionChargingCheckoutScreenState
       setState(() {
         _sessionId = authorization.sessionId;
         _message =
-            'Checkout opened. Return here after payment and charging, then check the verified receipt.';
+            'Checkout opened. Follow the operator’s instructions to start. Return here for units, price per unit, running cost and the verified receipt.';
         _messageIsError = false;
+      });
+      _sessionTimer?.cancel();
+      _sessionTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+        if (mounted && !_busy && ModalRoute.of(context)?.isCurrent == true) {
+          _checkVerifiedReceipt();
+        }
       });
     });
   }
@@ -513,6 +534,14 @@ class _ProductionChargingCheckoutScreenState
     final sessionId = _sessionId;
     if (sessionId == null) return;
     await _run(() async {
+      final status = await _chargingApi.sessionStatus(
+        sessionId: sessionId,
+        stationId: widget.station.id,
+        verifiedContactToken: _verifiedContact!.token,
+      );
+      if (!mounted) return;
+      setState(() => _sessionStatus = status);
+      if (status != null && !status.isComplete) return;
       final receipt = await _chargingApi.verifiedReceipt(sessionId);
       if (receipt == null) {
         _showMessage(
@@ -521,6 +550,11 @@ class _ProductionChargingCheckoutScreenState
         );
         return;
       }
+      if (receipt.stationId != widget.station.id) {
+        throw const SecureChargingApiException(
+            'Receipt station does not match this session.');
+      }
+      _sessionTimer?.cancel();
       await ref.read(appStateProvider).saveChargingReceipt(receipt);
       if (!mounted) return;
       await Navigator.of(context).pushReplacement<void, void>(

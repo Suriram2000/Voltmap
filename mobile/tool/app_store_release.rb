@@ -8,11 +8,11 @@ require 'uri'
 
 APP_ID = '6801616483'.freeze
 API_ROOT = 'https://api.appstoreconnect.apple.com'.freeze
-VERSION = '1.15.9'.freeze
-BUILD = '40'.freeze
+VERSION = '1.15.10'.freeze
+BUILD = '41'.freeze
 ACTION = ENV.fetch('APP_STORE_ACTION', 'inspect')
 abort 'Unknown release action' unless %w[inspect prepare submit].include?(ACTION)
-WHATS_NEW = 'Added Charge here to station details. View charging instructions, the selected station and operator details, and directions. Follow the operator app or charger QR code to start and pay for charging. Includes iPhone and iPad layout improvements.'.freeze
+WHATS_NEW = 'Added Charge here & pay with clearer price-per-unit information: 1 unit equals 1 kWh. View available rates, labeled estimates, and guidance before, during and after charging. At stations without a live connection, start and pay through the operator app or charger QR code. Improved charging summaries on iPhone and iPad.'.freeze
 
 def b64(value)
   Base64.urlsafe_encode64(value, padding: false)

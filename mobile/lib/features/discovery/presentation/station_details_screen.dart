@@ -358,7 +358,7 @@ class StationDetailsScreen extends ConsumerWidget {
                             : null,
                         icon: const Icon(Icons.bolt_rounded),
                         label: Text(
-                          station.available ? 'Charge here' : 'Unavailable',
+                          station.available ? 'Charge here & pay' : 'Unavailable',
                         ),
                       ),
                     ),
@@ -422,6 +422,8 @@ class StationDetailsScreen extends ConsumerWidget {
         stationName: station.name,
         operatorName: station.network,
         address: station.formattedAddress,
+        pricePerKwh: station.pricePerKwh,
+        pricingIsLive: station.pricingIsLive,
         onDirections: () => _openDirections(context),
       );
       return;

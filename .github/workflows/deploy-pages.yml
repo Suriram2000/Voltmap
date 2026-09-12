@@ -64,6 +64,9 @@ jobs:
           --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=https://api.voltmapev.com
           --dart-define=VOLTMAP_REALTIME_CHARGER_API_BASE_URL=${{ vars.VOLTMAP_REALTIME_CHARGER_API_BASE_URL }}
 
+      - name: Version web JavaScript URLs for returning visitors
+        run: python tool/version_web_assets.py
+
       - name: Add custom domain marker
         working-directory: mobile
         run: echo "voltmapev.com" > build/web/CNAME

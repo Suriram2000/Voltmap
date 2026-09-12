@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../../core/config/app_environment.dart';
 import '../models/charging_receipt.dart';
+import '../models/charging_session_status.dart';
 
 class SecureChargingApiException implements Exception {
   const SecureChargingApiException(this.message, {this.code});
@@ -96,13 +97,42 @@ class SecureChargingApi {
     if (response.statusCode == 202 || response.statusCode == 404) return null;
     final body = _validatedBody(response);
     final receipt = ChargingReceipt.fromJson(body);
-    if (!receipt.isVerifiedSuccessful || receipt.environment != 'production') {
+    if (!receipt.isVerifiedSuccessful ||
+        receipt.environment != 'production' ||
+        receipt.chargingSessionId != sessionId) {
       throw const SecureChargingApiException(
         'The server did not provide a verified production receipt.',
         code: 'unverified_receipt',
       );
     }
     return receipt;
+  }
+
+  Future<ChargingSessionStatus?> sessionStatus({
+    required String sessionId,
+    required String stationId,
+    required String verifiedContactToken,
+  }) async {
+    final response = await _request(_client.get(
+      _endpoint(
+          '/v1/charging-sessions/${Uri.encodeComponent(sessionId)}/status'),
+      headers: {
+        'accept': 'application/json',
+        'authorization': 'Bearer $verifiedContactToken',
+      },
+    ));
+    if (response.statusCode == 202 || response.statusCode == 404) return null;
+    try {
+      final snapshot = ChargingSessionStatus.fromJson(_validatedBody(response));
+      if (snapshot.sessionId != sessionId || snapshot.stationId != stationId) {
+        throw const FormatException(
+            'The operator update belongs to another session.');
+      }
+      return snapshot;
+    } on FormatException catch (error) {
+      throw SecureChargingApiException(error.message,
+          code: 'invalid_session_status');
+    }
   }
 
   Future<void> retryReceiptDelivery({
