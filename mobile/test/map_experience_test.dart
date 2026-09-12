@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:voltmap/core/config/app_environment.dart';
 import 'package:voltmap/features/discovery/data/official_charger_search_service.dart';
 import 'package:voltmap/features/discovery/data/official_charger_station.dart';
 import 'package:voltmap/features/map/presentation/map_screen.dart';
@@ -84,8 +83,8 @@ void main() {
     expect(find.byKey(const Key('chargerDetailsPhoto')), findsOneWidget);
     expect(find.text('Representative station image'), findsOneWidget);
     expect(
-      find.text('Charge & pay'),
-      AppRuntimeConfig.canOfferChargingPayment ? findsOneWidget : findsNothing,
+      find.text('Charge here'),
+      findsOneWidget,
     );
   });
 

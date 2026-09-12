@@ -123,7 +123,15 @@ void main() {
 
       expect(find.text('Navigate'), findsOneWidget);
       expect(find.text('Charge & pay'), findsNothing);
-      expect(find.byKey(const Key('openCheckoutButton')), findsNothing);
+      expect(find.text('Charge here'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('openCheckoutButton')));
+      await tester.pumpAndSettle();
+      expect(find.text('Charge at this station'), findsOneWidget);
+      expect(find.text('Review Station'), findsWidgets);
+      expect(find.text('Reference operator'), findsWidgets);
+      expect(find.byKey(const Key('chargeHereDirectionsButton')), findsOneWidget);
+      expect(find.textContaining('has not started a session'), findsOneWidget);
+      expect(find.text('Charge & pay'), findsNothing);
     },
   );
 

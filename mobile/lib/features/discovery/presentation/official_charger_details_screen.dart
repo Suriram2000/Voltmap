@@ -7,6 +7,7 @@ import '../../../shared/models/charging_station.dart';
 import '../../payments/presentation/production_charging_checkout_screen.dart';
 import '../data/official_charger_station.dart';
 import 'charger_details_hero.dart';
+import 'charge_here_sheet.dart';
 import 'station_feedback_dialog.dart';
 
 class OfficialChargerDetailsScreen extends StatelessWidget {
@@ -334,7 +335,6 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
                       ),
                     ),
                   );
-                  final showCharge = AppRuntimeConfig.canOfferChargingPayment;
                   if (constraints.maxWidth < 520) {
                     return Column(
                       mainAxisSize: MainAxisSize.min,
@@ -343,13 +343,13 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
                         verifyButton,
                         const SizedBox(height: 8),
                         navigateButton,
-                        if (showCharge) ...[
+                        ...[
                           const SizedBox(height: 8),
                           FilledButton.icon(
                             key: const Key('chargeOfficialStationButton'),
                             onPressed: () => _openSecureCheckout(context),
                             icon: const Icon(Icons.bolt_rounded),
-                            label: const Text('Charge & pay'),
+                            label: const Text('Charge here'),
                             style: FilledButton.styleFrom(
                               backgroundColor: const Color(0xFF032A25),
                               foregroundColor: Colors.white,
@@ -368,14 +368,14 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
                       Expanded(child: verifyButton),
                       const SizedBox(width: 12),
                       Expanded(child: navigateButton),
-                      if (showCharge) ...[
+                      ...[
                         const SizedBox(width: 12),
                         Expanded(
                           child: FilledButton.icon(
                             key: const Key('chargeOfficialStationButton'),
                             onPressed: () => _openSecureCheckout(context),
                             icon: const Icon(Icons.bolt_rounded),
-                            label: const Text('Charge & pay'),
+                            label: const Text('Charge here'),
                           ),
                         ),
                       ],
@@ -431,6 +431,16 @@ class OfficialChargerDetailsScreen extends StatelessWidget {
   }
 
   Future<void> _openSecureCheckout(BuildContext context) async {
+    if (!AppRuntimeConfig.canOfferChargingPayment) {
+      await showChargeHereSheet(
+        context: context,
+        stationName: station.displayName,
+        operatorName: station.operatorName,
+        address: station.address.isEmpty ? station.areaLabel : station.address,
+        onDirections: () => _openDirections(context),
+      );
+      return;
+    }
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (_) => ProductionChargingCheckoutScreen(

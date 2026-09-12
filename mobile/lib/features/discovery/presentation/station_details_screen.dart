@@ -11,6 +11,7 @@ import '../../../shared/widgets/registered_account_gate.dart';
 import '../../payments/presentation/charging_checkout_screen.dart';
 import '../../payments/presentation/charging_receipt_screen.dart';
 import 'charger_details_hero.dart';
+import 'charge_here_sheet.dart';
 import 'station_feedback_dialog.dart';
 
 class StationDetailsScreen extends ConsumerWidget {
@@ -347,7 +348,7 @@ class StationDetailsScreen extends ConsumerWidget {
                       label: const Text('Navigate'),
                     ),
                   ),
-                  if (AppRuntimeConfig.canOfferChargingPayment) ...[
+                  ...[
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton.icon(
@@ -357,7 +358,7 @@ class StationDetailsScreen extends ConsumerWidget {
                             : null,
                         icon: const Icon(Icons.bolt_rounded),
                         label: Text(
-                          station.available ? 'Charge & pay' : 'Unavailable',
+                          station.available ? 'Charge here' : 'Unavailable',
                         ),
                       ),
                     ),
@@ -415,6 +416,16 @@ class StationDetailsScreen extends ConsumerWidget {
   }
 
   Future<void> _startSession(BuildContext context) async {
+    if (!AppRuntimeConfig.canOfferChargingPayment) {
+      await showChargeHereSheet(
+        context: context,
+        stationName: station.name,
+        operatorName: station.network,
+        address: station.formattedAddress,
+        onDirections: () => _openDirections(context),
+      );
+      return;
+    }
     final receipt = await Navigator.of(context).push<ChargingReceipt>(
       MaterialPageRoute<ChargingReceipt>(
         builder: (_) => ChargingCheckoutScreen(station: station),
