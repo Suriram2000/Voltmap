@@ -8,11 +8,11 @@ require 'uri'
 
 APP_ID = '6801616483'.freeze
 API_ROOT = 'https://api.appstoreconnect.apple.com'.freeze
-VERSION = '1.15.8'.freeze
-BUILD = '39'.freeze
+VERSION = '1.15.9'.freeze
+BUILD = '40'.freeze
 ACTION = ENV.fetch('APP_STORE_ACTION', 'inspect')
 abort 'Unknown release action' unless %w[inspect prepare submit].include?(ACTION)
-WHATS_NEW = 'Improved layouts across iPhone and iPad. Your selected screen and unfinished trip entries stay intact when resizing or switching between compact and wide layouts. Navigation remains accessible in shorter windows. Includes layout and stability improvements.'.freeze
+WHATS_NEW = 'Added Charge here to station details. View charging instructions, the selected station and operator details, and directions. Follow the operator app or charger QR code to start and pay for charging. Includes iPhone and iPad layout improvements.'.freeze
 
 def b64(value)
   Base64.urlsafe_encode64(value, padding: false)
