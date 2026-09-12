@@ -43,7 +43,7 @@ void main() {
     expect(find.text('Estimated price'), findsOneWidget);
     expect(find.text('Listed ports'), findsOneWidget);
     expect(find.text('Navigate'), findsOneWidget);
-    expect(find.text('Charge & pay'), findsOneWidget);
+    expect(find.text('Charge here'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
