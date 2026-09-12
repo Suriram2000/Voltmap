@@ -1,0 +1,79 @@
+name: Android store review and screenshots
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - mobile/integration_test/**
+      - mobile/test_driver/**
+      - .github/workflows/android-store-review.yml
+
+permissions:
+  contents: read
+
+jobs:
+  android-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.44.9'
+          channel: stable
+          cache: true
+      - name: Install dependencies and build review test
+        working-directory: mobile
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter build apk --debug --target-platform android-x64 --target integration_test/android_store_test.dart --dart-define=VOLTMAP_ENV=production --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=https://api.voltmapev.com
+      - name: Enable runner virtualization
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Exercise actual Android UI with production configuration
+        timeout-minutes: 15
+        run: |
+          # Use Google's SDK directly; keep the repository action allowlist intact.
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "emulator" "system-images;android-35;google_apis_playstore;x86_64"
+          export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          export ANDROID_USER_HOME="$RUNNER_TEMP/voltmapev-android-user"
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/voltmapev-avd"
+          mkdir -p "$ANDROID_USER_HOME" "$ANDROID_AVD_HOME"
+          adb version
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force --name voltmapev-review --path "$ANDROID_AVD_HOME/voltmapev-review.avd" --package "system-images;android-35;google_apis_playstore;x86_64" --device pixel_2
+          test -f "$ANDROID_AVD_HOME/voltmapev-review.ini"
+          "$ANDROID_HOME/emulator/emulator" -list-avds
+          "$ANDROID_HOME/emulator/emulator" -avd voltmapev-review -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot > emulator.log 2>&1 &
+          trap 'adb emu kill || true' EXIT
+          timeout 300 adb wait-for-device
+          timeout 300 bash -c 'until [[ "$(adb shell getprop sys.boot_completed | tr -d "\r")" == "1" ]]; do sleep 2; done'
+          adb shell input keyevent 82
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb shell wm size 1080x1920
+          adb shell wm density 420
+          adb install -r mobile/build/app/outputs/flutter-apk/app-debug.apk
+          adb shell pm grant in.voltmap.voltmap android.permission.ACCESS_COARSE_LOCATION
+          adb shell pm grant in.voltmap.voltmap android.permission.ACCESS_FINE_LOCATION
+          adb emu geo fix 78.5349 17.3366
+          cd mobile
+          flutter drive --driver=test_driver/android_store_driver.dart --target=integration_test/android_store_test.dart --use-application-binary=build/app/outputs/flutter-apk/app-debug.apk --dart-define=VOLTMAP_ENV=production --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=https://api.voltmapev.com
+      - name: Upload genuine Android captures and test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voltmapev-android-review-screenshots
+          path: |
+            mobile/build/android-store-screenshots
+            mobile/build/integration_response_data.json
+            emulator.log
+          if-no-files-found: warn
+          retention-days: 30
