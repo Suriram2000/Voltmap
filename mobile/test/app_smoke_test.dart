@@ -509,7 +509,7 @@ void main() {
     );
   });
 
-  testWidgets('unavailable chargers are clearly marked and cannot charge', (
+  testWidgets('reference zero-port stations keep operator guidance available', (
     tester,
   ) async {
     _useDesktopViewport(tester);
@@ -524,15 +524,19 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('unavailableStationBanner')), findsOneWidget);
-    expect(find.textContaining('NOT WORKING / UNAVAILABLE'), findsOneWidget);
+    expect(find.byKey(const Key('unavailableStationBanner')), findsNothing);
+    expect(find.text('Listed • verify status'), findsOneWidget);
     final button = tester.widget<FilledButton>(
       find.ancestor(
-        of: find.text('Unavailable'),
+        of: find.text('Charge here & pay'),
         matching: find.byType(FilledButton),
       ),
     );
-    expect(button.onPressed, isNull);
+    expect(button.onPressed, isNotNull);
+    await tester.tap(find.byKey(const Key('openCheckoutButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Charge at this station'), findsOneWidget);
+    expect(find.textContaining('has not started a session or taken payment'), findsOneWidget);
   });
 
   testWidgets('station details disclose data limits and support corrections', (

@@ -19,6 +19,9 @@ class StationDetailsScreen extends ConsumerWidget {
 
   final ChargingStation station;
 
+  bool get _isConfirmedUnavailable =>
+      station.availabilityIsLive && !station.available;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appState = ref.watch(appStateProvider);
@@ -51,7 +54,7 @@ class StationDetailsScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
             children: [
-              if (!station.available) ...[
+              if (_isConfirmedUnavailable) ...[
                 Container(
                   key: const Key('unavailableStationBanner'),
                   padding: const EdgeInsets.all(16),
@@ -96,12 +99,12 @@ class StationDetailsScreen extends ConsumerWidget {
                 key: const Key('chargerDetailsHero'),
                 child: ChargerDetailsHero(
                   stationName: station.name,
-                  statusLabel: station.available
-                      ? station.availabilityIsLive
+                  statusLabel: !station.availabilityIsLive
+                      ? 'Listed • verify status'
+                      : station.available
                           ? '${station.availableConnectors}/${station.totalConnectors} available'
-                          : 'Listed • verify status'
-                      : 'Unavailable',
-                  statusPositive: station.available,
+                          : 'Unavailable',
+                  statusPositive: station.availabilityIsLive && station.available,
                   isFavorite: isFavorite,
                   onFavorite: toggleFavorite,
                   onShare: () => _shareStation(context),
@@ -353,12 +356,14 @@ class StationDetailsScreen extends ConsumerWidget {
                     Expanded(
                       child: FilledButton.icon(
                         key: const Key('openCheckoutButton'),
-                        onPressed: station.available
-                            ? () => _startSession(context)
-                            : null,
+                        onPressed: _isConfirmedUnavailable
+                            ? null
+                            : () => _startSession(context),
                         icon: const Icon(Icons.bolt_rounded),
                         label: Text(
-                          station.available ? 'Charge here & pay' : 'Unavailable',
+                          _isConfirmedUnavailable
+                              ? 'Unavailable'
+                              : 'Charge here & pay',
                         ),
                       ),
                     ),
@@ -416,7 +421,8 @@ class StationDetailsScreen extends ConsumerWidget {
   }
 
   Future<void> _startSession(BuildContext context) async {
-    if (!AppRuntimeConfig.canOfferChargingPayment) {
+    if (!AppRuntimeConfig.canOfferChargingPayment ||
+        (!station.availabilityIsLive && !station.available)) {
       await showChargeHereSheet(
         context: context,
         stationName: station.name,
