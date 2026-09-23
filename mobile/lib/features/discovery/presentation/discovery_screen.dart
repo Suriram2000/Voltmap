@@ -55,6 +55,8 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   static const _filterDebounceDuration = Duration(milliseconds: 80);
 
   final searchController = TextEditingController();
+  final _scrollController = ScrollController();
+  final _chargerResultsKey = GlobalKey();
   Timer? _filterDebounce;
   int _chargerSearchRequestId = 0;
   int _locationRequestId = 0;
@@ -91,6 +93,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   void dispose() {
     _filterDebounce?.cancel();
     searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -153,6 +156,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
               2;
           return CustomScrollView(
             key: const PageStorageKey('discoveryScrollView'),
+            controller: _scrollController,
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             scrollCacheExtent: const ScrollCacheExtent.pixels(1100),
             slivers: [
@@ -187,11 +191,14 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                         if (resolvingChargerResults)
                           const _InlineSearchProgress()
                         else if (officialResultsQuery != null)
-                          OfficialChargerResultsView(
-                            key: const Key('inlineOfficialChargerResults'),
-                            query: officialResultsQuery!,
-                            center: officialResultsCenter,
-                            embedded: true,
+                          KeyedSubtree(
+                            key: _chargerResultsKey,
+                            child: OfficialChargerResultsView(
+                              key: const Key('inlineOfficialChargerResults'),
+                              query: officialResultsQuery!,
+                              center: officialResultsCenter,
+                              embedded: true,
+                            ),
                           )
                         else ...[
                           _NationalCoverageCard(query: query),
@@ -425,6 +432,21 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       officialResultsCenter = center;
       locationMessage =
           'Showing chargers near ${center?.primaryText ?? rawQuery}';
+    });
+    _revealChargerResults();
+  }
+
+  void _revealChargerResults() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final resultsContext = _chargerResultsKey.currentContext;
+      if (resultsContext == null) return;
+      Scrollable.ensureVisible(
+        resultsContext,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+        alignment: 0.06,
+      );
     });
   }
 

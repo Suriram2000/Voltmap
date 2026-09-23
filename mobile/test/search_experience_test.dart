@@ -419,6 +419,41 @@ void main() {
     );
   });
 
+  testWidgets('Discover lets a driver reveal every charger from one control', (
+    tester,
+  ) async {
+    _useDesktopViewport(tester);
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          home: DiscoveryScreen(autoLocateOnOpen: false),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.enterText(
+      find.byKey(const Key('locationField_Search across India')),
+      '500079',
+    );
+    await tester.pump(const Duration(milliseconds: 130));
+    await tester.tap(find.byKey(const Key('submitChargerSearchButton')));
+    await tester.pump();
+    await _pumpUntilFound(
+      tester,
+      find.byKey(const Key('showAllOfficialChargersButton')),
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const Key('showAllOfficialChargersButton')),
+    );
+    await tester.tap(find.byKey(const Key('showAllOfficialChargersButton')));
+    await tester.pump();
+
+    expect(find.text('View charger details'), findsNWidgets(235));
+    expect(find.byKey(const Key('showAllOfficialChargersButton')), findsNothing);
+  });
+
   testWidgets('discovery lazily builds cards and dismisses input on drag', (
     tester,
   ) async {

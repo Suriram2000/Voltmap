@@ -96,15 +96,30 @@ class _OfficialChargerResultsViewState
               if (remaining > 0)
                 Padding(
                   padding: const EdgeInsets.only(top: 16, bottom: 8),
-                  child: OutlinedButton.icon(
-                    key: const Key('showMoreOfficialChargersButton'),
-                    onPressed: () => setState(() {
-                      _visibleCount = (_visibleCount + _resultPageSize)
-                          .clamp(0, result.matches.length)
-                          .toInt();
-                    }),
-                    icon: const Icon(Icons.expand_more_rounded),
-                    label: Text('Show more chargers ($remaining remaining)'),
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 12,
+                    runSpacing: 10,
+                    children: [
+                      OutlinedButton.icon(
+                        key: const Key('showMoreOfficialChargersButton'),
+                        onPressed: () => setState(() {
+                          _visibleCount = (_visibleCount + _resultPageSize)
+                              .clamp(0, result.matches.length)
+                              .toInt();
+                        }),
+                        icon: const Icon(Icons.expand_more_rounded),
+                        label: Text('Show $remaining more chargers'),
+                      ),
+                      TextButton.icon(
+                        key: const Key('showAllOfficialChargersButton'),
+                        onPressed: () => setState(
+                          () => _visibleCount = result.matches.length,
+                        ),
+                        icon: const Icon(Icons.unfold_more_rounded),
+                        label: Text('Show all ${result.matches.length}'),
+                      ),
+                    ],
                   ),
                 ),
             ],
