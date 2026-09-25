@@ -166,6 +166,11 @@ class ProfileScreen extends ConsumerWidget {
                             label: 'Bills',
                           ),
                           _WorkspaceStat(
+                            icon: Icons.event_available_rounded,
+                            value: '${appState.chargerReservations.length}',
+                            label: 'Plans',
+                          ),
+                          _WorkspaceStat(
                             icon: Icons.add_location_alt_rounded,
                             value: '${appState.chargerSubmissions.length}',
                             label: 'Reports',
@@ -288,6 +293,23 @@ class ProfileScreen extends ConsumerWidget {
                       const Divider(height: 1),
                     ],
                     ListTile(
+                      key: const Key('chargingPlansTile'),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      leading: const Icon(Icons.event_available_outlined),
+                      title: const Text('Charging arrival plans'),
+                      subtitle: Text(
+                        appState.chargerReservations.isEmpty
+                            ? 'No saved arrival plans'
+                            : '${appState.chargerReservations.length} saved plan${appState.chargerReservations.length == 1 ? '' : 's'}',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => _showChargingPlans(context, appState),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
                       key: const Key('installVoltMapEVTile'),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 20,
@@ -398,6 +420,57 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showChargingPlans(
+    BuildContext context,
+    AppState appState,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          children: [
+            Text('Charging arrival plans',
+                style: Theme.of(sheetContext).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            const Text(
+              'Saved locally. A plan does not reserve or block a connector until an operator connection confirms it.',
+            ),
+            const SizedBox(height: 16),
+            if (appState.chargerReservations.isEmpty)
+              const ListTile(
+                leading: Icon(Icons.event_busy_outlined),
+                title: Text('No charging plans yet'),
+                subtitle: Text('Create one from a charger details page.'),
+              )
+            else
+              for (final plan in appState.chargerReservations)
+                Card(
+                  child: ListTile(
+                    title: Text(plan.stationName),
+                    subtitle: Text(
+                      '${plan.connectorType} • ${plan.arrivalWindowStart.hour.toString().padLeft(2, '0')}:${plan.arrivalWindowStart.minute.toString().padLeft(2, '0')}–${plan.arrivalWindowEnd.hour.toString().padLeft(2, '0')}:${plan.arrivalWindowEnd.minute.toString().padLeft(2, '0')} • ${plan.status.name}',
+                    ),
+                    trailing: plan.status.name == 'cancelled'
+                        ? null
+                        : IconButton(
+                            tooltip: 'Cancel arrival plan',
+                            icon: const Icon(Icons.cancel_outlined),
+                            onPressed: () async {
+                              await appState.cancelChargerReservation(plan.id);
+                              if (sheetContext.mounted) Navigator.pop(sheetContext);
+                            },
+                          ),
+                  ),
+                ),
+          ],
         ),
       ),
     );
