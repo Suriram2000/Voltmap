@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/charging_receipt.dart';
 import '../models/charger_submission.dart';
+import '../models/charger_reservation.dart';
 import '../models/saved_trip.dart';
 
 final appStateProvider = ChangeNotifierProvider<AppState>((ref) {
@@ -38,6 +39,7 @@ class AppState extends ChangeNotifier {
   static const _accountLastSignInKey = 'voltmap_account_last_sign_in';
   static const _phoneVerifiedKey = 'voltmap_phone_verified';
   static const _chargerSubmissionsKey = 'voltmap_charger_submissions';
+  static const _reservationsKey = 'voltmap_charger_reservations';
 
   SharedPreferences? _preferences;
 
@@ -55,6 +57,7 @@ class AppState extends ChangeNotifier {
   final List<SavedTrip> savedTrips = [];
   final List<ChargingReceipt> chargingReceipts = [];
   final List<ChargerSubmission> chargerSubmissions = [];
+  final List<ChargerReservation> chargerReservations = [];
 
   bool get isDemoAccount =>
       isSignedIn &&
@@ -137,6 +140,15 @@ class AppState extends ChangeNotifier {
               ),
             ),
           );
+      }
+      final reservationJson = preferences.getString(_reservationsKey);
+      if (reservationJson != null) {
+        final decoded = jsonDecode(reservationJson) as List<dynamic>;
+        chargerReservations
+          ..clear()
+          ..addAll(decoded.map((item) => ChargerReservation.fromJson(
+                item as Map<String, dynamic>,
+              )));
       }
     } catch (_) {
       // The app stays usable with in-memory state if browser storage is blocked.
@@ -286,6 +298,7 @@ class AppState extends ChangeNotifier {
       _accountLastSignInKey,
       _phoneVerifiedKey,
       _chargerSubmissionsKey,
+      _reservationsKey,
     ];
     final preferences = _preferences;
     if (preferences != null) {
@@ -305,6 +318,7 @@ class AppState extends ChangeNotifier {
     savedTrips.clear();
     chargingReceipts.clear();
     chargerSubmissions.clear();
+    chargerReservations.clear();
     notifyListeners();
   }
 
@@ -354,6 +368,23 @@ class AppState extends ChangeNotifier {
       chargerSubmissions.map((item) => item.toJson()).toList(growable: false),
     );
     await _preferences?.setString(_chargerSubmissionsKey, encoded);
+  }
+
+  Future<void> saveChargerReservation(ChargerReservation reservation) async {
+    chargerReservations.removeWhere((saved) => saved.id == reservation.id);
+    chargerReservations.insert(0, reservation);
+    notifyListeners();
+    await _persistReservations();
+  }
+
+  Future<void> cancelChargerReservation(String reservationId) async {
+    final index = chargerReservations.indexWhere((item) => item.id == reservationId);
+    if (index < 0) return;
+    chargerReservations[index] = chargerReservations[index].copyWith(
+      status: ChargerReservationStatus.cancelled,
+    );
+    notifyListeners();
+    await _persistReservations();
   }
 
   Future<void> updateProfile({
@@ -410,6 +441,13 @@ class AppState extends ChangeNotifier {
     } catch (_) {
       // Keep the in-memory receipt if browser storage is unavailable.
     }
+  }
+
+  Future<void> _persistReservations() async {
+    final encoded = jsonEncode(
+      chargerReservations.map((item) => item.toJson()).toList(growable: false),
+    );
+    await _preferences?.setString(_reservationsKey, encoded);
   }
 
   String _passwordDigest(String password, String salt) {
