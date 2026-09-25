@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 class AppTheme {
   const AppTheme._();
 
-  static const brandGreen = Color(0xFF20C77A);
-  static const brandLime = Color(0xFFC8F45B);
-  static const brandNavy = Color(0xFF071D17);
-  static const canvas = Color(0xFFF4F7F2);
+  // VoltMapEV uses its own electric-indigo, cyan, and amber signature rather
+  // than borrowing the green visual language used by charging-network apps.
+  static const brandGreen = Color(0xFF635BFF);
+  static const brandLime = Color(0xFFFFC857);
+  static const brandNavy = Color(0xFF111433);
+  static const canvas = Color(0xFFF7F7FF);
 
   static ThemeData light() => _theme(Brightness.light);
 
@@ -17,17 +19,17 @@ class AppTheme {
     final scheme = ColorScheme.fromSeed(
       seedColor: brandGreen,
       brightness: brightness,
-      surface: isLight ? const Color(0xFFFBFDF9) : const Color(0xFF0E1815),
+      surface: isLight ? const Color(0xFFFCFBFF) : const Color(0xFF13162E),
     ).copyWith(
-      primary: isLight ? const Color(0xFF087A50) : const Color(0xFF55E6A4),
-      onPrimary: isLight ? Colors.white : const Color(0xFF002116),
-      secondary: isLight ? const Color(0xFF4E665C) : const Color(0xFFB5CCC0),
-      tertiary: isLight ? const Color(0xFF596400) : brandLime,
-      surface: isLight ? const Color(0xFFFBFDF9) : const Color(0xFF0E1815),
-      onSurface: isLight ? const Color(0xFF12201B) : const Color(0xFFE5EEE8),
-      outline: isLight ? const Color(0xFFCBD5CE) : const Color(0xFF52615A),
+      primary: isLight ? const Color(0xFF4B44D6) : const Color(0xFFB9C2FF),
+      onPrimary: isLight ? Colors.white : const Color(0xFF111433),
+      secondary: isLight ? const Color(0xFF006C8A) : const Color(0xFF78D9FF),
+      tertiary: isLight ? const Color(0xFF9D5D00) : brandLime,
+      surface: isLight ? const Color(0xFFFCFBFF) : const Color(0xFF13162E),
+      onSurface: isLight ? const Color(0xFF1A1B2E) : const Color(0xFFE5E7FF),
+      outline: isLight ? const Color(0xFFC7C7DD) : const Color(0xFF595B77),
       outlineVariant:
-          isLight ? const Color(0xFFE0E7E2) : const Color(0xFF293831),
+          isLight ? const Color(0xFFE3E2F2) : const Color(0xFF30324D),
     );
     final baseText = ThemeData(brightness: brightness).textTheme;
 
@@ -35,7 +37,7 @@ class AppTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: isLight ? canvas : const Color(0xFF09120F),
+      scaffoldBackgroundColor: isLight ? canvas : const Color(0xFF0D1025),
       textTheme: baseText.copyWith(
         displaySmall: baseText.displaySmall?.copyWith(
           fontWeight: FontWeight.w800,
@@ -78,7 +80,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,
-        color: isLight ? Colors.white : const Color(0xFF111E19),
+        color: isLight ? Colors.white : const Color(0xFF1A1D38),
         surfaceTintColor: Colors.transparent,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
@@ -89,7 +91,7 @@ class AppTheme {
       searchBarTheme: SearchBarThemeData(
         elevation: const WidgetStatePropertyAll(0),
         backgroundColor: WidgetStatePropertyAll(
-          isLight ? Colors.white : const Color(0xFF17251F),
+          isLight ? Colors.white : const Color(0xFF202447),
         ),
         surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
         padding: const WidgetStatePropertyAll(
@@ -104,7 +106,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isLight ? const Color(0xFFF5F8F5) : const Color(0xFF17251F),
+        fillColor: isLight ? const Color(0xFFF4F3FF) : const Color(0xFF202447),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
         border: OutlineInputBorder(
@@ -158,7 +160,7 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         height: 76,
         elevation: 0,
-        backgroundColor: isLight ? Colors.white : const Color(0xFF101C18),
+        backgroundColor: isLight ? Colors.white : const Color(0xFF191C36),
         surfaceTintColor: Colors.transparent,
         indicatorColor: scheme.primaryContainer,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
