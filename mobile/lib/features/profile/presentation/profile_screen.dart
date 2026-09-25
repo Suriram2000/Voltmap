@@ -8,6 +8,7 @@ import '../../about/presentation/about_screen.dart';
 import '../../admin/presentation/admin_dashboard_screen.dart';
 import '../../auth/presentation/auth_screen.dart';
 import '../../install/presentation/install_app_screen.dart';
+import '../../discovery/presentation/charging_networks_screen.dart';
 import '../../modules/presentation/modules_screen.dart';
 import '../../payments/presentation/payment_history_screen.dart';
 
@@ -307,6 +308,26 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => _showChargingPlans(context, appState),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      key: const Key('chargingNetworksTile'),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      leading: const Icon(Icons.hub_outlined),
+                      title: const Text('Charging networks'),
+                      subtitle: const Text(
+                        'Live access, roaming, reservations, and QR start',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const ChargingNetworksScreen(),
+                        ),
+                      ),
                     ),
                     const Divider(height: 1),
                     ListTile(
