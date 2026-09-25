@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../shared/models/charging_receipt.dart';
+import '../../../shared/models/charger_reservation.dart';
 import '../../../shared/models/charging_station.dart';
 import '../../../shared/state/app_state.dart';
 import '../../../shared/widgets/registered_account_gate.dart';
@@ -164,6 +165,34 @@ class StationDetailsScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Plan your arrival',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Save an arrival window and connector preference. VoltMapEV will not claim a bay is held until this operator connects its reservation system.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      key: const Key('requestReservationButton'),
+                      onPressed: _isConfirmedUnavailable
+                          ? null
+                          : () => _requestReservation(context, ref),
+                      icon: const Icon(Icons.event_available_outlined),
+                      label: const Text('Plan charging arrival'),
                     ),
                   ],
                 ),
@@ -388,6 +417,99 @@ class StationDetailsScreen extends ConsumerWidget {
         const SnackBar(content: Text('Could not open directions.')),
       );
     }
+  }
+
+  Future<void> _requestReservation(BuildContext context, WidgetRef ref) async {
+    final appState = ref.read(appStateProvider);
+    if (!await requireRegisteredAccount(context, appState, 'Charging plans')) {
+      return;
+    }
+    if (!context.mounted) return;
+
+    var connector = station.connectorTypes.first;
+    var windowMinutes = 30;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Plan charging arrival',
+                    style: Theme.of(sheetContext).textTheme.headlineSmall),
+                const SizedBox(height: 8),
+                Text(station.name,
+                    style: Theme.of(sheetContext).textTheme.titleMedium),
+                const SizedBox(height: 18),
+                const Text('Connector'),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: station.connectorTypes
+                      .map((item) => ChoiceChip(
+                            label: Text(item),
+                            selected: connector == item,
+                            onSelected: (_) =>
+                                setSheetState(() => connector = item),
+                          ))
+                      .toList(growable: false),
+                ),
+                const SizedBox(height: 18),
+                const Text('Arrival window'),
+                const SizedBox(height: 8),
+                SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(value: 15, label: Text('15 min')),
+                    ButtonSegment(value: 30, label: Text('30 min')),
+                    ButtonSegment(value: 60, label: Text('1 hour')),
+                  ],
+                  selected: {windowMinutes},
+                  onSelectionChanged: (value) =>
+                      setSheetState(() => windowMinutes = value.first),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'This is a saved arrival plan, not a confirmed reservation. The operator must provide a live reservation connection before VoltMapEV can hold a connector.',
+                ),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  key: const Key('saveReservationPlanButton'),
+                  onPressed: () async {
+                    final start = DateTime.now();
+                    await appState.saveChargerReservation(ChargerReservation(
+                      id: 'arrival-${start.microsecondsSinceEpoch}',
+                      stationId: station.id,
+                      stationName: station.name,
+                      connectorType: connector,
+                      arrivalWindowStart: start,
+                      arrivalWindowEnd:
+                          start.add(Duration(minutes: windowMinutes)),
+                      createdAt: start,
+                    ));
+                    if (sheetContext.mounted) Navigator.pop(sheetContext);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Charging arrival plan saved on this device.'),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.bookmark_added_outlined),
+                  label: const Text('Save arrival plan'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _shareStation(BuildContext context) async {
