@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../shared/state/app_state.dart';
 
 class ChargingNetworksScreen extends StatelessWidget {
   const ChargingNetworksScreen({super.key});
@@ -61,9 +64,28 @@ class ChargingNetworksScreen extends StatelessWidget {
             state: 'Provider connection needed',
             color: colors.tertiary,
           ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            key: const Key('chargingSupportButton'),
+            onPressed: () => _contactSupport(context),
+            icon: const Icon(Icons.support_agent_rounded),
+            label: const Text('Get charging support'),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _contactSupport(BuildContext context) async {
+    final opened = await launchUrl(
+      Uri(scheme: 'mailto', path: AppState.contactEmail, query: 'subject=VoltMapEV%20charging%20support'),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open email support.')),
+      );
+    }
   }
 }
 
