@@ -175,6 +175,33 @@ class StationDetailsScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
+                      'Start with charger code',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Scan the QR label or enter the charger code shown at the station. VoltMapEV will verify it with the operator when a live connection is available.',
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      key: const Key('enterChargerCodeButton'),
+                      onPressed: _isConfirmedUnavailable
+                          ? null
+                          : () => _enterChargerCode(context),
+                      icon: const Icon(Icons.qr_code_scanner_rounded),
+                      label: const Text('Scan or enter charger code'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
                       'Plan your arrival',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w900,
@@ -510,6 +537,71 @@ class StationDetailsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _enterChargerCode(BuildContext context) async {
+    final controller = TextEditingController();
+    var error = '';
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            24,
+            8,
+            24,
+            24 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Enter charger code',
+                  style: Theme.of(sheetContext).textTheme.headlineSmall),
+              const SizedBox(height: 8),
+              const Text(
+                'Use the code printed beside the QR label on the charger.',
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                key: const Key('chargerCodeField'),
+                controller: controller,
+                textCapitalization: TextCapitalization.characters,
+                decoration: InputDecoration(
+                  labelText: 'Charger code',
+                  hintText: 'Example: VM-DC-1024',
+                  errorText: error.isEmpty ? null : error,
+                  prefixIcon: const Icon(Icons.qr_code_2_rounded),
+                ),
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                key: const Key('verifyChargerCodeButton'),
+                onPressed: () {
+                  if (controller.text.trim().length < 3) {
+                    setSheetState(() => error = 'Enter the full charger code.');
+                    return;
+                  }
+                  Navigator.pop(sheetContext);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '${controller.text.trim().toUpperCase()} recorded. A live operator connection is required before VoltMapEV can verify or start this charger.',
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.verified_outlined),
+                label: const Text('Verify charger code'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    controller.dispose();
   }
 
   Future<void> _shareStation(BuildContext context) async {
