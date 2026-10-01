@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/charging_receipt.dart';
+import '../models/charging_payment_plan.dart';
 import '../models/charger_submission.dart';
 import '../models/charger_reservation.dart';
 import '../models/saved_trip.dart';
@@ -40,6 +41,7 @@ class AppState extends ChangeNotifier {
   static const _phoneVerifiedKey = 'voltmap_phone_verified';
   static const _chargerSubmissionsKey = 'voltmap_charger_submissions';
   static const _reservationsKey = 'voltmap_charger_reservations';
+  static const _paymentPlanKey = 'voltmap_charging_payment_plan';
 
   SharedPreferences? _preferences;
 
@@ -58,6 +60,7 @@ class AppState extends ChangeNotifier {
   final List<ChargingReceipt> chargingReceipts = [];
   final List<ChargerSubmission> chargerSubmissions = [];
   final List<ChargerReservation> chargerReservations = [];
+  ChargingPaymentPlan chargingPaymentPlan = ChargingPaymentPlan.defaultPlan;
 
   bool get isDemoAccount =>
       isSignedIn &&
@@ -149,6 +152,11 @@ class AppState extends ChangeNotifier {
           ..addAll(decoded.map((item) => ChargerReservation.fromJson(
                 item as Map<String, dynamic>,
               )));
+      }
+      final paymentPlanJson = preferences.getString(_paymentPlanKey);
+      if (paymentPlanJson != null) {
+        final decoded = jsonDecode(paymentPlanJson) as Map<String, dynamic>;
+        chargingPaymentPlan = ChargingPaymentPlan.fromJson(decoded);
       }
     } catch (_) {
       // The app stays usable with in-memory state if browser storage is blocked.
@@ -299,6 +307,7 @@ class AppState extends ChangeNotifier {
       _phoneVerifiedKey,
       _chargerSubmissionsKey,
       _reservationsKey,
+      _paymentPlanKey,
     ];
     final preferences = _preferences;
     if (preferences != null) {
@@ -319,6 +328,7 @@ class AppState extends ChangeNotifier {
     chargingReceipts.clear();
     chargerSubmissions.clear();
     chargerReservations.clear();
+    chargingPaymentPlan = ChargingPaymentPlan.defaultPlan;
     notifyListeners();
   }
 
@@ -378,13 +388,20 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> cancelChargerReservation(String reservationId) async {
-    final index = chargerReservations.indexWhere((item) => item.id == reservationId);
+    final index =
+        chargerReservations.indexWhere((item) => item.id == reservationId);
     if (index < 0) return;
     chargerReservations[index] = chargerReservations[index].copyWith(
       status: ChargerReservationStatus.cancelled,
     );
     notifyListeners();
     await _persistReservations();
+  }
+
+  Future<void> setChargingPaymentPlan(ChargingPaymentPlan plan) async {
+    chargingPaymentPlan = plan;
+    notifyListeners();
+    await _preferences?.setString(_paymentPlanKey, jsonEncode(plan.toJson()));
   }
 
   Future<void> updateProfile({

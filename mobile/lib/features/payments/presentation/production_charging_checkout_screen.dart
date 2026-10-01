@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../shared/models/charging_station.dart';
+import '../../../shared/models/charging_payment_plan.dart';
 import '../../../shared/models/charging_session_status.dart';
 import '../../../shared/services/secure_charging_api.dart';
 import '../../../shared/services/secure_identity_api.dart';
@@ -70,6 +71,14 @@ class _ProductionChargingCheckoutScreenState
     _identityApi = widget.identityApi ?? SecureIdentityApi();
     _chargingApi = widget.chargingApi ?? SecureChargingApi();
     _connector = widget.station.connectorTypes.first;
+    final plan = ref.read(appStateProvider).chargingPaymentPlan;
+    if (plan.kind == ChargingPaymentPlanKind.budgetGuard &&
+        widget.station.pricePerKwh > 0) {
+      _energyLimitKwh =
+          ((plan.maximumAmountInr - _serviceFee) / widget.station.pricePerKwh)
+              .clamp(5, 50)
+              .toDouble();
+    }
   }
 
   @override

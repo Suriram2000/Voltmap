@@ -11,6 +11,7 @@ import '../../install/presentation/install_app_screen.dart';
 import '../../discovery/presentation/charging_networks_screen.dart';
 import '../../modules/presentation/modules_screen.dart';
 import '../../payments/presentation/payment_history_screen.dart';
+import '../../payments/presentation/charging_payment_plan_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -294,6 +295,25 @@ class ProfileScreen extends ConsumerWidget {
                       const Divider(height: 1),
                     ],
                     ListTile(
+                      key: const Key('chargingPaymentPlanTile'),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      leading:
+                          const Icon(Icons.account_balance_wallet_outlined),
+                      title: const Text('Charging payment plan'),
+                      subtitle: Text(appState.chargingPaymentPlan.summary),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const ChargingPaymentPlanScreen(),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
                       key: const Key('chargingPlansTile'),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 20,
@@ -486,7 +506,9 @@ class ProfileScreen extends ConsumerWidget {
                             icon: const Icon(Icons.cancel_outlined),
                             onPressed: () async {
                               await appState.cancelChargerReservation(plan.id);
-                              if (sheetContext.mounted) Navigator.pop(sheetContext);
+                              if (sheetContext.mounted) {
+                                Navigator.pop(sheetContext);
+                              }
                             },
                           ),
                   ),

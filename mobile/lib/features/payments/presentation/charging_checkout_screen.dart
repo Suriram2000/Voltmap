@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../shared/models/charging_receipt.dart';
+import '../../../shared/models/charging_payment_plan.dart';
 import '../../../shared/models/charging_station.dart';
 import '../../../shared/services/charging_billing.dart';
 import '../../../shared/services/sandbox_payment_validator.dart';
@@ -53,6 +54,14 @@ class _ChargingCheckoutScreenState
   void initState() {
     super.initState();
     _connectorType = widget.station.connectorTypes.first;
+    final plan = ref.read(appStateProvider).chargingPaymentPlan;
+    if (plan.kind == ChargingPaymentPlanKind.budgetGuard &&
+        widget.station.pricePerKwh > 0) {
+      _energyKwh =
+          ((plan.maximumAmountInr - _platformFee) / widget.station.pricePerKwh)
+              .clamp(5, 50)
+              .toDouble();
+    }
   }
 
   @override
@@ -143,6 +152,17 @@ class _ChargingCheckoutScreenState
                           'Nothing is charged now. Charging stops automatically at this limit, and the final amount uses only the energy actually delivered.',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
+                        if (ref
+                                .watch(appStateProvider)
+                                .chargingPaymentPlan
+                                .kind ==
+                            ChargingPaymentPlanKind.budgetGuard) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Your saved budget guard selected this starting limit. You can adjust it before continuing.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
                       ],
                     ),
                   ),
