@@ -18,7 +18,7 @@ id = "4de24e80cb25419faa885c41514d3658"
 
 [vars]
 ALLOWED_ORIGINS = "https://voltmapev.com,https://www.voltmapev.com,https://suriram2000.github.io"
-WHATSAPP_GRAPH_API_VERSION = "v23.0"
+WHATSAPP_GRAPH_API_VERSION = "v25.0"
 WHATSAPP_AUTH_TEMPLATE = "voltmapev_authentication"
 WHATSAPP_TEMPLATE_LANGUAGE = "en"
 OTP_FROM_EMAIL = "VoltMapEV <verify@voltmapev.com>"
