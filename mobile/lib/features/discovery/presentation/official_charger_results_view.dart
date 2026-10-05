@@ -85,17 +85,9 @@ class _OfficialChargerResultsViewState
                 result: result,
                 onVerify: () => _openGoogleMaps(context),
               ),
-              for (var index = 0; index < visibleCount; index++)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: _OfficialStationCard(
-                    match: result.matches[index],
-                    onTap: () => _openStationDetails(result.matches[index]),
-                  ),
-                ),
               if (remaining > 0)
                 Padding(
-                  padding: const EdgeInsets.only(top: 16, bottom: 8),
+                  padding: const EdgeInsets.only(top: 16, bottom: 4),
                   child: Wrap(
                     alignment: WrapAlignment.center,
                     spacing: 12,
@@ -120,6 +112,14 @@ class _OfficialChargerResultsViewState
                         label: Text('Show all ${result.matches.length}'),
                       ),
                     ],
+                  ),
+                ),
+              for (var index = 0; index < visibleCount; index++)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: _OfficialStationCard(
+                    match: result.matches[index],
+                    onTap: () => _openStationDetails(result.matches[index]),
                   ),
                 ),
             ],

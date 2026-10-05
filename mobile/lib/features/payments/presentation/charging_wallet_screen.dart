@@ -24,6 +24,16 @@ class ChargingWalletScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
             children: [
               _BalanceCard(connected: connected),
+              if (!connected) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Wallet payments are not connected in this build. No money can be added, reserved, debited, or refunded here yet.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               Text(
                 'Wallet controls',
@@ -88,16 +98,6 @@ class ChargingWalletScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              if (!connected) ...[
-                const SizedBox(height: 16),
-                Text(
-                  'Wallet payments are not connected in this build. No money can be added, reserved, debited, or refunded here yet.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
             ],
           ),
         ),
