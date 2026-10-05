@@ -444,11 +444,11 @@ void main() {
       find.byKey(const Key('showAllOfficialChargersButton')),
     );
 
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('showAllOfficialChargersButton')),
-      400,
-      scrollable: find.byKey(const PageStorageKey('discoveryScrollView')),
+    await tester.drag(
+      find.byKey(const PageStorageKey('discoveryScrollView')),
+      const Offset(0, -600),
     );
+    await tester.pump();
     await tester.tap(find.byKey(const Key('showAllOfficialChargersButton')));
     await tester.pump();
 
