@@ -69,6 +69,30 @@ energy subtotal, taxes, transparent service fee, total, masked payment method,
 provider payment reference, date, charging-session ID, environment, verification
 flags, and delivery attempts. The app can view and export retained receipts.
 
+## VoltMap Wallet
+
+VoltMap Wallet is disabled until a payment service implements the following
+server-authoritative contract. The mobile app must never calculate a spendable
+balance from browser storage, receipts, or a payment redirect.
+
+1. `GET /v1/wallet` returns the verified driver's INR available balance,
+   charging holds, updated timestamp, and immutable transaction activity.
+2. `POST /v1/wallet/top-ups` accepts an idempotency key and amount between
+   ₹100 and ₹10,000, then returns a short-lived HTTPS provider checkout URL.
+3. Only the provider-signed webhook credits a successful top-up. A return URL
+   or client callback is not proof of funds.
+4. Starting a charging session creates an auditable authorization hold; the
+   final verified meter reading creates the debit and releases unused funds.
+5. Refunds and operator adjustments create distinct immutable ledger entries.
+   They do not overwrite past balance activity.
+6. The ledger is double-entry, reconciled daily against provider settlements,
+   and every entry retains its provider or operator reference, idempotency key,
+   actor, and timestamp.
+
+Wallet money must be held and settled only through an appropriately approved
+merchant and payment provider. VoltMapEV does not store raw card details, CVVs,
+UPI PINs, or banking passwords.
+
 ## Map data truthfulness
 
 The current map uses a dated BEE inventory. It automatically requests location,

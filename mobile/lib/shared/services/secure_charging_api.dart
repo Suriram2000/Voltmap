@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../../core/config/app_environment.dart';
 import '../models/charging_receipt.dart';
 import '../models/charging_session_status.dart';
+import '../models/charging_wallet.dart';
 
 class SecureChargingApiException implements Exception {
   const SecureChargingApiException(this.message, {this.code});
@@ -162,6 +163,73 @@ class SecureChargingApi {
       ),
     );
     _validatedBody(response);
+  }
+
+  /// Reads a balance only from VoltMapEV's server-side double-entry ledger.
+  /// The client must never derive a wallet balance from receipts or local
+  /// storage because those records do not prove that funds are spendable.
+  Future<ChargingWalletSnapshot> walletSnapshot({
+    required String verifiedContactToken,
+  }) async {
+    final response = await _request(
+      _client.get(
+        _endpoint('/v1/wallet'),
+        headers: {
+          'accept': 'application/json',
+          'authorization': 'Bearer $verifiedContactToken',
+        },
+      ),
+    );
+    try {
+      return ChargingWalletSnapshot.fromJson(_validatedBody(response));
+    } on FormatException catch (error) {
+      throw SecureChargingApiException(error.message, code: 'invalid_wallet');
+    }
+  }
+
+  /// Creates a provider-hosted wallet top-up. No banking credentials, card
+  /// numbers, CVVs, or UPI PINs are sent to VoltMapEV.
+  Future<ChargingWalletTopUp> createWalletTopUp({
+    required double amountInr,
+    required String verifiedContactToken,
+    required String idempotencyKey,
+  }) async {
+    if (!amountInr.isFinite || amountInr < 100 || amountInr > 10000) {
+      throw const SecureChargingApiException(
+        'Choose a wallet top-up between ₹100 and ₹10,000.',
+        code: 'invalid_wallet_top_up',
+      );
+    }
+    final response = await _request(
+      _client.post(
+        _endpoint('/v1/wallet/top-ups'),
+        headers: {
+          ..._headers(idempotencyKey),
+          'authorization': 'Bearer $verifiedContactToken',
+        },
+        body: jsonEncode({'amountInr': amountInr}),
+      ),
+    );
+    final body = _validatedBody(response);
+    final checkoutUrl = Uri.tryParse(body['checkoutUrl'] as String? ?? '');
+    if (checkoutUrl == null || checkoutUrl.scheme != 'https') {
+      throw const SecureChargingApiException(
+        'The wallet payment provider returned an invalid checkout URL.',
+        code: 'invalid_wallet_checkout_url',
+      );
+    }
+    try {
+      return ChargingWalletTopUp(
+        id: _requiredString(body, 'topUpId'),
+        checkoutUrl: checkoutUrl,
+        expiresAt: DateTime.parse(_requiredString(body, 'expiresAt')),
+      );
+    } on FormatException {
+      throw const SecureChargingApiException(
+        'The wallet payment provider returned an invalid expiry time.',
+        code: 'invalid_wallet_top_up',
+      );
+    }
   }
 
   Uri _endpoint(String path) {

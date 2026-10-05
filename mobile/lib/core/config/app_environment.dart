@@ -35,6 +35,12 @@ abstract final class AppRuntimeConfig {
     'VOLTMAP_MONITORING_DSN',
   );
 
+  /// Wallet functions are deliberately off until the payment service exposes
+  /// a server-authoritative double-entry ledger and provider webhooks.
+  static const chargingWalletApiEnabled = bool.fromEnvironment(
+    'VOLTMAP_CHARGING_WALLET_API_ENABLED',
+  );
+
   static bool get isSandbox => environment == AppEnvironment.sandbox;
 
   static bool get hasSecurePaymentBackend {
@@ -54,6 +60,12 @@ abstract final class AppRuntimeConfig {
         (hasSecurePaymentBackend &&
             hasSecureIdentityBackend &&
             hasRealtimeChargerBackend);
+  }
+
+  static bool get hasChargingWalletBackend {
+    return chargingWalletApiEnabled &&
+        hasSecurePaymentBackend &&
+        hasSecureIdentityBackend;
   }
 
   static bool _isSecureApiUrl(String value) {

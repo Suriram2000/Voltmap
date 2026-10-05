@@ -12,6 +12,7 @@ import '../../discovery/presentation/charging_networks_screen.dart';
 import '../../modules/presentation/modules_screen.dart';
 import '../../payments/presentation/payment_history_screen.dart';
 import '../../payments/presentation/charging_payment_plan_screen.dart';
+import '../../payments/presentation/charging_wallet_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -294,6 +295,28 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       const Divider(height: 1),
                     ],
+                    ListTile(
+                      key: const Key('chargingWalletTile'),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      leading: const Icon(Icons.account_balance_wallet_rounded),
+                      title: const Text('VoltMap Wallet'),
+                      subtitle: Text(
+                        AppRuntimeConfig.hasChargingWalletBackend
+                            ? 'Balance, charging debits, refunds, and receipts'
+                            : 'Balance and wallet payments are not connected',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const ChargingWalletScreen(),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
                     ListTile(
                       key: const Key('chargingPaymentPlanTile'),
                       contentPadding: const EdgeInsets.symmetric(
