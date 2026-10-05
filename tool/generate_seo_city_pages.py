@@ -302,6 +302,15 @@ def _city_page(city: City, stations: list[dict], all_cities: list[tuple[City, in
   <meta property="og:title" content="EV Charging Stations in {html.escape(city.name)} | VoltMapEV">
   <meta property="og:description" content="Explore {len(stations):,} dated official charger records and search nearby EV charging stations in {html.escape(city.name)}.">
   <meta property="og:url" content="{canonical}">
+  <meta property="og:image" content="{SITE}/images/voltmapev-share-card.png">
+  <meta property="og:image:secure_url" content="{SITE}/images/voltmapev-share-card.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="VoltMapEV electric vehicle charging station and route planner">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="{SITE}/images/voltmapev-share-card.png">
+  <meta name="twitter:image:alt" content="VoltMapEV electric vehicle charging station and route planner">
   <title>EV Charging Stations in {html.escape(city.name)}, {html.escape(city.state)} | VoltMapEV</title>
   <script type="application/ld+json">{structured}</script>
   <style>{_page_styles()}</style>
@@ -407,6 +416,15 @@ def _hub_page(city_counts: list[tuple[City, int]], manifest: dict) -> str:
   <meta property="og:title" content="EV Charging Stations by City in India | VoltMapEV">
   <meta property="og:description" content="Explore city charger guides backed by {manifest['stationCount']:,} dated BEE records, or search any PIN code in VoltMapEV.">
   <meta property="og:url" content="{canonical}">
+  <meta property="og:image" content="{SITE}/images/voltmapev-share-card.png">
+  <meta property="og:image:secure_url" content="{SITE}/images/voltmapev-share-card.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="VoltMapEV electric vehicle charging station and route planner">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="{SITE}/images/voltmapev-share-card.png">
+  <meta name="twitter:image:alt" content="VoltMapEV electric vehicle charging station and route planner">
   <title>EV Charging Stations by City in India | VoltMapEV</title>
   <script type="application/ld+json">{structured}</script>
   <style>{_page_styles()} .state-list {{ columns:3 220px; padding-left:20px; }} .state-list li {{ margin:0 14px 8px 0; break-inside:avoid; }}</style>

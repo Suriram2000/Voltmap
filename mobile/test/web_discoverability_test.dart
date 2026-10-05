@@ -17,6 +17,15 @@ void main() {
     expect(html, contains('index,follow'));
     expect(html, contains('href="charging-stations/"'));
     expect(html, contains('rel="apple-touch-icon"'));
+    expect(
+      html,
+      contains('https://voltmapev.com/images/voltmapev-share-card.png'),
+    );
+    expect(html, contains('og:image:alt'));
+    expect(html, contains('summary_large_image'));
+    final socialPreview = File('web/images/voltmapev-share-card.png');
+    expect(socialPreview.existsSync(), isTrue);
+    expect(socialPreview.lengthSync(), greaterThan(100000));
 
     final structuredData = RegExp(
       r'<script type="application/ld\+json">\s*(\{.*?\})\s*</script>',
@@ -85,7 +94,12 @@ void main() {
         sitemap,
         contains('<loc>https://voltmapev.com/$legalPage</loc>'),
       );
-      expect(File('web/$legalPage').readAsStringSync(), contains('VoltMapEV'));
+      final legalHtml = File('web/$legalPage').readAsStringSync();
+      expect(legalHtml, contains('VoltMapEV'));
+      expect(
+        legalHtml,
+        contains('https://voltmapev.com/images/voltmapev-share-card.png'),
+      );
     }
     expect(RegExp(r'<loc>').allMatches(sitemap), hasLength(17));
     expect(
@@ -113,6 +127,11 @@ void main() {
       expect(html, contains('<h1>'), reason: page.path);
       expect(html, contains('<meta name="description"'), reason: page.path);
       expect(html, contains('application/ld+json'), reason: page.path);
+      expect(
+        html,
+        contains('https://voltmapev.com/images/voltmapev-share-card.png'),
+        reason: page.path,
+      );
       expect(html, contains('BEE'), reason: page.path);
       expect(
         html,
