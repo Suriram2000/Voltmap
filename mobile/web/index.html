@@ -14,7 +14,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="VoltMapEV">
   <meta name="format-detection" content="telephone=no">
-  <meta name="geo.region" content="IN">
+  <meta name="geo.region" content="IN-TG">
+  <meta name="geo.placename" content="Hyderabad, Telangana, India">
   <link rel="canonical" href="https://voltmapev.com/">
   <meta property="og:image" content="https://voltmapev.com/images/voltmapev-share-card.png">
   <meta property="og:image:secure_url" content="https://voltmapev.com/images/voltmapev-share-card.png">
@@ -49,7 +50,16 @@
         "url": "https://voltmapev.com/",
         "email": "skotla100@gmail.com",
         "telephone": "+91-9392788714",
-        "areaServed": "IN"
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Hyderabad",
+          "addressRegion": "Telangana",
+          "addressCountry": "IN"
+        },
+        "areaServed": [
+          {"@type": "City", "name": "Hyderabad"},
+          {"@type": "Country", "name": "India"}
+        ]
       },
       {
         "@type": "WebSite",

@@ -35,6 +35,15 @@ void main() {
     final graph = jsonDecode(structuredData!.group(1)!) as Map<String, dynamic>;
     expect(graph['@context'], 'https://schema.org');
     expect(graph['@graph'], isA<List<dynamic>>());
+    expect(html, contains('geo.placename" content="Hyderabad, Telangana, India'));
+    final entities = graph['@graph'] as List<dynamic>;
+    final organization = entities.cast<Map<String, dynamic>>().firstWhere(
+      (entity) => entity['@type'] == 'Organization',
+    );
+    final address = organization['address'] as Map<String, dynamic>;
+    expect(address['addressLocality'], 'Hyderabad');
+    expect(address['addressRegion'], 'Telangana');
+    expect(address['addressCountry'], 'IN');
   });
 
   test('robots allows search and AI discovery crawlers', () {
