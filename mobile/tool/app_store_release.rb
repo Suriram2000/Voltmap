@@ -8,11 +8,11 @@ require 'uri'
 
 APP_ID = '6801616483'.freeze
 API_ROOT = 'https://api.appstoreconnect.apple.com'.freeze
-VERSION = '1.15.11'.freeze
-BUILD = '42'.freeze
+VERSION = '1.15.12'.freeze
+BUILD = '43'.freeze
 ACTION = ENV.fetch('APP_STORE_ACTION', 'inspect')
 abort 'Unknown release action' unless %w[inspect prepare submit].include?(ACTION)
-WHATS_NEW = 'Fixed access to station pricing and operator charging guidance when live connector availability is unknown. Stations confirmed unavailable by live data remain blocked. Reference prices remain labeled as estimates; charging and payment still happen with the operator at stations without a live connection.'.freeze
+WHATS_NEW = 'Discover more charging stations with improved search, scrolling and expanded results. Enjoy refreshed colors, save charging arrival plans, enter charger codes, and review charging networks and payment preferences. Arrival plans do not reserve a connector. Charging and payment remain with the station operator where live services are not connected.'.freeze
 
 def b64(value)
   Base64.urlsafe_encode64(value, padding: false)
@@ -148,3 +148,4 @@ submitted = request("/v1/reviewSubmissions/#{submission_id}", token, 'PATCH', {
 }).fetch('data')
 puts JSON.pretty_generate(submission: submission_id, state: submitted.dig('attributes', 'state'),
                           version: VERSION, build: BUILD)
+
