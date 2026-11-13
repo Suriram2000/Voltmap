@@ -13,6 +13,7 @@ on:
           - both
           - app-store-status
           - ios-upload-existing
+          - ios-duo-smoke
       artifact_run_id:
         description: Existing successful signed IPA artifact run (upload-only mode)
         required: false
@@ -39,7 +40,7 @@ permissions:
 
 jobs:
   identity:
-    if: inputs.platform != 'app-store-status' && inputs.platform != 'ios-upload-existing'
+    if: inputs.platform != 'app-store-status' && inputs.platform != 'ios-upload-existing' && inputs.platform != 'ios-duo-smoke'
     name: Identity service tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -322,3 +323,58 @@ jobs:
             fi
             sleep 30
           done
+
+  duo-smoke:
+    if: inputs.platform == 'ios-duo-smoke'
+    name: iPhone Duo simulator validation
+    runs-on: xcode-27
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Initialize the current Duo simulator runtime
+        timeout-minutes: 6
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_27.2.app/Contents/Developer
+          sudo xcodebuild -runFirstLaunch
+          echo 'Listing available simulators'
+          perl -e 'alarm 120; exec @ARGV' xcrun simctl list devices available -j > "$RUNNER_TEMP/duo-devices.json"
+          DUO_UDID=$(ruby -rjson -e 'devices = JSON.parse(File.read(ARGV.fetch(0))).fetch("devices"); device = devices.select { |runtime, _| runtime.include?("iOS-27-2") }.values.flatten.find { |d| d["name"] == "iPhone Duo" }; abort "iPhone Duo iOS 27.2 simulator is unavailable" unless device; puts device.fetch("udid")' "$RUNNER_TEMP/duo-devices.json")
+          echo "DUO_UDID=$DUO_UDID" >> "$GITHUB_ENV"
+          echo 'Booting iPhone Duo'
+          perl -e 'alarm 120; exec @ARGV' xcrun simctl boot "$DUO_UDID"
+          perl -e 'alarm 120; exec @ARGV' xcrun simctl bootstatus "$DUO_UDID" -b
+      - name: Install Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          channel: stable
+          flutter-version: '3.47.7'
+          cache: true
+      - name: Build the same release source for simulator
+        timeout-minutes: 5
+        working-directory: mobile
+        run: |
+          flutter pub get
+          flutter build ios --simulator --debug \
+            --dart-define=VOLTMAP_APP_STORE_BUILD=true \
+            --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=https://api.voltmapev.com
+      - name: Launch and capture iPhone Duo
+        timeout-minutes: 3
+        working-directory: mobile
+        run: |
+          perl -e 'alarm 45; exec @ARGV' xcrun simctl install "$DUO_UDID" build/ios/iphonesimulator/Runner.app
+          xcrun simctl privacy "$DUO_UDID" grant location in.voltmap.voltmap
+          xcrun simctl location "$DUO_UDID" set 17.385,78.4867
+          perl -e 'alarm 45; exec @ARGV' xcrun simctl launch "$DUO_UDID" in.voltmap.voltmap
+          sleep 12
+          mkdir -p "$RUNNER_TEMP/duo-screenshots"
+          xcrun simctl io "$DUO_UDID" screenshot "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
+          sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
+      - name: Save Duo screenshot and runtime diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voltmapev-iphone-duo-screenshot
+          path: |
+            ${{ runner.temp }}/duo-screenshots/*.png
+            ${{ runner.temp }}/duo-devices.json
+          if-no-files-found: warn
