@@ -351,7 +351,8 @@ class _MapScreenState extends State<MapScreen> {
               Expanded(child: _buildMapLayer(map)),
               SizedBox(
                 key: const Key('nearbyChargerSidebar'),
-                width: (constraints.maxWidth * 0.42).clamp(304.0, 420.0),
+                width:
+                    (constraints.maxWidth * 0.42).clamp(304.0, 420.0).toDouble(),
                 child: panel,
               ),
             ],
