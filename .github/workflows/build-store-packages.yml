@@ -12,6 +12,12 @@ on:
           - ios
           - both
           - app-store-status
+          - ios-upload-existing
+      artifact_run_id:
+        description: Existing successful signed IPA artifact run (upload-only mode)
+        required: false
+        default: '43492722230'
+        type: string
       app_store_action:
         description: App Store management action (only with app-store-status)
         required: false
@@ -29,10 +35,11 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   identity:
-    if: inputs.platform != 'app-store-status'
+    if: inputs.platform != 'app-store-status' && inputs.platform != 'ios-upload-existing'
     name: Identity service tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -227,6 +234,7 @@ jobs:
           path: mobile/build/ios/ipa/*.ipa
           if-no-files-found: error
       - name: Launch app on iPhone Duo simulator
+        timeout-minutes: 10
         working-directory: mobile
         run: |
           flutter build ios --simulator --debug \
@@ -264,3 +272,53 @@ jobs:
           printf '%s' "$API_KEY_BASE64" | base64 -D > "$HOME/.appstoreconnect/private_keys/AuthKey_$API_KEY_ID.p8"
           IPA_PATH=$(find build/ios/ipa -name '*.ipa' -print -quit)
           xcrun altool --upload-app -f "$IPA_PATH" -t ios --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER_ID"
+
+  upload-existing-ios:
+    if: inputs.platform == 'ios-upload-existing'
+    name: Upload verified existing iOS package
+    runs-on: xcode-27
+    timeout-minutes: 15
+    steps:
+      - name: Select release upload toolchain
+        run: sudo xcode-select --switch /Applications/Xcode_27.1.app/Contents/Developer
+      - name: Download the signed IPA from the specified build
+        uses: actions/download-artifact@v4
+        with:
+          name: voltmapev-ios-ipa
+          path: ios-upload
+          run-id: ${{ inputs.artifact_run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify release identity and upload to Apple
+        env:
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          set -o pipefail
+          IPA_PATH=$(find ios-upload -name '*.ipa' -print -quit)
+          test -n "$IPA_PATH"
+          unzip -q "$IPA_PATH" -d "$RUNNER_TEMP/ipa-inspect"
+          APP_PATH=$(find "$RUNNER_TEMP/ipa-inspect/Payload" -maxdepth 1 -name '*.app' -print -quit)
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP_PATH/Info.plist")
+          APP_VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP_PATH/Info.plist")
+          APP_BUILD=$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$APP_PATH/Info.plist")
+          APP_SDK=$(/usr/libexec/PlistBuddy -c 'Print DTSDKName' "$APP_PATH/Info.plist")
+          test "$BUNDLE_ID" = 'in.voltmap.voltmap'
+          test "$APP_VERSION" = '1.15.13'
+          test "$APP_BUILD" = '45'
+          test "$APP_SDK" = 'iphoneos27.1'
+          printf 'Verified %s %s (%s), SDK %s\n' "$BUNDLE_ID" "$APP_VERSION" "$APP_BUILD" "$APP_SDK"
+          test -n "$API_KEY_ID"
+          test -n "$API_ISSUER_ID"
+          test -n "$API_KEY_BASE64"
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          printf '%s' "$API_KEY_BASE64" | base64 -D > "$HOME/.appstoreconnect/private_keys/AuthKey_$API_KEY_ID.p8"
+          for UPLOAD_ATTEMPT in 1 2 3; do
+            if xcrun altool --upload-app -f "$IPA_PATH" -t ios --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER_ID" 2>&1 | tee "$RUNNER_TEMP/ipa-upload.log"; then
+              exit 0
+            fi
+            if ! grep -Eiq 'Cannot determine the Apple ID|required agreement|temporarily|service unavailable' "$RUNNER_TEMP/ipa-upload.log" || [ "$UPLOAD_ATTEMPT" = 3 ]; then
+              exit 1
+            fi
+            sleep 30
+          done
