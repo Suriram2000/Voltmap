@@ -328,11 +328,11 @@ jobs:
     if: inputs.platform == 'ios-duo-smoke'
     name: iPhone Duo simulator validation
     runs-on: xcode-27
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
       - name: Initialize the current Duo simulator runtime
-        timeout-minutes: 6
+        timeout-minutes: 9
         run: |
           sudo xcode-select --switch /Applications/Xcode_27.2.app/Contents/Developer
           sudo xcodebuild -runFirstLaunch
@@ -342,7 +342,7 @@ jobs:
           echo "DUO_UDID=$DUO_UDID" >> "$GITHUB_ENV"
           echo 'Booting iPhone Duo'
           perl -e 'alarm 120; exec @ARGV' xcrun simctl boot "$DUO_UDID"
-          perl -e 'alarm 120; exec @ARGV' xcrun simctl bootstatus "$DUO_UDID" -b
+          perl -e 'alarm 360; exec @ARGV' xcrun simctl bootstatus "$DUO_UDID" -b
       - name: Install Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
@@ -361,7 +361,7 @@ jobs:
         timeout-minutes: 3
         working-directory: mobile
         run: |
-          perl -e 'alarm 45; exec @ARGV' xcrun simctl install "$DUO_UDID" build/ios/iphonesimulator/Runner.app
+          perl -e 'alarm 90; exec @ARGV' xcrun simctl install "$DUO_UDID" build/ios/iphonesimulator/Runner.app
           xcrun simctl privacy "$DUO_UDID" grant location in.voltmap.voltmap
           xcrun simctl location "$DUO_UDID" set 17.385,78.4867
           perl -e 'alarm 45; exec @ARGV' xcrun simctl launch "$DUO_UDID" in.voltmap.voltmap
