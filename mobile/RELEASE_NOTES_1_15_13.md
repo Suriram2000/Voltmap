@@ -1,4 +1,4 @@
-# VoltMapEV 1.15.13 (44)
+# VoltMapEV 1.15.13 (45)
 
 Universal iOS update using the existing `in.voltmap.voltmap` app identity.
 
@@ -9,4 +9,6 @@ Universal iOS update using the existing `in.voltmap.voltmap` app identity.
 
 Validation covers representative compact, expanded, iPhone and iPad windows, accessibility text, safe-area insets and repeated resize transitions. These are Flutter widget scenarios, not physical iPhone Duo certification. Native pose-specific reserved-region behavior has not been implemented or verified.
 
-Apple currently blocks App Store API access with `FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED`. The Account Holder must resolve the required agreement before App Review submission can complete.
+Built with Xcode 27.1 and the iOS 27.1 SDK. The pipeline launches the app on the iPhone Duo simulator and captures a screenshot for visual review. Physical-device and pose-specific behavior remain unverified.
+
+The Free Apps Agreement was confirmed Active on November 13, 2026, after an earlier agreement error.

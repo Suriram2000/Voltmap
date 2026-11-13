@@ -9,7 +9,7 @@ require 'uri'
 APP_ID = '6801616483'.freeze
 API_ROOT = 'https://api.appstoreconnect.apple.com'.freeze
 VERSION = '1.15.13'.freeze
-BUILD = '44'.freeze
+BUILD = '45'.freeze
 ACTION = ENV.fetch('APP_STORE_ACTION', 'inspect')
 abort 'Unknown release action' unless %w[inspect prepare submit].include?(ACTION)
 WHATS_NEW = 'Enjoy layouts that adapt to compact and expanded app windows. Larger windows show the charger map beside the station list, while short landscape windows keep an expandable list. Your selected tab, unfinished trip and charger filters stay in place as the window resizes. Landscape content also respects screen safe areas.'.freeze
