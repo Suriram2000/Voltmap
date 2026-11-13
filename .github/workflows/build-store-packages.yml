@@ -234,30 +234,6 @@ jobs:
           name: voltmapev-ios-ipa
           path: mobile/build/ios/ipa/*.ipa
           if-no-files-found: error
-      - name: Launch app on iPhone Duo simulator
-        timeout-minutes: 10
-        working-directory: mobile
-        run: |
-          flutter build ios --simulator --debug \
-            --dart-define=VOLTMAP_APP_STORE_BUILD=true \
-            --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=https://api.voltmapev.com
-          DUO_UDID=$(xcrun simctl list devices available -j | ruby -rjson -e 'devices = JSON.parse(STDIN.read).fetch("devices"); device = devices.select { |runtime, _| runtime.include?("iOS-27-1") }.values.flatten.find { |d| d["name"] == "iPhone Duo" }; abort "iPhone Duo iOS 27.1 simulator is unavailable" unless device; puts device.fetch("udid")')
-          xcrun simctl boot "$DUO_UDID"
-          xcrun simctl bootstatus "$DUO_UDID" -b
-          xcrun simctl install "$DUO_UDID" build/ios/iphonesimulator/Runner.app
-          xcrun simctl privacy "$DUO_UDID" grant location in.voltmap.voltmap
-          xcrun simctl location "$DUO_UDID" set 17.385,78.4867
-          xcrun simctl launch "$DUO_UDID" in.voltmap.voltmap
-          sleep 12
-          mkdir -p "$RUNNER_TEMP/duo-screenshots"
-          xcrun simctl io "$DUO_UDID" screenshot "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
-          sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
-      - name: Upload iPhone Duo simulator screenshot
-        uses: actions/upload-artifact@v4
-        with:
-          name: voltmapev-iphone-duo-screenshot
-          path: ${{ runner.temp }}/duo-screenshots/*.png
-          if-no-files-found: error
       - name: Upload to TestFlight
         if: inputs.upload_ios_to_testflight
         working-directory: mobile
