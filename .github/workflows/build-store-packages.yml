@@ -358,7 +358,7 @@ jobs:
         working-directory: mobile
         run: |
           mkdir -p "$RUNNER_TEMP/duo-screenshots"
-          xcrun simctl io "$DUO_UDID" screenshot "$RUNNER_TEMP/duo-screenshots/duo-before-install.png"
+          perl -e 'alarm 60; exec @ARGV' xcrun simctl io "$DUO_UDID" screenshot "$RUNNER_TEMP/duo-screenshots/duo-before-install.png"
           echo 'Installing VoltMapEV on the booted Duo simulator'
           perl -e 'alarm 360; exec @ARGV' xcrun simctl install "$DUO_UDID" build/ios/iphonesimulator/Runner.app
           xcrun simctl privacy "$DUO_UDID" grant location in.voltmap.voltmap
@@ -372,7 +372,7 @@ jobs:
           xcrun simctl help io > "$RUNNER_TEMP/duo-screenshots/simctl-io-help.txt"
           xcrun simctl help ui > "$RUNNER_TEMP/duo-screenshots/simctl-ui-help.txt"
           mkdir -p "$RUNNER_TEMP/duo-screenshots"
-          xcrun simctl io "$DUO_UDID" screenshot "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
+          perl -e 'alarm 60; exec @ARGV' xcrun simctl io "$DUO_UDID" screenshot "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
           sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
       - name: Collect simulator installer diagnostics
         if: always()
