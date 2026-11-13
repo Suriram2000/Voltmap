@@ -334,14 +334,21 @@ jobs:
           perl -e 'alarm 120; exec @ARGV' xcrun simctl list devices available -j > "$RUNNER_TEMP/duo-devices.json"
           DUO_UDID=$(ruby -rjson -e 'devices = JSON.parse(File.read(ARGV.fetch(0))).fetch("devices"); device = devices.select { |runtime, _| runtime.include?("iOS-27-2") }.values.flatten.find { |d| d["name"] == "iPhone Duo" }; abort "iPhone Duo iOS 27.2 simulator is unavailable" unless device; puts device.fetch("udid")' "$RUNNER_TEMP/duo-devices.json")
           echo "DUO_UDID=$DUO_UDID" >> "$GITHUB_ENV"
-          echo 'Booting iPhone Duo'
+          XCODE_APPLICATIONS="$(dirname "$(xcode-select -p)")/Applications"
+          DEVICE_HUB_APP=$(find "$XCODE_APPLICATIONS" -maxdepth 2 -name DeviceHub.app -print -quit)
+          test -n "$DEVICE_HUB_APP"
+          open -a "$DEVICE_HUB_APP"
+          echo 'Booting iPhone Duo with Device Hub'
           perl -e 'alarm 120; exec @ARGV' xcrun simctl boot "$DUO_UDID"
           perl -e 'alarm 360; exec @ARGV' xcrun simctl bootstatus "$DUO_UDID" -b
       - name: Launch and capture iPhone Duo
-        timeout-minutes: 3
+        timeout-minutes: 9
         working-directory: mobile
         run: |
-          perl -e 'alarm 90; exec @ARGV' xcrun simctl install "$DUO_UDID" build/ios/iphonesimulator/Runner.app
+          mkdir -p "$RUNNER_TEMP/duo-screenshots"
+          xcrun simctl io "$DUO_UDID" screenshot "$RUNNER_TEMP/duo-screenshots/duo-before-install.png"
+          echo 'Installing VoltMapEV on the booted Duo simulator'
+          perl -e 'alarm 360; exec @ARGV' xcrun simctl install "$DUO_UDID" build/ios/iphonesimulator/Runner.app
           xcrun simctl privacy "$DUO_UDID" grant location in.voltmap.voltmap
           xcrun simctl location "$DUO_UDID" set 17.385,78.4867
           perl -e 'alarm 45; exec @ARGV' xcrun simctl launch "$DUO_UDID" in.voltmap.voltmap
@@ -355,6 +362,14 @@ jobs:
           mkdir -p "$RUNNER_TEMP/duo-screenshots"
           xcrun simctl io "$DUO_UDID" screenshot "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
           sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
+      - name: Collect simulator installer diagnostics
+        if: always()
+        timeout-minutes: 2
+        run: |
+          mkdir -p "$RUNNER_TEMP/duo-screenshots"
+          if [ -n "$DUO_UDID" ]; then
+            perl -e 'alarm 45; exec @ARGV' xcrun simctl spawn "$DUO_UDID" log show --last 5m --style compact --predicate 'process == "installd" OR process == "SpringBoard" OR process == "Runner"' > "$RUNNER_TEMP/duo-screenshots/device-log.txt" 2>&1 || true
+          fi
       - name: Save Duo screenshot and runtime diagnostics
         if: always()
         uses: actions/upload-artifact@v4
