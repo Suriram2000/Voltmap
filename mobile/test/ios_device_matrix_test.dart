@@ -22,6 +22,10 @@ void main() {
     _IPhoneLayout('iPad landscape', Size(1180, 820), 2),
     _IPhoneLayout('iPad Pro 13 landscape', Size(1376, 1032), 2),
     _IPhoneLayout('iPad narrow multitasking window', Size(320, 1024), 2),
+    // Window-size scenarios, not hardware-specific display specifications.
+    _IPhoneLayout('compact outer window', Size(380, 800), 3),
+    _IPhoneLayout('expanded regular window', Size(760, 1000), 3),
+    _IPhoneLayout('medium multitasking window', Size(720, 800), 2),
   ];
 
   setUp(() {
@@ -48,9 +52,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        device.logicalSize.width < 900
-            ? find.byType(NavigationBar)
-            : find.byKey(const Key('primarySideNavigation')),
+        device.logicalSize.width >= 720 && device.logicalSize.height >= 500
+            ? find.byKey(const Key('primarySideNavigation'))
+            : find.byType(NavigationBar),
         findsOneWidget,
       );
       expect(find.text('Find the right charger, faster.'), findsOneWidget);
@@ -161,8 +165,10 @@ void main() {
     await tester.pumpAndSettle();
 
     for (final size in [
-      const Size(760, 800),
+      const Size(760, 1000),
+      const Size(720, 800),
       const Size(1024, 768),
+      const Size(852, 393),
       const Size(380, 800),
       const Size(393, 852),
     ]) {
@@ -175,6 +181,31 @@ void main() {
     }
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
+  testWidgets('landscape content stays inside asymmetric screen safe areas',
+      (tester) async {
+    _useIPhoneViewport(tester,
+        const _IPhoneLayout('landscape with camera inset', Size(852, 393), 3));
+    tester.view.padding = const FakeViewPadding(left: 132, right: 102);
+    tester.view.viewPadding = const FakeViewPadding(left: 132, right: 102);
+    addTearDown(tester.view.resetPadding);
+    addTearDown(tester.view.resetViewPadding);
+    await tester.pumpWidget(const ProviderScope(
+      child: VoltMapApp(autoLocateDiscoverOnOpen: false),
+    ));
+    await tester.pumpAndSettle();
+    await _openTab(tester,
+        icon: Icons.route_outlined, expectedText: 'Trip Planner');
+
+    final content = find.descendant(
+      of: find.byKey(const Key('primaryContentSafeArea')),
+      matching: find.byType(IndexedStack),
+    );
+    final bounds = tester.getRect(content);
+    expect(bounds.left, greaterThanOrEqualTo(44));
+    expect(bounds.right, lessThanOrEqualTo(852 - 34));
+    _expectNoLayoutError(tester, 'landscape safe-area content');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
   testWidgets('wide short iOS window keeps every navigation item reachable',
       (tester) async {
     _useIPhoneViewport(tester,
@@ -184,6 +215,8 @@ void main() {
     ));
     await tester.pumpAndSettle();
     _expectNoLayoutError(tester, 'wide short iOS window');
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byKey(const Key('primarySideNavigation')), findsNothing);
     final profile = find.byIcon(Icons.person_outline);
     await tester.ensureVisible(profile);
     await tester.tap(profile);

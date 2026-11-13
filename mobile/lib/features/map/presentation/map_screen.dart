@@ -334,13 +334,15 @@ class _MapScreenState extends State<MapScreen> {
           onOpenDetails: _openStationDetails,
         );
 
-        if (constraints.maxWidth >= 900) {
+        // Keep both panes usable; a wide but short landscape window needs
+        // the expandable sheet so the charger list can use the full height.
+        if (constraints.maxWidth >= 640 && constraints.maxHeight >= 500) {
           return Row(
             children: [
               Expanded(child: _buildMapLayer(map)),
               SizedBox(
                 key: const Key('nearbyChargerSidebar'),
-                width: math.min(420, constraints.maxWidth * 0.38),
+                width: (constraints.maxWidth * 0.42).clamp(304.0, 420.0),
                 child: panel,
               ),
             ],
@@ -999,8 +1001,14 @@ class _LocationAccessControl extends StatelessWidget {
   final ValueChanged<bool> onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 600;
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) => _buildContent(
+          context,
+          compact: constraints.maxWidth < 600,
+        ),
+      );
+
+  Widget _buildContent(BuildContext context, {required bool compact}) {
     final title = permissionFailure
         ? 'Location permission required'
         : enabled
@@ -1161,8 +1169,14 @@ class _MapStatusCard extends StatelessWidget {
   final VoidCallback? onSecondary;
 
   @override
-  Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 600;
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) => _buildContent(
+          context,
+          compact: constraints.maxWidth < 600,
+        ),
+      );
+
+  Widget _buildContent(BuildContext context, {required bool compact}) {
     if (compact) {
       return SingleChildScrollView(
         padding: const EdgeInsets.all(12),

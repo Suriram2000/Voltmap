@@ -8,11 +8,11 @@ require 'uri'
 
 APP_ID = '6801616483'.freeze
 API_ROOT = 'https://api.appstoreconnect.apple.com'.freeze
-VERSION = '1.15.12'.freeze
-BUILD = '43'.freeze
+VERSION = '1.15.13'.freeze
+BUILD = '44'.freeze
 ACTION = ENV.fetch('APP_STORE_ACTION', 'inspect')
 abort 'Unknown release action' unless %w[inspect prepare submit].include?(ACTION)
-WHATS_NEW = 'Discover more charging stations with improved search, scrolling and expanded results. Enjoy refreshed colors, save charging arrival plans, enter charger codes, and review charging networks and payment preferences. Arrival plans do not reserve a connector. Charging and payment remain with the station operator where live services are not connected.'.freeze
+WHATS_NEW = 'Enjoy layouts that adapt to compact and expanded app windows. Larger windows show the charger map beside the station list, while short landscape windows keep an expandable list. Your selected tab, unfinished trip and charger filters stay in place as the window resizes. Landscape content also respects screen safe areas.'.freeze
 
 def b64(value)
   Base64.urlsafe_encode64(value, padding: false)

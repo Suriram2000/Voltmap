@@ -224,6 +224,80 @@ void main() {
     });
   }
 
+  testWidgets('map keeps results and filters through compact and expanded windows',
+      (tester) async {
+    _useViewport(tester, const Size(393, 852));
+    var locationRequests = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: MapScreen(
+        locationLoader: () async {
+          locationRequests++;
+          return _fakeLocation();
+        },
+        placeSearchService: const _FakePlaceSearchService(),
+        chargerSearchService: const _FakeChargerSearchService(),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    final mapState = tester.state(find.byType(MapScreen));
+    await tester.tap(find.byKey(const Key('mapFilterButton')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('mapFilter_Fast 50+ kW')));
+    await tester.pumpAndSettle();
+
+    for (final size in const [
+      Size(760, 1000),
+      Size(640, 1000),
+      Size(852, 393),
+      Size(380, 800),
+      Size(1024, 1000),
+      Size(393, 852),
+    ]) {
+      tester.view.physicalSize = size;
+      await tester.pumpAndSettle();
+      final split = size.width >= 640 && size.height >= 720;
+      expect(find.byKey(const Key('nearbyChargerSidebar')),
+          split ? findsOneWidget : findsNothing);
+      expect(find.byKey(const Key('nearbyChargerBottomSheet')),
+          split ? findsNothing : findsOneWidget);
+      if (split) {
+        final mapBounds = tester.getRect(find.byKey(const Key('nearbyChargerMap')));
+        final listBounds = tester.getRect(find.byKey(const Key('nearbyChargerSidebar')));
+        expect(mapBounds.width, greaterThanOrEqualTo(320));
+        expect(listBounds.width, greaterThanOrEqualTo(304));
+        expect(mapBounds.right, lessThanOrEqualTo(listBounds.left));
+      }
+      expect(tester.state(find.byType(MapScreen)), same(mapState));
+      expect(find.byTooltip('Filter: Fast 50+ kW'), findsOneWidget);
+      expect(find.text('1 shown'), findsOneWidget);
+      expect(find.text('Beta Charge - Hyderabad'), findsNothing);
+      expect(locationRequests, 1, reason: 'Resizing must not restart location.');
+      expect(tester.takeException(), isNull, reason: 'Resize to $size');
+    }
+  });
+
+  testWidgets('embedded map controls use their pane width on a large display',
+      (tester) async {
+    _useViewport(tester, const Size(1200, 1000));
+    await tester.pumpWidget(const MaterialApp(
+      home: Center(
+        child: SizedBox(
+          width: 400,
+          child: MapScreen(
+            autoLocateOnOpen: false,
+            locationLoader: _fakeLocation,
+            placeSearchService: _FakePlaceSearchService(),
+            chargerSearchService: _FakeChargerSearchService(),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(tester.widget(find.byKey(const Key('mapLocationToggle'))), isA<Switch>());
+    expect(find.byKey(const Key('compactMapStatusContent')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Map filters markers and nearby list together', (tester) async {
     _useViewport(tester, const Size(1200, 900));
 

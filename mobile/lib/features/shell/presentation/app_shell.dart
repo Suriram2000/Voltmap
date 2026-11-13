@@ -83,7 +83,9 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 900;
+        // Use the current window, including iPad multitasking and fold/resize
+        // transitions. Short landscape windows retain bottom navigation.
+        final wide = constraints.maxWidth >= 720 && constraints.maxHeight >= 500;
         final body = Stack(
           key: _bodyKey,
           children: [
@@ -132,7 +134,11 @@ class _AppShellState extends ConsumerState<AppShell> {
                 Expanded(
                   child: ColoredBox(
                     color: Theme.of(context).scaffoldBackgroundColor,
-                    child: SafeArea(left: false, child: body),
+                    child: SafeArea(
+                      key: const Key('primaryContentSafeArea'),
+                      left: false,
+                      child: body,
+                    ),
                   ),
                 ),
               ],
@@ -140,7 +146,12 @@ class _AppShellState extends ConsumerState<AppShell> {
           );
         }
         return Scaffold(
-          body: body,
+          body: SafeArea(
+            key: const Key('primaryContentSafeArea'),
+            top: false,
+            bottom: false,
+            child: body,
+          ),
           bottomNavigationBar: DecoratedBox(
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
