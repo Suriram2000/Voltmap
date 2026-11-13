@@ -184,11 +184,18 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  Widget _buildStatusBody() {
+  Widget _buildStatusBody() => LayoutBuilder(
+        builder: (context, constraints) => _buildStatusContent(
+          compact: constraints.maxWidth < 600,
+        ),
+      );
+
+  Widget _buildStatusContent({required bool compact}) {
     if (_loading) {
       return _buildSearchableStatus(
-        status: const _MapStatusCard(
-          key: Key('nearbyChargerLoading'),
+        status: _MapStatusCard(
+          key: const Key('nearbyChargerLoading'),
+          compact: compact,
           icon: Icons.my_location_rounded,
           title: 'Finding chargers near you',
           message:
@@ -207,8 +214,9 @@ class _MapScreenState extends State<MapScreen> {
     );
     if (!_locationEnabled && !permission) {
       return _buildSearchableStatus(
-        status: const _MapStatusCard(
-          key: Key('nearbyChargerLocationOff'),
+        status: _MapStatusCard(
+          key: const Key('nearbyChargerLocationOff'),
+          compact: compact,
           icon: Icons.location_off_rounded,
           title: 'Use your location or search an area',
           message:
@@ -219,6 +227,7 @@ class _MapScreenState extends State<MapScreen> {
     return _buildSearchableStatus(
       status: _MapStatusCard(
         key: const Key('nearbyChargerError'),
+        compact: compact,
         icon: permission
             ? Icons.location_disabled_rounded
             : offline
@@ -1149,6 +1158,7 @@ class _LocationAccessControl extends StatelessWidget {
 class _MapStatusCard extends StatelessWidget {
   const _MapStatusCard({
     super.key,
+    required this.compact,
     required this.icon,
     required this.title,
     required this.message,
@@ -1159,6 +1169,7 @@ class _MapStatusCard extends StatelessWidget {
     this.onSecondary,
   });
 
+  final bool compact;
   final IconData icon;
   final String title;
   final String message;
@@ -1169,14 +1180,7 @@ class _MapStatusCard extends StatelessWidget {
   final VoidCallback? onSecondary;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, constraints) => _buildContent(
-          context,
-          compact: constraints.maxWidth < 600,
-        ),
-      );
-
-  Widget _buildContent(BuildContext context, {required bool compact}) {
+  Widget build(BuildContext context) {
     if (compact) {
       return SingleChildScrollView(
         padding: const EdgeInsets.all(12),
