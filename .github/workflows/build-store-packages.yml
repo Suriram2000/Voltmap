@@ -307,19 +307,13 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
-      - name: Initialize the current Duo simulator runtime
-        timeout-minutes: 9
+      - name: Select Duo simulator toolchain
+        timeout-minutes: 3
         run: |
           sudo xcode-select --switch /Applications/Xcode_27.2.app/Contents/Developer
           sudo xcodebuild -runFirstLaunch
-          echo 'Listing available simulators'
-          perl -e 'alarm 120; exec @ARGV' xcrun simctl list devices available -j > "$RUNNER_TEMP/duo-devices.json"
-          DUO_UDID=$(ruby -rjson -e 'devices = JSON.parse(File.read(ARGV.fetch(0))).fetch("devices"); device = devices.select { |runtime, _| runtime.include?("iOS-27-2") }.values.flatten.find { |d| d["name"] == "iPhone Duo" }; abort "iPhone Duo iOS 27.2 simulator is unavailable" unless device; puts device.fetch("udid")' "$RUNNER_TEMP/duo-devices.json")
-          echo "DUO_UDID=$DUO_UDID" >> "$GITHUB_ENV"
-          echo 'Booting iPhone Duo'
-          perl -e 'alarm 120; exec @ARGV' xcrun simctl boot "$DUO_UDID"
-          perl -e 'alarm 360; exec @ARGV' xcrun simctl bootstatus "$DUO_UDID" -b
       - name: Install Flutter
+        timeout-minutes: 5
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           channel: stable
@@ -333,6 +327,16 @@ jobs:
           flutter build ios --simulator --debug \
             --dart-define=VOLTMAP_APP_STORE_BUILD=true \
             --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=https://api.voltmapev.com
+      - name: Initialize the current Duo simulator runtime
+        timeout-minutes: 9
+        run: |
+          echo 'Listing available simulators'
+          perl -e 'alarm 120; exec @ARGV' xcrun simctl list devices available -j > "$RUNNER_TEMP/duo-devices.json"
+          DUO_UDID=$(ruby -rjson -e 'devices = JSON.parse(File.read(ARGV.fetch(0))).fetch("devices"); device = devices.select { |runtime, _| runtime.include?("iOS-27-2") }.values.flatten.find { |d| d["name"] == "iPhone Duo" }; abort "iPhone Duo iOS 27.2 simulator is unavailable" unless device; puts device.fetch("udid")' "$RUNNER_TEMP/duo-devices.json")
+          echo "DUO_UDID=$DUO_UDID" >> "$GITHUB_ENV"
+          echo 'Booting iPhone Duo'
+          perl -e 'alarm 120; exec @ARGV' xcrun simctl boot "$DUO_UDID"
+          perl -e 'alarm 360; exec @ARGV' xcrun simctl bootstatus "$DUO_UDID" -b
       - name: Launch and capture iPhone Duo
         timeout-minutes: 3
         working-directory: mobile
@@ -341,7 +345,13 @@ jobs:
           xcrun simctl privacy "$DUO_UDID" grant location in.voltmap.voltmap
           xcrun simctl location "$DUO_UDID" set 17.385,78.4867
           perl -e 'alarm 45; exec @ARGV' xcrun simctl launch "$DUO_UDID" in.voltmap.voltmap
-          sleep 12
+          sleep 20
+          mkdir -p "$RUNNER_TEMP/duo-screenshots"
+          xcrun simctl spawn "$DUO_UDID" launchctl list > "$RUNNER_TEMP/duo-screenshots/app-processes.txt"
+          ruby -e 'line = File.readlines(ARGV.fetch(0)).find { |entry| entry.include?("in.voltmap.voltmap") && entry.split.first.to_s.match?(/^[0-9]+$/) }; abort "VoltMapEV process is not running after launch" unless line; puts "VoltMapEV remains running after launch"' "$RUNNER_TEMP/duo-screenshots/app-processes.txt"
+          xcrun simctl io "$DUO_UDID" enumerate > "$RUNNER_TEMP/duo-screenshots/displays.txt"
+          xcrun simctl help io > "$RUNNER_TEMP/duo-screenshots/simctl-io-help.txt"
+          xcrun simctl help ui > "$RUNNER_TEMP/duo-screenshots/simctl-ui-help.txt"
           mkdir -p "$RUNNER_TEMP/duo-screenshots"
           xcrun simctl io "$DUO_UDID" screenshot "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
           sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
@@ -351,6 +361,6 @@ jobs:
         with:
           name: voltmapev-iphone-duo-screenshot
           path: |
-            ${{ runner.temp }}/duo-screenshots/*.png
+            ${{ runner.temp }}/duo-screenshots/
             ${{ runner.temp }}/duo-devices.json
           if-no-files-found: warn
