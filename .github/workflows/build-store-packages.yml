@@ -304,7 +304,7 @@ jobs:
     if: inputs.platform == 'ios-duo-smoke'
     name: iPhone Duo simulator validation
     runs-on: xcode-27
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
       - name: Select Duo simulator toolchain
@@ -328,7 +328,7 @@ jobs:
             --dart-define=VOLTMAP_APP_STORE_BUILD=true \
             --dart-define=VOLTMAP_IDENTITY_API_BASE_URL=https://api.voltmapev.com
       - name: Initialize the current Duo simulator runtime
-        timeout-minutes: 9
+        timeout-minutes: 12
         run: |
           echo 'Listing available simulators'
           perl -e 'alarm 120; exec @ARGV' xcrun simctl list devices available -j > "$RUNNER_TEMP/duo-devices.json"
@@ -337,10 +337,22 @@ jobs:
           XCODE_APPLICATIONS="$(dirname "$(xcode-select -p)")/Applications"
           DEVICE_HUB_APP=$(find "$XCODE_APPLICATIONS" -maxdepth 2 -name DeviceHub.app -print -quit)
           test -n "$DEVICE_HUB_APP"
-          open -a "$DEVICE_HUB_APP"
-          echo 'Booting iPhone Duo with Device Hub'
-          perl -e 'alarm 120; exec @ARGV' xcrun simctl boot "$DUO_UDID"
+          echo 'Booting iPhone Duo and opening its Device Hub window'
+          perl -e 'alarm 180; exec @ARGV' xcrun simctl boot "$DUO_UDID"
+          open -a "$DEVICE_HUB_APP" "devices://device/open?id=$DUO_UDID"
           perl -e 'alarm 360; exec @ARGV' xcrun simctl bootstatus "$DUO_UDID" -b
+          echo 'Waiting for simulator data migration'
+          for MIGRATION_POLL in $(seq 1 60); do
+            if ! pgrep -f '[c]om.apple.datamigrator' > /dev/null; then
+              break
+            fi
+            sleep 5
+          done
+          if pgrep -f '[c]om.apple.datamigrator' > /dev/null; then
+            echo 'Simulator data migration did not finish'
+            exit 1
+          fi
+          echo 'Duo simulator is ready for app installation'
       - name: Launch and capture iPhone Duo
         timeout-minutes: 9
         working-directory: mobile
@@ -367,6 +379,11 @@ jobs:
         timeout-minutes: 2
         run: |
           mkdir -p "$RUNNER_TEMP/duo-screenshots"
+          df -h > "$RUNNER_TEMP/duo-screenshots/host-disk.txt"
+          vm_stat > "$RUNNER_TEMP/duo-screenshots/host-memory.txt"
+          ps -axo pid,ppid,rss,comm | sort -nr -k3 | head -30 > "$RUNNER_TEMP/duo-screenshots/host-processes.txt" || true
+          xcrun simctl help io > "$RUNNER_TEMP/duo-screenshots/simctl-io-help.txt"
+          xcrun simctl help ui > "$RUNNER_TEMP/duo-screenshots/simctl-ui-help.txt"
           if [ -n "$DUO_UDID" ]; then
             perl -e 'alarm 45; exec @ARGV' xcrun simctl spawn "$DUO_UDID" log show --last 5m --style compact --predicate 'process == "installd" OR process == "SpringBoard" OR process == "Runner"' > "$RUNNER_TEMP/duo-screenshots/device-log.txt" 2>&1 || true
           fi
