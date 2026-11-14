@@ -332,7 +332,8 @@ jobs:
         run: |
           echo 'Listing available simulators'
           perl -e 'alarm 120; exec @ARGV' xcrun simctl list devices available -j > "$RUNNER_TEMP/duo-devices.json"
-          DUO_UDID=$(ruby -rjson -e 'devices = JSON.parse(File.read(ARGV.fetch(0))).fetch("devices"); device = devices.select { |runtime, _| runtime.include?("iOS-27-2") }.values.flatten.find { |d| d["name"] == "iPhone Duo" }; abort "iPhone Duo iOS 27.2 simulator is unavailable" unless device; puts device.fetch("udid")' "$RUNNER_TEMP/duo-devices.json")
+          DUO_RUNTIME=$(ruby -rjson -e 'runtime = JSON.parse(File.read(ARGV.fetch(0))).fetch("devices").keys.find { |name| name.include?("iOS-27-2") }; abort "iOS 27.2 runtime is unavailable" unless runtime; puts runtime' "$RUNNER_TEMP/duo-devices.json")
+          DUO_UDID=$(xcrun simctl create "VoltMapEV Duo Verification" com.apple.CoreSimulator.SimDeviceType.iPhone-Duo "$DUO_RUNTIME")
           echo "DUO_UDID=$DUO_UDID" >> "$GITHUB_ENV"
           XCODE_APPLICATIONS="$(dirname "$(xcode-select -p)")/Applications"
           DEVICE_HUB_APP=$(find "$XCODE_APPLICATIONS" -maxdepth 2 -name DeviceHub.app -print -quit)
@@ -343,12 +344,116 @@ jobs:
           perl -e 'alarm 360; exec @ARGV' xcrun simctl bootstatus "$DUO_UDID" -b
           echo 'Waiting for simulator data migration'
           for MIGRATION_POLL in $(seq 1 60); do
-            if ! pgrep -f '[c]om.apple.datamigrator' > /dev/null; then
+            if ! ps -axo comm | grep -Eq '(^|/)com[.]apple[.]datamigrator; then
               break
             fi
             sleep 5
           done
           if pgrep -f '[c]om.apple.datamigrator' > /dev/null; then
+            echo 'Simulator data migration did not finish'
+            exit 1
+          fi
+          perl -e 'alarm 60; exec @ARGV' xcrun simctl spawn "$DUO_UDID" launchctl list > "$RUNNER_TEMP/duo-readiness.txt"
+          xcrun simctl list devices available -j > "$RUNNER_TEMP/duo-devices-after-boot.json"
+          echo 'Duo simulator is ready for app installation'
+      - name: Launch and capture iPhone Duo
+        timeout-minutes: 9
+        working-directory: mobile
+        run: |
+          mkdir -p "$RUNNER_TEMP/duo-screenshots"
+          perl -e 'alarm 60; exec @ARGV' xcrun simctl io "$DUO_UDID" screenshot "$RUNNER_TEMP/duo-screenshots/duo-before-install.png"
+          echo 'Installing VoltMapEV on the booted Duo simulator'
+          perl -e 'alarm 360; exec @ARGV' xcrun simctl install "$DUO_UDID" build/ios/iphonesimulator/Runner.app
+          xcrun simctl privacy "$DUO_UDID" grant location in.voltmap.voltmap
+          xcrun simctl location "$DUO_UDID" set 17.385,78.4867
+          perl -e 'alarm 45; exec @ARGV' xcrun simctl launch "$DUO_UDID" in.voltmap.voltmap
+          sleep 20
+          mkdir -p "$RUNNER_TEMP/duo-screenshots"
+          xcrun simctl spawn "$DUO_UDID" launchctl list > "$RUNNER_TEMP/duo-screenshots/app-processes.txt"
+          ruby -e 'line = File.readlines(ARGV.fetch(0)).find { |entry| entry.include?("in.voltmap.voltmap") && entry.split.first.to_s.match?(/^[0-9]+$/) }; abort "VoltMapEV process is not running after launch" unless line; puts "VoltMapEV remains running after launch"' "$RUNNER_TEMP/duo-screenshots/app-processes.txt"
+          xcrun simctl io "$DUO_UDID" enumerate > "$RUNNER_TEMP/duo-screenshots/displays.txt"
+          xcrun simctl help io > "$RUNNER_TEMP/duo-screenshots/simctl-io-help.txt"
+          xcrun simctl help ui > "$RUNNER_TEMP/duo-screenshots/simctl-ui-help.txt"
+          mkdir -p "$RUNNER_TEMP/duo-screenshots"
+          perl -e 'alarm 60; exec @ARGV' xcrun simctl io "$DUO_UDID" screenshot "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
+          sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
+      - name: Collect simulator installer diagnostics
+        if: always()
+        timeout-minutes: 2
+        run: |
+          mkdir -p "$RUNNER_TEMP/duo-screenshots"
+          df -h > "$RUNNER_TEMP/duo-screenshots/host-disk.txt"
+          vm_stat > "$RUNNER_TEMP/duo-screenshots/host-memory.txt"
+          ps -axo pid,ppid,rss,comm | sort -nr -k3 | head -30 > "$RUNNER_TEMP/duo-screenshots/host-processes.txt" || true
+          xcrun simctl help io > "$RUNNER_TEMP/duo-screenshots/simctl-io-help.txt"
+          xcrun simctl help ui > "$RUNNER_TEMP/duo-screenshots/simctl-ui-help.txt"
+          if [ -n "$DUO_UDID" ]; then
+            perl -e 'alarm 45; exec @ARGV' xcrun simctl spawn "$DUO_UDID" log show --last 5m --style compact --predicate 'process == "installd" OR process == "SpringBoard" OR process == "Runner"' > "$RUNNER_TEMP/duo-screenshots/device-log.txt" 2>&1 || true
+          fi
+      - name: Save Duo screenshot and runtime diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voltmapev-iphone-duo-screenshot
+          path: |
+            ${{ runner.temp }}/duo-screenshots/
+            ${{ runner.temp }}/duo-devices*.json
+            ${{ runner.temp }}/duo-readiness.txt
+          if-no-files-found: warn
+; then
+              break
+            fi
+            sleep 5
+          done
+          if ps -axo comm | grep -Eq '(^|/)com[.]apple[.]datamigrator; then
+            echo 'Simulator data migration did not finish'
+            exit 1
+          fi
+          echo 'Duo simulator is ready for app installation'
+      - name: Launch and capture iPhone Duo
+        timeout-minutes: 9
+        working-directory: mobile
+        run: |
+          mkdir -p "$RUNNER_TEMP/duo-screenshots"
+          perl -e 'alarm 60; exec @ARGV' xcrun simctl io "$DUO_UDID" screenshot "$RUNNER_TEMP/duo-screenshots/duo-before-install.png"
+          echo 'Installing VoltMapEV on the booted Duo simulator'
+          perl -e 'alarm 360; exec @ARGV' xcrun simctl install "$DUO_UDID" build/ios/iphonesimulator/Runner.app
+          xcrun simctl privacy "$DUO_UDID" grant location in.voltmap.voltmap
+          xcrun simctl location "$DUO_UDID" set 17.385,78.4867
+          perl -e 'alarm 45; exec @ARGV' xcrun simctl launch "$DUO_UDID" in.voltmap.voltmap
+          sleep 20
+          mkdir -p "$RUNNER_TEMP/duo-screenshots"
+          xcrun simctl spawn "$DUO_UDID" launchctl list > "$RUNNER_TEMP/duo-screenshots/app-processes.txt"
+          ruby -e 'line = File.readlines(ARGV.fetch(0)).find { |entry| entry.include?("in.voltmap.voltmap") && entry.split.first.to_s.match?(/^[0-9]+$/) }; abort "VoltMapEV process is not running after launch" unless line; puts "VoltMapEV remains running after launch"' "$RUNNER_TEMP/duo-screenshots/app-processes.txt"
+          xcrun simctl io "$DUO_UDID" enumerate > "$RUNNER_TEMP/duo-screenshots/displays.txt"
+          xcrun simctl help io > "$RUNNER_TEMP/duo-screenshots/simctl-io-help.txt"
+          xcrun simctl help ui > "$RUNNER_TEMP/duo-screenshots/simctl-ui-help.txt"
+          mkdir -p "$RUNNER_TEMP/duo-screenshots"
+          perl -e 'alarm 60; exec @ARGV' xcrun simctl io "$DUO_UDID" screenshot "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
+          sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
+      - name: Collect simulator installer diagnostics
+        if: always()
+        timeout-minutes: 2
+        run: |
+          mkdir -p "$RUNNER_TEMP/duo-screenshots"
+          df -h > "$RUNNER_TEMP/duo-screenshots/host-disk.txt"
+          vm_stat > "$RUNNER_TEMP/duo-screenshots/host-memory.txt"
+          ps -axo pid,ppid,rss,comm | sort -nr -k3 | head -30 > "$RUNNER_TEMP/duo-screenshots/host-processes.txt" || true
+          xcrun simctl help io > "$RUNNER_TEMP/duo-screenshots/simctl-io-help.txt"
+          xcrun simctl help ui > "$RUNNER_TEMP/duo-screenshots/simctl-ui-help.txt"
+          if [ -n "$DUO_UDID" ]; then
+            perl -e 'alarm 45; exec @ARGV' xcrun simctl spawn "$DUO_UDID" log show --last 5m --style compact --predicate 'process == "installd" OR process == "SpringBoard" OR process == "Runner"' > "$RUNNER_TEMP/duo-screenshots/device-log.txt" 2>&1 || true
+          fi
+      - name: Save Duo screenshot and runtime diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voltmapev-iphone-duo-screenshot
+          path: |
+            ${{ runner.temp }}/duo-screenshots/
+            ${{ runner.temp }}/duo-devices.json
+          if-no-files-found: warn
+; then
             echo 'Simulator data migration did not finish'
             exit 1
           fi
