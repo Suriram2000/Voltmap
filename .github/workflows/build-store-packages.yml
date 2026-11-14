@@ -342,17 +342,8 @@ jobs:
           perl -e 'alarm 180; exec @ARGV' xcrun simctl boot "$DUO_UDID"
           open -a "$DEVICE_HUB_APP" "devices://device/open?id=$DUO_UDID"
           perl -e 'alarm 360; exec @ARGV' xcrun simctl bootstatus "$DUO_UDID" -b
-          echo 'Waiting for simulator data migration'
-          for MIGRATION_POLL in $(seq 1 60); do
-            if ! ps -axo comm | grep -Eq '(^|/)com[.]apple[.]datamigrator$'; then
-              break
-            fi
-            sleep 5
-          done
-          if ps -axo comm | grep -Eq '(^|/)com[.]apple[.]datamigrator$'; then
-            echo 'Simulator data migration did not finish'
-            exit 1
-          fi
+          echo 'Probing the selected Duo simulator launch service'
+          ps -axo pid,ppid,comm | grep -E 'launchd_sim|com[.]apple[.]datamigrator' > "$RUNNER_TEMP/duo-startup-processes.txt" || true
           perl -e 'alarm 60; exec @ARGV' xcrun simctl spawn "$DUO_UDID" launchctl list > "$RUNNER_TEMP/duo-readiness.txt"
           xcrun simctl list devices available -j > "$RUNNER_TEMP/duo-devices-after-boot.json"
           echo 'Duo simulator is ready for app installation'
@@ -361,7 +352,8 @@ jobs:
         working-directory: mobile
         run: |
           mkdir -p "$RUNNER_TEMP/duo-screenshots"
-          perl -e 'alarm 60; exec @ARGV' xcrun simctl io "$DUO_UDID" screenshot "$RUNNER_TEMP/duo-screenshots/duo-before-install.png"
+          echo 'Inspecting Duo display state'
+          perl -e 'alarm 60; exec @ARGV' xcrun simctl io "$DUO_UDID" enumerate > "$RUNNER_TEMP/duo-screenshots/displays-before-install.txt"
           echo 'Installing VoltMapEV on the booted Duo simulator'
           perl -e 'alarm 360; exec @ARGV' xcrun simctl install "$DUO_UDID" build/ios/iphonesimulator/Runner.app
           xcrun simctl privacy "$DUO_UDID" grant location in.voltmap.voltmap
@@ -399,4 +391,5 @@ jobs:
             ${{ runner.temp }}/duo-screenshots/
             ${{ runner.temp }}/duo-devices*.json
             ${{ runner.temp }}/duo-readiness.txt
+            ${{ runner.temp }}/duo-startup-processes.txt
           if-no-files-found: warn
