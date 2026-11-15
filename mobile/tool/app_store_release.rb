@@ -8,11 +8,11 @@ require 'uri'
 
 APP_ID = '6801616483'.freeze
 API_ROOT = 'https://api.appstoreconnect.apple.com'.freeze
-VERSION = '1.15.13'.freeze
-BUILD = '45'.freeze
+VERSION = '1.15.14'.freeze
+BUILD = '46'.freeze
 ACTION = ENV.fetch('APP_STORE_ACTION', 'inspect')
 abort 'Unknown release action' unless %w[inspect prepare submit].include?(ACTION)
-WHATS_NEW = 'Enjoy layouts that adapt to compact and expanded app windows. Larger windows show the charger map beside the station list, while short landscape windows keep an expandable list. Your selected tab, unfinished trip and charger filters stay in place as the window resizes. Landscape content also respects screen safe areas.'.freeze
+WHATS_NEW = 'Improved navigation on expanded iPhone Duo windows. The left navigation controls remain visible when the system reserves space on the opposite edge of the display. Includes adaptive layouts and preserves charger results while folding and unfolding.'.freeze
 
 def b64(value)
   Base64.urlsafe_encode64(value, padding: false)
