@@ -206,6 +206,44 @@ void main() {
     _expectNoLayoutError(tester, 'landscape safe-area content');
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
+  testWidgets('expanded iOS navigation stays reachable with a right screen inset',
+      (tester) async {
+    _useIPhoneViewport(tester,
+        const _IPhoneLayout('expanded window with system side bar', Size(951, 669), 3));
+    tester.view.padding = const FakeViewPadding(right: 252);
+    tester.view.viewPadding = const FakeViewPadding(right: 252);
+    addTearDown(tester.view.resetPadding);
+    addTearDown(tester.view.resetViewPadding);
+    await tester.pumpWidget(const ProviderScope(
+      child: VoltMapApp(autoLocateDiscoverOnOpen: false),
+    ));
+    await tester.pumpAndSettle();
+
+    final navigation = find.byKey(const Key('primarySideNavigation'));
+    expect(tester.getSize(navigation).width, 92);
+    for (final destination in [
+      (Icons.map_outlined, 'Find chargers near you'),
+      (Icons.route_outlined, 'Trip Planner'),
+      (Icons.favorite_border, 'Favorites'),
+      (Icons.add_location_alt_outlined, 'Add a charging station'),
+      (Icons.person_outline, 'Profile & settings'),
+      (Icons.explore_outlined, 'Find the right charger, faster.'),
+    ]) {
+      final icon = find.descendant(
+        of: navigation,
+        matching: find.byIcon(destination.$1),
+      );
+      await tester.ensureVisible(icon);
+      expect(icon.hitTestable(), findsOneWidget);
+      final bounds = tester.getRect(icon);
+      expect(bounds.left, greaterThanOrEqualTo(14));
+      expect(bounds.right, lessThanOrEqualTo(78));
+      await _openTab(tester,
+          icon: destination.$1, expectedText: destination.$2);
+      _expectNoLayoutError(tester, 'expanded navigation to ${destination.$2}');
+    }
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
   testWidgets('wide short iOS window keeps every navigation item reachable',
       (tester) async {
     _useIPhoneViewport(tester,
