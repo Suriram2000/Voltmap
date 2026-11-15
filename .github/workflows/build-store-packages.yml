@@ -379,8 +379,9 @@ jobs:
           xcrun simctl help io > "$RUNNER_TEMP/duo-screenshots/simctl-io-help.txt" 2>&1
           xcrun simctl help ui > "$RUNNER_TEMP/duo-screenshots/simctl-ui-help.txt" 2>&1
           mkdir -p "$RUNNER_TEMP/duo-screenshots"
-          node "$RUNNER_TEMP/duo-timeout.cjs" 60 xcrun simctl io "$DUO_UDID" screenshot "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
-          sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP/duo-screenshots/iphone-duo.png"
+          node "$RUNNER_TEMP/duo-timeout.cjs" 90 xcrun simctl io "$DUO_UDID" screenshot --display=primary "$RUNNER_TEMP/duo-screenshots/iphone-duo-compact.png"
+          node "$RUNNER_TEMP/duo-timeout.cjs" 90 xcrun simctl io "$DUO_UDID" screenshot --display=primary-1 "$RUNNER_TEMP/duo-screenshots/iphone-duo-expanded.png"
+          sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP/duo-screenshots/iphone-duo-compact.png" "$RUNNER_TEMP/duo-screenshots/iphone-duo-expanded.png"
       - name: Collect simulator installer diagnostics
         if: always()
         timeout-minutes: 2
