@@ -315,7 +315,7 @@ jobs:
           const [seconds, command, ...args] = process.argv.slice(2);
           const result = spawnSync(command, args, { stdio: 'inherit', timeout: Number(seconds) * 1000, killSignal: 'SIGKILL' });
           if (result.error) {
-            console.error('Native command failed:', result.error.message);
+            console.error('Native command failed:', command, ...args, result.error.message);
             process.exit(124);
           }
           process.exit(result.status ?? 1);
@@ -379,8 +379,11 @@ jobs:
           mkdir -p "$RUNNER_TEMP/duo-screenshots"
           echo 'Installing VoltMapEV on the booted Duo simulator'
           node "$RUNNER_TEMP/duo-timeout.cjs" 360 xcrun simctl install "$DUO_UDID" build/ios/iphonesimulator/Runner.app
-          node "$RUNNER_TEMP/duo-timeout.cjs" 30 xcrun simctl privacy "$DUO_UDID" grant location in.voltmap.voltmap
-          node "$RUNNER_TEMP/duo-timeout.cjs" 30 xcrun simctl location "$DUO_UDID" set 17.385,78.4867
+          echo 'Native install returned; granting test location permission'
+          node "$RUNNER_TEMP/duo-timeout.cjs" 90 xcrun simctl privacy "$DUO_UDID" grant location in.voltmap.voltmap
+          echo 'Test location permission granted; setting Hyderabad test coordinates'
+          node "$RUNNER_TEMP/duo-timeout.cjs" 90 xcrun simctl location "$DUO_UDID" set 17.385,78.4867
+          echo 'Test coordinates set; launching VoltMapEV'
           set -o pipefail
           node "$RUNNER_TEMP/duo-timeout.cjs" 45 xcrun simctl launch "$DUO_UDID" in.voltmap.voltmap | tee "$RUNNER_TEMP/duo-screenshots/app-launch.txt"
           APP_PID=$(awk -F ': ' '/^in[.]voltmap[.]voltmap: [0-9]+$/ { print $2 }' "$RUNNER_TEMP/duo-screenshots/app-launch.txt")
@@ -394,7 +397,8 @@ jobs:
           xcrun simctl help io > "$RUNNER_TEMP/duo-screenshots/simctl-io-help.txt" 2>&1
           xcrun simctl help ui > "$RUNNER_TEMP/duo-screenshots/simctl-ui-help.txt" 2>&1
           mkdir -p "$RUNNER_TEMP/duo-screenshots"
-          node "$RUNNER_TEMP/duo-timeout.cjs" 30 xcrun simctl status_bar "$DUO_UDID" override --time '9:41' --dataNetwork wifi --wifiMode active --wifiBars 3 --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
+          node "$RUNNER_TEMP/duo-timeout.cjs" 90 xcrun simctl io "$DUO_UDID" screenshot --display=primary "$RUNNER_TEMP/duo-screenshots/iphone-duo-before-posture.png"
+          node "$RUNNER_TEMP/duo-timeout.cjs" 90 xcrun simctl status_bar "$DUO_UDID" override --time '9:41' --dataNetwork wifi --wifiMode active --wifiBars 3 --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
           for POSE in closed:0:primary open:180:primary-1 partial:90:primary-1 closed-again:0:primary; do
             IFS=: read -r POSE_NAME POSE_ANGLE POSE_DISPLAY <<< "$POSE"
             echo "Validating Duo posture $POSE_NAME ($POSE_ANGLE degrees)"
