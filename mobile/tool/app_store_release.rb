@@ -101,6 +101,24 @@ localizations.each do |loc|
 end
 review_detail = get("/v1/appStoreVersions/#{version_id}/appStoreReviewDetail", token).fetch('data')
 review_attributes = review_detail&.fetch('attributes', {}) || {}
+if ACTION == 'prepare' && review_detail
+  notes = review_attributes['notes'].to_s
+  revised_notes = notes.gsub(/build 45/i) { |match| match.sub('45', BUILD) }
+  revised_notes = revised_notes.sub(
+    'Hosted iPhone Duo simulator boot validation is pending; physical-device pose-specific behavior has not been verified.',
+    'Native iPhone Duo simulator installation, launch and closed/open/partial/closed transitions were verified. Physical-device testing remains unverified.'
+  )
+  unless revised_notes.include?('DUO UPDATE 1.15.14')
+    revised_notes += "\n\nDUO UPDATE 1.15.14\nBuild 46 keeps all left navigation controls visible on expanded Duo windows with a right-side system inset. The correction is covered by a regression test that opens every primary tab, and by native closed/open/partial/closed simulator checks."
+  end
+  if revised_notes != notes
+    request("/v1/appStoreReviewDetails/#{review_detail.fetch('id')}", token, 'PATCH', {
+      data: { type: 'appStoreReviewDetails', id: review_detail.fetch('id'),
+              attributes: { notes: revised_notes } }
+    })
+    puts 'Updated review notes for the corrected Duo build'
+  end
+end
 puts JSON.generate(review_contact_complete: %w[contactFirstName contactLastName contactPhone contactEmail].all? { |k| !review_attributes[k].to_s.empty? },
                    review_notes_present: !review_attributes['notes'].to_s.empty?,
                    demo_account_required: review_attributes['demoAccountRequired'])
