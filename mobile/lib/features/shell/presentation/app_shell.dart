@@ -374,6 +374,9 @@ class _DesktopNavigation extends StatelessWidget {
         ),
       ),
       child: SafeArea(
+        // This pane touches the left edge, so the opposite edge inset belongs
+        // to the main content pane rather than the narrow navigation rail.
+        right: false,
         child: Padding(
           padding: EdgeInsets.fromLTRB(
             compact ? 14 : 18,
