@@ -52,7 +52,7 @@ jobs:
 
   app-store-status:
     if: inputs.platform == 'app-store-status'
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
