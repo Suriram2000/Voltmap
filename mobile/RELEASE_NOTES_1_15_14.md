@@ -1,9 +1,18 @@
 # VoltMapEV 1.15.14 (46)
 
-Fixes the expanded iPhone Duo navigation issue found during native fold testing of 1.15.13.
+**Submitted to Apple App Review on November 16, 2026.** Apple's acknowledgement is **WAITING_FOR_REVIEW**, with automatic release after approval.
 
-The narrow left navigation pane no longer consumes the system inset from the opposite screen edge. A regression test uses an expanded 951×669-point window with an 84-point right inset and opens every primary tab through hit-testable navigation controls.
+The expanded iPhone Duo navigation controls now remain visible when the system reserves space at the opposite screen edge. The left navigation pane no longer consumes the screen's right inset.
 
-The release retains the adaptive map/list layouts, safe areas and resize continuity from 1.15.13. It uses Flutter 3.47.7 and the iOS 27.1 SDK.
+Validation: static analysis clean; **159 tests passed with 2 conditional skips**, plus production checkout and 4 App Store access tests. A regression checks all six navigation targets in an expanded window with an 84-point right inset.
 
-Validation and App Store submission are pending. Native verification will check actual hinge angles 0°, 180°, 90° and 0° again, require the same app process to survive, and capture each active display. The previous 1.15.13 release remains approved and intact.
+Native iPhone Duo / iOS 27.1 verification passed at hinge angles **0° → 180° → 90° → 0°**. The same app process survived all transitions. Actual captures were visually inspected: all six navigation controls are visible in open and partially open modes, and the app returns to the closed display. Physical-device testing remains outstanding.
+
+- Signed build and native verification: https://github.com/Suriram2000/Voltmap/actions/runs/43771722154
+- Final Apple acknowledgement: https://github.com/Suriram2000/Voltmap/actions/runs/43842538721
+- Submission: `2e84c9cd-fa77-4b72-a3b5-c2996730666c`
+- App Store version: `f2da10ed-2cae-4792-9adf-9f51832e628b`
+- Build: `5535d77d-18c7-43e2-be44-c9174ccd87b1`
+- Application source: `2d83e93b1ee9230ace5f9f29eadbef6867c0fd70`
+
+Flutter 3.47.7 / Xcode 27.1. Existing 1.15.13 remains published while Apple reviews this update. No Android, website or WhatsApp deployment is included.
